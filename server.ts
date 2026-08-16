@@ -348,10 +348,18 @@ async function startServer() {
     }
   });
 
-  app.get('/api/platform/tenants', requireAuth, requireSuperAdmin, (req, res) => {
-    const tenants = dbStore.getAllTenants();
+  const handleGetAllTenants = (req: express.Request, res: express.Response) => {
+    let tenants = dbStore.getAllTenants();
+    if (!tenants || tenants.length === 0) {
+      dbStore.ensureDefaultTenant();
+      tenants = dbStore.getAllTenants();
+    }
     return res.json(tenants);
-  });
+  };
+
+  app.get('/api/platform/tenants', handleGetAllTenants);
+  app.get('/api/public/tenants', handleGetAllTenants);
+  app.get('/api/tenants', handleGetAllTenants);
 
   app.post('/api/platform/tenants', requireAuth, requireSuperAdmin, (req, res) => {
     try {
