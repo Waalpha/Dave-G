@@ -132,16 +132,19 @@ function MainAppContent() {
     );
   }
 
-  // 0.1 LOGIN ROUTE (/login) or if unauthenticated on private route
-  if (!user || currentRoute === '/login') {
+  // If user is already authenticated and visits /login, redirect immediately
+  useEffect(() => {
     if (user && currentRoute === '/login') {
-      // If user is already authenticated, route them to their dashboard
       if (user.role === 'SUPER_ADMIN' && !inspectingTenant) {
         navigateTo('/platform/dashboard');
       } else {
         navigateTo('/app/dashboard');
       }
     }
+  }, [user, currentRoute, inspectingTenant]);
+
+  // 0.1 UNAUTHENTICATED USERS: If not logged in and on /login or any private route
+  if (!user) {
     return (
       <LoginView
         tenantSlug={activeTenantSlug}

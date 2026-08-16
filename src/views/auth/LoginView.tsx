@@ -57,13 +57,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenantSlug, onNavigateToPu
     }
 
     fetch('/api/public/platform-settings')
-      .then(res => res.json())
+      .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (data && data.platformName) {
           setPlatformSettings(data);
         }
       })
-      .catch(err => console.error('Failed to load public platform settings:', err));
+      .catch(() => {});
   }, [tenantSlug]);
 
   // Login form state - starts strictly with empty fields

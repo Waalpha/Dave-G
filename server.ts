@@ -318,9 +318,14 @@ async function startServer() {
   // ==================== PLATFORM ADMIN ROUTES ====================
 
   // Public Platform Settings (Branding, Logo, Name for Login Screen)
-  app.get('/api/public/platform-settings', (req, res) => {
+  const handleGetPlatformSettings = (req: express.Request, res: express.Response) => {
     return res.json(dbStore.getPlatformSettings());
-  });
+  };
+
+  app.get('/api/public/platform-settings', handleGetPlatformSettings);
+  app.get('/api/platform-settings', handleGetPlatformSettings);
+  app.get('/platform-settings', handleGetPlatformSettings);
+  app.get('/api/public/settings', handleGetPlatformSettings);
 
   // Super Admin Platform Settings Management
   app.get('/api/platform/settings', requireAuth, requireSuperAdmin, (req, res) => {
