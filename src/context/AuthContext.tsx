@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Tenant, ModuleId } from '../types';
 import { ALL_ERP_MODULES } from '../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../data/dbStore';
+import { INITIAL_TENANTS } from '../data/initialTenants';
 
 interface AuthContextType {
   user: User | null;
