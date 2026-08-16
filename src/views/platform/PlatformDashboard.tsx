@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tenant, AuditLog } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
+import { INITIAL_TENANTS } from '../../data/dbStore';
 import { Building2, ShieldCheck, Users, Layers, Activity, AlertTriangle, ArrowUpRight, Plus, Settings } from 'lucide-react';
 
 interface PlatformDashboardProps {
@@ -8,9 +9,18 @@ interface PlatformDashboardProps {
 }
 
 export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigateTab }) => {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    const cached = localStorage.getItem('erp_cached_tenants');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [...INITIAL_TENANTS];
+  });
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const fetchPlatformData = async () => {
     try {
@@ -21,7 +31,14 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
       ]);
       if (resT.ok) {
         const tData = await resT.json().catch(() => []);
-        if (Array.isArray(tData)) setTenants(tData);
+        if (Array.isArray(tData) && tData.length > 0) {
+          const tenantMap = new Map<string, Tenant>();
+          INITIAL_TENANTS.forEach(t => tenantMap.set(t.id, t));
+          tData.forEach((t: Tenant) => tenantMap.set(t.id, t));
+          const merged = Array.from(tenantMap.values());
+          setTenants(merged);
+          localStorage.setItem('erp_cached_tenants', JSON.stringify(merged));
+        }
       }
       if (resL.ok) {
         const lData = await resL.json().catch(() => []);
