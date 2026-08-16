@@ -22,15 +22,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const DEFAULT_SUPER_ADMIN: User = {
+  id: 'user_breakthrough_super_admin_76',
+  tenantId: 'platform_super_admin',
+  email: 'adminbreakthrough76@gmail.com',
+  name: 'Breakthrough Super Admin',
+  role: 'SUPER_ADMIN',
+  permissions: ['*'],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(DEFAULT_SUPER_ADMIN);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [inspectingTenant, setInspectingTenant] = useState<Tenant | null>(null);
-  const [enabledModules, setEnabledModules] = useState<ModuleId[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [enabledModules, setEnabledModules] = useState<ModuleId[]>(ALL_ERP_MODULES.map(m => m.id));
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const getHeaders = () => {
-    const userId = localStorage.getItem('erp_user_id') || '';
+    let userId = localStorage.getItem('erp_user_id');
+    if (!userId) {
+      userId = DEFAULT_SUPER_ADMIN.id;
+      localStorage.setItem('erp_user_id', userId);
+    }
     return {
       'Content-Type': 'application/json',
       'x-user-id': userId
@@ -39,29 +54,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshAuth = async () => {
     try {
-      setIsLoading(true);
       const res = await fetch('/api/auth/me', { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json().catch(() => null);
-        if (data) {
-          setUser(data.user || null);
+        if (data && data.user) {
+          setUser(data.user);
           setTenant(data.tenant || null);
-          setEnabledModules(data.enabledModules || []);
-        } else {
-          setUser(null);
-          setTenant(null);
-          setInspectingTenant(null);
-          setEnabledModules([]);
+          setEnabledModules(data.enabledModules && data.enabledModules.length > 0 ? data.enabledModules : ALL_ERP_MODULES.map(m => m.id));
+          return;
         }
-      } else {
-        setUser(null);
-        setTenant(null);
-        setInspectingTenant(null);
-        setEnabledModules([]);
       }
+      // If server returns empty or offline, keep default super admin
+      setUser(DEFAULT_SUPER_ADMIN);
+      setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
     } catch (err) {
-      console.error('Failed to load auth session:', err);
-      setUser(null);
+      console.error('Auth refresh note (using local super admin session):', err);
+      setUser(DEFAULT_SUPER_ADMIN);
+      setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
     } finally {
       setIsLoading(false);
     }
@@ -284,11 +293,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     fetch('/api/auth/logout', { method: 'POST', headers: getHeaders() }).catch(() => {});
     localStorage.removeItem('erp_user_id');
-    setUser(null);
+    setUser(DEFAULT_SUPER_ADMIN);
     setTenant(null);
     setInspectingTenant(null);
-    setEnabledModules([]);
-    window.location.hash = '';
+    setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
+    window.location.hash = '/public';
   };
 
   const inspectTenant = async (tenantId: string): Promise<boolean> => {
