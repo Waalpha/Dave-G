@@ -67,7 +67,7 @@ export const TenantPublicWebsite: React.FC<TenantPublicWebsiteProps> = ({
     } else if (handleLoginNavigation) {
       handleLoginNavigation();
     } else {
-      window.location.href = `/#/login?tenantId=${data?.tenant?.id || ''}`;
+      window.location.hash = '/app/dashboard';
     }
   };
 
