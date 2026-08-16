@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="100%" height="100%">
+  <defs>
+    <linearGradient id="dtGradBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00c0ff" />
+      <stop offset="35%" stop-color="#0066f5" />
+      <stop offset="75%" stop-color="#003594" />
+      <stop offset="100%" stop-color="#001a4e" />
+    </linearGradient>
+    
+    <linearGradient id="dtGradCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00d2ff" />
+      <stop offset="100%" stop-color="#0055ff" />
+    </linearGradient>
+
+    <linearGradient id="dtSwooshGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#0084ff" />
+      <stop offset="50%" stop-color="#0052cc" />
+      <stop offset="100%" stop-color="#051b3b" />
+    </linearGradient>
+
+    <linearGradient id="techTextGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0055e5" />
+      <stop offset="50%" stop-color="#0088ff" />
+      <stop offset="100%" stop-color="#00b4d8" />
+    </linearGradient>
+
+    <filter id="glowEffect" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0066ff" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <g filter="url(#glowEffect)">
+    <!-- ==================== EMBLEM: DT + LAPTOP + SWOOSH + PIXELS ==================== -->
+    <g transform="translate(100, 30)">
+      
+      <!-- LETTER 'D' (Bold slanted/italicized tech profile) -->
+      <path d="M 90 120 L 250 120 C 330 120, 360 170, 340 250 C 320 320, 270 370, 180 370 L 60 370 Z" 
+            fill="url(#dtGradBlue)" />
+      
+      <!-- Inner negative space of D -->
+      <path d="M 140 180 L 220 180 C 265 180, 280 210, 270 255 C 260 300, 230 315, 185 315 L 120 315 Z" 
+            fill="#080e1a" opacity="0.95" />
+
+      <!-- LETTER 'T' (Overlapping slanted with top bar and vertical stem) -->
+      <!-- T Stem -->
+      <path d="M 310 180 L 375 180 L 320 400 L 260 400 Z" 
+            fill="url(#dtGradBlue)" />
+      
+      <!-- T Top Bar -->
+      <path d="M 230 120 L 460 120 L 445 180 L 285 180 Z" 
+            fill="url(#dtGradBlue)" />
+
+      <!-- DIGITAL DATA PIXELS DISPERSING (Top Right of 'T') -->
+      <rect x="440" y="70" width="18" height="18" fill="#0088ff" rx="2" />
+      <rect x="465" y="50" width="16" height="16" fill="#00b4d8" rx="2" />
+      <rect x="490" y="30" width="18" height="18" fill="#0066ff" rx="2" />
+      <rect x="465" y="80" width="22" height="22" fill="#0044cc" rx="2" />
+      <rect x="500" y="70" width="16" height="16" fill="#00b4d8" rx="2" />
+      <rect x="525" y="50" width="14" height="14" fill="#0066ff" rx="2" />
+      <rect x="480" y="110" width="20" height="20" fill="#002b80" rx="2" />
+      <rect x="510" y="95" width="24" height="24" fill="#051b3b" rx="2" />
+      <rect x="545" y="80" width="16" height="16" fill="#0088ff" rx="2" />
+
+      <!-- 3D PERSPECTIVE LAPTOP (Inside Lower Left) -->
+      <!-- Laptop Screen (Slanted 3D) -->
+      <path d="M 25 195 L 145 205 L 135 320 L 40 330 Z" fill="#07111e" stroke="#00b4d8" stroke-width="6" stroke-linejoin="round" />
+      <path d="M 38 212 L 132 218 L 124 308 L 48 316 Z" fill="#001833" stroke="#0088ff" stroke-width="2" />
+
+      <!-- Laptop Base / Keyboard (Perspective projected forward) -->
+      <path d="M 38 335 L 140 322 L 275 390 L 52 425 Z" fill="#0a192f" stroke="#00c0ff" stroke-width="4" stroke-linejoin="round" />
+      
+      <!-- Keyboard Keys Grid in Perspective -->
+      <path d="M 68 348 L 145 338 L 225 385 L 85 408 Z" fill="#030a14" stroke="#0077dd" stroke-width="1.5" />
+      
+      <!-- Keyboard horizontal key rows -->
+      <line x1="72" y1="362" x2="165" y2="352" stroke="#00c0ff" stroke-width="1.5" opacity="0.7" />
+      <line x1="78" y1="376" x2="185" y2="366" stroke="#00c0ff" stroke-width="1.5" opacity="0.7" />
+      <line x1="84" y1="390" x2="205" y2="380" stroke="#00c0ff" stroke-width="1.5" opacity="0.7" />
+      
+      <!-- Trackpad -->
+      <path d="M 125 398 L 175 390 L 185 412 L 130 420 Z" fill="#0c2340" stroke="#00c0ff" stroke-width="1.5" />
+
+      <!-- DYNAMIC ORBITAL SWOOSH CURVE (Enclosing bottom left around to right) -->
+      <path d="M -10 380 C -15 450, 110 500, 280 440 C 420 390, 520 280, 530 180 C 532 170, 515 170, 510 185 C 490 270, 400 370, 260 410 C 120 450, 20 420, 12 365 C 10 350, -8 360, -10 380 Z" 
+            fill="url(#dtSwooshGrad)" />
+    </g>
+
+    <!-- ==================== TYPOGRAPHY: DAVETECH ==================== -->
+    <g transform="translate(400, 535)" text-anchor="middle">
+      <text font-family="system-ui, -apple-system, 'Montserrat', 'Inter', 'Arial Black', sans-serif" font-weight="900" font-size="88" letter-spacing="4">
+        <tspan fill="#ffffff">DAVE</tspan>
+        <tspan fill="url(#techTextGrad)">TECH</tspan>
+      </text>
+    </g>
+
+    <!-- ==================== SUB-HEADER: — SOLUTIONS — ==================== -->
+    <g transform="translate(400, 595)">
+      <!-- Left line -->
+      <line x1="-330" y1="0" x2="-210" y2="0" stroke="#0088ff" stroke-width="3" stroke-linecap="round" />
+      
+      <text x="0" y="6" text-anchor="middle" font-family="system-ui, -apple-system, 'Montserrat', sans-serif" font-weight="800" font-size="28" fill="#38bdf8" letter-spacing="14">SOLUTIONS</text>
+      
+      <!-- Right line -->
+      <line x1="210" y1="0" x2="330" y2="0" stroke="#0088ff" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <!-- ==================== PILLARS: TECHNOLOGY | SOLUTIONS | SUPPORT ==================== -->
+    <g transform="translate(400, 660)">
+      <!-- Item 1: TECHNOLOGY (Laptop Icon) -->
+      <g transform="translate(-230, 0)">
+        <circle cx="0" cy="0" r="16" fill="#0066f5" />
+        <!-- Small Screen Icon -->
+        <rect x="-8" y="-7" width="16" height="10" rx="1.5" fill="none" stroke="#ffffff" stroke-width="1.8" />
+        <line x1="-10" y1="6" x2="10" y2="6" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+        
+        <text x="24" y="5" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#cbd5e1" letter-spacing="1.5">TECHNOLOGY</text>
+      </g>
+
+      <!-- Divider 1 -->
+      <line x1="-70" y1="-10" x2="-70" y2="10" stroke="#475569" stroke-width="1.5" />
+
+      <!-- Item 2: SOLUTIONS (Cog/Gear Icon) -->
+      <g transform="translate(5, 0)">
+        <circle cx="0" cy="0" r="16" fill="#0066f5" />
+        <!-- Gear shape -->
+        <circle cx="0" cy="0" r="6" fill="none" stroke="#ffffff" stroke-width="2" />
+        <path d="M 0 -10 L 0 -7 M 0 7 L 0 10 M -10 0 L -7 0 M 7 0 L 10 0 M -7 -7 L -5 -5 M 5 5 L 7 7 M -7 7 L -5 5 M 5 -5 L 7 -7" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" />
+
+        <text x="24" y="5" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#cbd5e1" letter-spacing="1.5">SOLUTIONS</text>
+      </g>
+
+      <!-- Divider 2 -->
+      <line x1="165" y1="-10" x2="165" y2="10" stroke="#475569" stroke-width="1.5" />
+
+      <!-- Item 3: SUPPORT (Shield/Headset Icon) -->
+      <g transform="translate(230, 0)">
+        <circle cx="0" cy="0" r="16" fill="#0066f5" />
+        <!-- Shield icon -->
+        <path d="M 0 -8 L 7 -4 L 7 2 C 7 6, 0 9, 0 9 C 0 9, -7 6, -7 2 L -7 -4 Z" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linejoin="round" />
+
+        <text x="24" y="5" font-family="system-ui, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#cbd5e1" letter-spacing="1.5">SUPPORT</text>
+      </g>
+    </g>
+
+    <!-- ==================== MOTTO: INNOVATE • SOLVE • SUCCEED ==================== -->
+    <g transform="translate(400, 715)">
+      <!-- Left line -->
+      <line x1="-290" y1="0" x2="-200" y2="0" stroke="#0088ff" stroke-width="2.5" stroke-linecap="round" />
+
+      <text x="0" y="5" text-anchor="middle" font-family="system-ui, -apple-system, 'Montserrat', sans-serif" font-weight="800" font-size="16" fill="#38bdf8" letter-spacing="6">
+        INNOVATE <tspan fill="#0066f5" font-size="20">•</tspan> SOLVE <tspan fill="#0066f5" font-size="20">•</tspan> SUCCEED
+      </text>
+
+      <!-- Right line -->
+      <line x1="200" y1="0" x2="290" y2="0" stroke="#0088ff" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+  </g>
+</svg>

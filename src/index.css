@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --color-primary-blue: #1D53D9;
+    --color-secondary-orange: #F49C10;
+    --color-success-green: #14B57A;
+    --color-soft-accent: #EBE2F5;
+    --color-main-bg: #F8FAFC;
+    --color-card-bg: #FFFFFF;
+    --color-light-blue: #7CA4EF;
+    --color-border: #D8DCEB;
+    --color-secondary-text: #777E8C;
+    --color-main-text: #1F2937;
+  }
+}
+
+/* Custom Davetech Palette Utility Classes */
+.bg-brand-primary { background-color: #1D53D9; }
+.bg-brand-secondary { background-color: #F49C10; }
+.bg-brand-success { background-color: #14B57A; }
+.bg-brand-soft { background-color: #EBE2F5; }
+.bg-brand-main { background-color: #F8FAFC; }
+.bg-brand-card { background-color: #FFFFFF; }
+.bg-brand-lightblue { background-color: #7CA4EF; }
+
+.text-brand-primary { color: #1D53D9; }
+.text-brand-secondary { color: #F49C10; }
+.text-brand-success { color: #14B57A; }
+.text-brand-lightblue { color: #7CA4EF; }
+.text-brand-muted { color: #777E8C; }
+.text-brand-dark { color: #1F2937; }
+
+.border-brand-default { border-color: #D8DCEB; }
+.border-brand-primary { border-color: #1D53D9; }
+.border-brand-secondary { border-color: #F49C10; }
+
+/* Dynamic Typography Classes */
+.font-sans-clean { font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+.font-poppins { font-family: 'Poppins', system-ui, sans-serif; }
+.font-outfit { font-family: 'Outfit', system-ui, sans-serif; }
+.font-serif-clean { font-family: 'Merriweather', Georgia, Cambria, 'Times New Roman', Times, serif; }
+.font-display { font-family: 'Playfair Display', Georgia, serif; }
+.font-mono-clean { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+

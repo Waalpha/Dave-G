@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "tenants": {
+      "title": "Tenant",
+      "description": "Multi-tenant organization configurations and branding",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "branding": { "type": "object" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "users": {
+      "title": "User",
+      "description": "Platform and tenant users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "department": { "type": "string" }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "students": {
+      "title": "Student",
+      "description": "Enrolled student records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "admissionNo": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "programName": { "type": "string" },
+        "campusName": { "type": "string" },
+        "feeBalance": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "fullName"]
+    }
+  }
+}

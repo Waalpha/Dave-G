@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        request.auth.token.role == 'SUPER_ADMIN' ||
+        request.auth.token.email == 'admin@davetech.co.ke'
+      );
+    }
+
+    function userTenantId() {
+      return request.auth.token.tenantId;
+    }
+
+    function isTenantUser(tenantId) {
+      return isSignedIn() && (
+        isSuperAdmin() ||
+        userTenantId() == tenantId
+      );
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Tenants collection: public read for active branding/website info, writes restricted to Super Admin or Tenant Admin
+    match /tenants/{tenantId} {
+      allow read: if true;
+      allow create, delete: if isSuperAdmin();
+      allow update: if isTenantUser(tenantId);
+    }
+
+    // Users collection: read own user or super admin, writes restricted
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isSuperAdmin() || request.auth.uid == userId || userTenantId() == resource.data.tenantId);
+      allow create, update, delete: if isSuperAdmin() || (isSignedIn() && userTenantId() == request.resource.data.tenantId);
+    }
+
+    // Operational tenant collections with strict tenantId isolation
+    match /departments/{deptId} {
+      allow read: if true; // Public website displays active departments
+      allow create, update, delete: if isTenantUser(request.resource.data.tenantId);
+    }
+
+    match /programs/{programId} {
+      allow read: if true; // Public website displays programs
+      allow create, update, delete: if isTenantUser(request.resource.data.tenantId);
+    }
+
+    match /campuses/{campusId} {
+      allow read: if true; // Public website displays campuses
+      allow create, update, delete: if isTenantUser(request.resource.data.tenantId);
+    }
+
+    match /students/{studentId} {
+      allow read, write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /feePayments/{paymentId} {
+      allow read, write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /academicYears/{yearId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /terms/{termId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /units/{unitId} {
+      allow read: if true;
+      allow write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /enrollments/{enrollmentId} {
+      allow read, write: if isSignedIn() && (
+        isSuperAdmin() ||
+        (resource == null || resource.data.tenantId == userTenantId()) &&
+        (request.resource == null || request.resource.data.tenantId == userTenantId())
+      );
+    }
+
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Davetech-ERP",
+  "description": "Production-Ready Multi-Tenant SaaS ERP with Module Permissions and Education Management System",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
