@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tenant, ModuleId, TenantType, EducationType } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
+import { INITIAL_TENANTS } from '../../data/dbStore';
 import { useAuth } from '../../context/AuthContext';
 import {
   Building2, Plus, ShieldCheck, Check, X, Edit2, AlertCircle, RefreshCw, 
@@ -19,14 +20,23 @@ interface PlatformTenantsProps {
 export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavigate, initialTab = 'tenants' }) => {
   const { inspectTenant } = useAuth();
   const [activeTab, setActiveTab] = useState<'tenants' | 'users'>(initialTab);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>(() => {
+    const cached = localStorage.getItem('erp_cached_tenants');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return [...INITIAL_TENANTS];
+  });
 
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Modals state
@@ -62,11 +72,18 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
 
   const fetchTenants = async () => {
     try {
-      setLoading(true);
       const res = await fetch('/api/platform/tenants', { headers: getHeaders() });
       if (res.ok) {
         const data = await res.json();
-        setTenants(data);
+        if (Array.isArray(data) && data.length > 0) {
+          const tenantMap = new Map<string, Tenant>();
+          INITIAL_TENANTS.forEach(t => tenantMap.set(t.id, t));
+          data.forEach((t: Tenant) => tenantMap.set(t.id, t));
+          const merged = Array.from(tenantMap.values());
+          setTenants(merged);
+          localStorage.setItem('erp_cached_tenants', JSON.stringify(merged));
+          return;
+        }
       }
     } catch (err) {
       console.error('Failed to fetch tenants:', err);
