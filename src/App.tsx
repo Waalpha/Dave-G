@@ -25,7 +25,7 @@ import { resolveHostname, ResolvedDomain } from './lib/domainResolver';
 import { Shield, ArrowLeft } from 'lucide-react';
 
 function MainAppContent() {
-  const { user, tenant, inspectingTenant, clearInspection, isLoading } = useAuth();
+  const { user, tenant, inspectingTenant, inspectTenant, clearInspection, isLoading } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<string>('/app/dashboard');
   const [platformTab, setPlatformTab] = useState<string>('dashboard');
   const [domainResolution, setDomainResolution] = useState<ResolvedDomain>(() => resolveHostname());
@@ -106,6 +106,10 @@ function MainAppContent() {
         <DavetechMainWebsite
           onNavigateToLogin={() => navigateTo('/platform/dashboard')}
           onNavigateToTenant={(tenantSlug) => navigateTo(`/public/${tenantSlug}`)}
+          onNavigateToTenantWorkspace={async (tenantSlug) => {
+            await inspectTenant(tenantSlug);
+            navigateTo('/app/dashboard');
+          }}
           onNavigateToModuleDemo={(modId) => {
             if (modId) {
               // Map module to representative tenant demo
