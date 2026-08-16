@@ -69,13 +69,13 @@ function MainAppContent() {
     setCurrentRoute(`/platform/${tab}`);
   };
 
-  // If user is already authenticated and visits /login, redirect immediately
+  // If user visits /login, redirect directly to Platform Dashboard or Workspace
   useEffect(() => {
-    if (user && currentRoute === '/login') {
-      if (user.role === 'SUPER_ADMIN' && !inspectingTenant) {
-        navigateTo('/platform/dashboard');
-      } else {
+    if (currentRoute === '/login') {
+      if (user && user.role !== 'SUPER_ADMIN') {
         navigateTo('/app/dashboard');
+      } else {
+        navigateTo('/platform/dashboard');
       }
     }
   }, [user, currentRoute, inspectingTenant]);
@@ -104,7 +104,7 @@ function MainAppContent() {
     if (!slug || slug === 'default' || slug === 'root' || slug === 'www') {
       return (
         <DavetechMainWebsite
-          onNavigateToLogin={() => navigateTo('/login')}
+          onNavigateToLogin={() => navigateTo('/platform/dashboard')}
           onNavigateToTenant={(tenantSlug) => navigateTo(`/public/${tenantSlug}`)}
           onNavigateToModuleDemo={(modId) => {
             if (modId) {
@@ -122,7 +122,7 @@ function MainAppContent() {
               const targetSlug = moduleTenantMap[modId] || 'apex-institute';
               navigateTo(`/public/${targetSlug}`);
             } else {
-              navigateTo('/login');
+              navigateTo('/platform/dashboard');
             }
           }}
         />
@@ -133,8 +133,8 @@ function MainAppContent() {
     return (
       <TenantPublicWebsite
         tenantSlug={slug}
-        onNavigateToLogin={() => navigateTo('/login')}
-        onPortalLogin={() => navigateTo('/login')}
+        onNavigateToLogin={() => navigateTo('/app/dashboard')}
+        onPortalLogin={() => navigateTo('/app/dashboard')}
         onNavigateToMainPlatform={() => {
           window.location.search = '';
           navigateTo('/public');
@@ -143,13 +143,14 @@ function MainAppContent() {
     );
   }
 
-  // 0.1 UNAUTHENTICATED USERS: If not logged in and on /login or any private route
+  // 0.1 If unauthenticated, fallback directly to Super Admin dashboard
   if (!user) {
     return (
-      <LoginView
-        tenantSlug={activeTenantSlug}
-        onNavigateToPublic={(slug) => navigateTo(slug ? `/public/${slug}` : '/public')}
-      />
+      <div className="min-h-screen flex flex-col bg-slate-950">
+        <PlatformLayout currentTab={platformTab} onSelectTab={navigatePlatformTab}>
+          <PlatformDashboard onNavigateTab={navigatePlatformTab} />
+        </PlatformLayout>
+      </div>
     );
   }
 
