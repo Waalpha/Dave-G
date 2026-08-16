@@ -38,6 +38,7 @@ import {
   Search, 
   Building2, 
   Lock, 
+  Shield,
   Clock, 
   X, 
   Globe, 
@@ -456,11 +457,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
             </button>
             <button
               onClick={onNavigateToLogin}
-              className="px-3 py-2 sm:px-4 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30 whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0"
-              title="Portal Login - Sign in to ERP"
+              className="px-3.5 py-2 sm:px-4 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/30 whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0"
+              title="Enter ERP Platform Console"
             >
-              <Lock className="w-3.5 h-3.5 shrink-0" />
-              <span>Portal Login</span>
+              <Shield className="w-3.5 h-3.5 shrink-0" />
+              <span>Enter Platform</span>
             </button>
             
             {/* Mobile Hamburger Menu Toggle */}
@@ -513,13 +514,23 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
             >
               Contact Us
             </a>
-            <div className="pt-2 border-t border-slate-100 flex gap-2">
+            <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onNavigateToLogin();
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold text-center cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Enter Platform Admin / ERP</span>
+              </button>
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   setIsDemoModalOpen(true);
                 }}
-                className="w-full py-2.5 px-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold text-center cursor-pointer"
+                className="w-full py-2 px-3 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold text-center cursor-pointer"
               >
                 Book Live Demo
               </button>
