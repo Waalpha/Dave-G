@@ -69,6 +69,17 @@ function MainAppContent() {
     setCurrentRoute(`/platform/${tab}`);
   };
 
+  // If user is already authenticated and visits /login, redirect immediately
+  useEffect(() => {
+    if (user && currentRoute === '/login') {
+      if (user.role === 'SUPER_ADMIN' && !inspectingTenant) {
+        navigateTo('/platform/dashboard');
+      } else {
+        navigateTo('/app/dashboard');
+      }
+    }
+  }, [user, currentRoute, inspectingTenant]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-100">
@@ -131,17 +142,6 @@ function MainAppContent() {
       />
     );
   }
-
-  // If user is already authenticated and visits /login, redirect immediately
-  useEffect(() => {
-    if (user && currentRoute === '/login') {
-      if (user.role === 'SUPER_ADMIN' && !inspectingTenant) {
-        navigateTo('/platform/dashboard');
-      } else {
-        navigateTo('/app/dashboard');
-      }
-    }
-  }, [user, currentRoute, inspectingTenant]);
 
   // 0.1 UNAUTHENTICATED USERS: If not logged in and on /login or any private route
   if (!user) {
