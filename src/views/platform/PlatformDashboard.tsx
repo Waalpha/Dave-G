@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tenant, AuditLog } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../../data/dbStore';
+import { INITIAL_TENANTS } from '../../data/initialTenants';
 import { Building2, ShieldCheck, Users, Layers, Activity, AlertTriangle, ArrowUpRight, Plus, Settings } from 'lucide-react';
 
 interface PlatformDashboardProps {
