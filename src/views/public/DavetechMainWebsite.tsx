@@ -55,6 +55,7 @@ import {
 interface DavetechMainWebsiteProps {
   onNavigateToLogin: () => void;
   onNavigateToTenant: (tenantSlug: string) => void;
+  onNavigateToTenantWorkspace?: (tenantSlug: string) => void;
   onNavigateToModuleDemo?: (moduleId: string) => void;
 }
 
@@ -96,7 +97,8 @@ const ICON_MAP: Record<string, React.ElementType> = {
 
 export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
   onNavigateToLogin,
-  onNavigateToTenant
+  onNavigateToTenant,
+  onNavigateToTenantWorkspace
 }) => {
   // State
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
@@ -857,11 +859,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('apex-institute') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
@@ -911,11 +913,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('st-jude-hospital') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-teal-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-teal-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
@@ -965,11 +967,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('dreamline-shop') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-sky-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
@@ -1019,11 +1021,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('dreamline-shop') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
@@ -1073,11 +1075,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('blessed-sacco') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
@@ -1127,11 +1129,11 @@ export const DavetechMainWebsite: React.FC<DavetechMainWebsiteProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onNavigateToLogin()}
+                  onClick={() => onNavigateToTenantWorkspace ? onNavigateToTenantWorkspace('grace-cathedral') : onNavigateToLogin()}
                   className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
                 >
-                  <Lock className="w-3.5 h-3.5 text-purple-400" />
-                  <span>ERP Login</span>
+                  <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Open ERP</span>
                 </button>
               </div>
             </div>
