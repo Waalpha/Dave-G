@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Tenant, ModuleId, TenantType, EducationType } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../../data/dbStore';
+import { INITIAL_TENANTS } from '../../data/initialTenants';
 import { useAuth } from '../../context/AuthContext';
 import {
   Building2, Plus, ShieldCheck, Check, X, Edit2, AlertCircle, RefreshCw, 
