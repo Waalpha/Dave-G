@@ -1292,12 +1292,15 @@ class DatabaseStore {
     const proposedSlug = data.subdomain || data.slug;
     if (proposedSlug && proposedSlug.trim()) {
       const cleanSlug = proposedSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-      const reserved = ['admin', 'api', 'app', 'www', 'mail', 'support', 'help', 'billing', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default'];
+      const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'portal', 'dashboard', 'login'];
       if (reserved.includes(cleanSlug)) {
-        throw new Error(`The subdomain "${cleanSlug}" is reserved and cannot be assigned to a tenant.`);
+        throw new Error(`The subdomain "${cleanSlug}" is reserved for platform infrastructure and cannot be assigned to a tenant.`);
       }
       const existing = this.tenants.find(
-        t => t.id !== tenantId && (t.slug.toLowerCase() === cleanSlug || (t.subdomain && t.subdomain.toLowerCase() === cleanSlug))
+        t => t.id !== tenant.id && (
+          (t.slug && t.slug.toLowerCase() === cleanSlug) ||
+          (t.subdomain && t.subdomain.toLowerCase() === cleanSlug)
+        )
       );
       if (existing) {
         throw new Error(`The subdomain "${cleanSlug}" is already in use by "${existing.name}".`);

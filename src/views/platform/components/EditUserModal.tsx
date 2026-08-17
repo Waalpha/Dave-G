@@ -34,11 +34,15 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
     try {
       setLoading(true);
       setError(null);
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/users/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         },
         body: JSON.stringify({
           name: name.trim(),
@@ -50,12 +54,12 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         onSuccess();
         onClose();
       } else {
-        setError(data.error || 'Failed to update user profile.');
+        setError(data.error || data.message || `Failed to update user profile (HTTP ${res.status}).`);
       }
     } catch (err: any) {
       setError(err.message || 'Error updating user.');

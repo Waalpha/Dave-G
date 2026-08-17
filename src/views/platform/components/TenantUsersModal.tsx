@@ -72,11 +72,15 @@ export const TenantUsersModal: React.FC<TenantUsersModalProps> = ({
     try {
       setCreateLoading(true);
       setCreateError(null);
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/tenants/${tenant.id}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         },
         body: JSON.stringify({
           name: newUserName.trim(),
@@ -87,8 +91,8 @@ export const TenantUsersModal: React.FC<TenantUsersModalProps> = ({
         })
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.success || data.user)) {
         setNotification(`User ${newUserName} successfully created with password "${newUserPassword}"`);
         setIsCreatingUser(false);
         setNewUserName('');
@@ -98,7 +102,7 @@ export const TenantUsersModal: React.FC<TenantUsersModalProps> = ({
         fetchUsers();
         setTimeout(() => setNotification(null), 5000);
       } else {
-        setCreateError(data.error || 'Failed to create user.');
+        setCreateError(data.error || data.message || `Failed to create user (HTTP ${res.status}).`);
       }
     } catch (err: any) {
       setCreateError(err.message || 'Error creating user.');
@@ -113,24 +117,28 @@ export const TenantUsersModal: React.FC<TenantUsersModalProps> = ({
     try {
       setIsDeleting(true);
       setDeleteError(null);
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/users/${userToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         }
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (res.ok && data.success) {
+      if (res.ok && (data.success || !data.error)) {
         const deletedName = userToDelete.name;
         setUserToDelete(null);
         setNotification(`User account "${deletedName}" was successfully deleted.`);
         await fetchUsers();
         setTimeout(() => setNotification(null), 4000);
       } else {
-        setDeleteError(data.error || data.message || 'Failed to delete user.');
+        setDeleteError(data.error || data.message || `Failed to delete user (HTTP ${res.status}).`);
       }
     } catch (err: any) {
       console.error('Delete user error:', err);

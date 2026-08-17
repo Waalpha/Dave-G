@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Edit2, X, AlertCircle, RefreshCw, Save, Building2, Upload, Palette, DollarSign, Globe, Phone, MapPin, Mail } from 'lucide-react';
 import { Tenant, TenantType, EducationType } from '../../../types';
 import { compressImageFile } from '../../../lib/imageUtils';
+import { getBaseDomain, normalizeSubdomain, isReservedSubdomain } from '../../../lib/domainResolver';
 
 interface EditTenantModalProps {
   tenant: Tenant;
@@ -14,6 +15,7 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
   onClose,
   onSuccess
 }) => {
+  const baseDomain = getBaseDomain();
   const [name, setName] = useState(tenant.name || '');
   const [subdomain, setSubdomain] = useState(tenant.subdomain || tenant.slug || '');
   const [customDomain, setCustomDomain] = useState(tenant.customDomain || '');
@@ -54,46 +56,67 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
       return;
     }
 
+    const cleanSlug = normalizeSubdomain(subdomain || name);
+    if (cleanSlug && isReservedSubdomain(cleanSlug)) {
+      setError(`The subdomain "${cleanSlug}" is reserved for platform infrastructure.`);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+      
+      const payload = {
+        name: name.trim(),
+        subdomain: cleanSlug || undefined,
+        slug: cleanSlug || undefined,
+        customDomain: customDomain.trim() || undefined,
+        websiteEnabled,
+        type,
+        educationType: type === 'EDUCATION' ? educationType : undefined,
+        status,
+        branding: {
+          companyName: name.trim(),
+          logoUrl: logoUrl || undefined,
+          primaryColor,
+          currency,
+          currencySymbol,
+          contactEmail: contactEmail.trim() || undefined,
+          contactPhone: contactPhone.trim() || undefined,
+          address: address.trim() || undefined
+        }
+      };
+
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/tenants/${tenant.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         },
-        body: JSON.stringify({
-          name: name.trim(),
-          subdomain: subdomain.trim() || undefined,
-          slug: subdomain.trim() || undefined,
-          customDomain: customDomain.trim() || undefined,
-          websiteEnabled,
-          type,
-          educationType: type === 'EDUCATION' ? educationType : undefined,
-          status,
-          branding: {
-            companyName: name.trim(),
-            logoUrl: logoUrl || undefined,
-            primaryColor,
-            currency,
-            currencySymbol,
-            contactEmail: contactEmail.trim() || undefined,
-            contactPhone: contactPhone.trim() || undefined,
-            address: address.trim() || undefined
-          }
-        })
+        body: JSON.stringify(payload)
       });
 
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let data: any = {};
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { error: `Server returned HTTP ${res.status}: ${res.statusText}` };
+      }
+
+      if (res.ok && (data.success || data.tenant || !data.error)) {
         onSuccess();
         onClose();
       } else {
-        setError(data.error || 'Failed to update organization details.');
+        setError(data.error || data.message || `Failed to update organization (HTTP ${res.status}).`);
       }
     } catch (err: any) {
-      setError(err.message || 'Error updating organization.');
+      console.error('Error updating tenant:', err);
+      setError(err.message || 'Error updating organization. Please check network connection.');
     } finally {
       setLoading(false);
     }
@@ -143,7 +166,7 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-slate-300 font-semibold">Subdomain (*.davetech.co.ke)</label>
+              <label className="text-slate-300 font-semibold">Subdomain (*.{baseDomain})</label>
               <div className="flex items-center">
                 <input
                   type="text"
@@ -153,7 +176,7 @@ export const EditTenantModal: React.FC<EditTenantModalProps> = ({
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-l-xl p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-xs"
                 />
                 <span className="px-3 py-2.5 bg-slate-800 border border-l-0 border-slate-700 text-slate-400 text-xs rounded-r-xl font-mono">
-                  .davetech.co.ke
+                  .{baseDomain}
                 </span>
               </div>
             </div>

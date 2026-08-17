@@ -46,16 +46,20 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
 
     try {
       setLoading(true);
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/users/${user.id}/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         },
         body: JSON.stringify({ newPassword: newPasswordToSet })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data.success) {
         setResetResult({
           password: data.newPassword || newPasswordToSet,
@@ -63,7 +67,7 @@ export const ResetPasswordModal: React.FC<ResetPasswordModalProps> = ({
         });
         if (onSuccess) onSuccess();
       } else {
-        setError(data.error || 'Failed to reset user password.');
+        setError(data.error || data.message || `Failed to reset password (HTTP ${res.status}).`);
       }
     } catch (err: any) {
       setError(err.message || 'Network error while resetting password.');

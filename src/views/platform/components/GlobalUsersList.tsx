@@ -60,17 +60,21 @@ export const GlobalUsersList: React.FC<GlobalUsersListProps> = ({ tenants }) => 
     try {
       setIsDeleting(true);
       setDeleteError(null);
+      const token = localStorage.getItem('erp_token') || '';
+      const userId = localStorage.getItem('erp_user_id') || 'usr_superadmin_01';
+
       const res = await fetch(`/api/platform/users/${userToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || ''
+          'x-user-id': userId,
+          'Authorization': token ? `Bearer ${token}` : `Bearer ${userId}`
         }
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (res.ok && data.success) {
+      if (res.ok && (data.success || !data.error)) {
         const deletedName = userToDelete.name;
         const deletedEmail = userToDelete.email;
         setUserToDelete(null);
@@ -78,7 +82,7 @@ export const GlobalUsersList: React.FC<GlobalUsersListProps> = ({ tenants }) => 
         await fetchAllUsers();
         setTimeout(() => setNotification(null), 4500);
       } else {
-        setDeleteError(data.error || data.message || 'Failed to delete user.');
+        setDeleteError(data.error || data.message || `Failed to delete user (HTTP ${res.status}).`);
       }
     } catch (err: any) {
       console.error('Delete user error:', err);

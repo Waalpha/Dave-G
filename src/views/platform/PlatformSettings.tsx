@@ -98,14 +98,13 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
         body: JSON.stringify(updatedSettings)
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
-        setSettings(data.settings);
+        setSettings(data.settings || updatedSettings);
         if (onSettingsSaved) onSettingsSaved();
-        window.dispatchEvent(new CustomEvent('platform-settings-updated', { detail: data.settings }));
+        window.dispatchEvent(new CustomEvent('platform-settings-updated', { detail: data.settings || updatedSettings }));
       } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to update platform settings');
+        setError(data.error || data.message || `Failed to update platform settings (HTTP ${res.status})`);
       }
     } catch (err) {
       console.error('Save platform settings error:', err);
@@ -127,17 +126,16 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
         body: JSON.stringify(settings)
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        const data = await res.json();
-        setSettings(data.settings);
+        setSettings(data.settings || settings);
         setNotification('Main ERP Platform identity, logo, and settings saved successfully!');
         if (onSettingsSaved) onSettingsSaved();
         // Broadcast custom event so layout updates immediately
-        window.dispatchEvent(new CustomEvent('platform-settings-updated', { detail: data.settings }));
+        window.dispatchEvent(new CustomEvent('platform-settings-updated', { detail: data.settings || settings }));
         setTimeout(() => setNotification(null), 5000);
       } else {
-        const data = await res.json();
-        setError(data.error || 'Failed to update platform settings');
+        setError(data.error || data.message || `Failed to update platform settings (HTTP ${res.status})`);
       }
     } catch (err) {
       console.error('Save platform settings error:', err);
