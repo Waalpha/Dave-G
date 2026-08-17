@@ -76,44 +76,53 @@ function sanitizeOversizedPayload(obj: any, maxStringLength = 100_000): any {
   return result;
 }
 
-export async function saveDocToFirestore(collectionName: string, docId: string, data: any) {
-  try {
-    const firestore = getDb();
-    if (!firestore) return;
+export async function saveDocToFirestore(collectionName: string, docId: string, data: any): Promise<void> {
+  const firestore = getDb();
+  if (!firestore) {
+    throw new Error(`Firestore not initialized. Cannot persist document ${docId} to ${collectionName}.`);
+  }
 
-    let cleanData = JSON.parse(JSON.stringify(data));
-    let serialized = JSON.stringify(cleanData);
+  let cleanData = JSON.parse(JSON.stringify(data));
+  let serialized = JSON.stringify(cleanData);
 
-    // Firestore maximum document size is 1,048,576 bytes. Keep within 800KB safety margin.
-    if (Buffer.byteLength(serialized, 'utf8') > 800_000) {
-      cleanData = sanitizeOversizedPayload(cleanData, 50_000);
-      serialized = JSON.stringify(cleanData);
-      if (Buffer.byteLength(serialized, 'utf8') > 950_000) {
-        cleanData = sanitizeOversizedPayload(cleanData, 10_000);
-      }
+  // Firestore maximum document size is 1,048,576 bytes. Keep within 800KB safety margin.
+  if (Buffer.byteLength(serialized, 'utf8') > 800_000) {
+    cleanData = sanitizeOversizedPayload(cleanData, 50_000);
+    serialized = JSON.stringify(cleanData);
+    if (Buffer.byteLength(serialized, 'utf8') > 950_000) {
+      cleanData = sanitizeOversizedPayload(cleanData, 10_000);
     }
+  }
 
+  try {
     const docRef = doc(firestore, collectionName, docId);
     await setDoc(docRef, cleanData, { merge: true });
+    console.log(`[Firestore] Successfully persisted ${collectionName}/${docId}`);
   } catch (err: any) {
     if (err?.message?.includes('closing') || err?.message?.includes('closed') || err?.message?.includes('hidden')) {
       db = null;
     }
-    console.warn(`[Firestore] Warning saving doc ${docId} to ${collectionName}:`, err?.message || err);
+    console.error(`[Firestore] Error saving doc ${docId} to ${collectionName}:`, err?.message || err);
+    throw err;
   }
 }
 
-export async function deleteDocFromFirestore(collectionName: string, docId: string) {
+export async function deleteDocFromFirestore(collectionName: string, docId: string): Promise<void> {
+  const firestore = getDb();
+  if (!firestore) {
+    throw new Error(`Firestore not initialized. Cannot delete document ${docId} from ${collectionName}.`);
+  }
+
   try {
-    const firestore = getDb();
-    if (!firestore) return;
     const docRef = doc(firestore, collectionName, docId);
     await deleteDoc(docRef);
+    console.log(`[Firestore] Successfully deleted ${collectionName}/${docId}`);
   } catch (err: any) {
     if (err?.message?.includes('closing') || err?.message?.includes('closed') || err?.message?.includes('hidden')) {
       db = null;
     }
-    console.warn(`[Firestore] Warning deleting doc ${docId} from ${collectionName}:`, err?.message || err);
+    console.error(`[Firestore] Error deleting doc ${docId} from ${collectionName}:`, err?.message || err);
+    throw err;
   }
 }
 

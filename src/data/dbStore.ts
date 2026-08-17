@@ -757,17 +757,13 @@ class DatabaseStore {
     }
   }
 
-  public persistDoc(collectionName: string, docId: string, data: any) {
-    saveDocToFirestore(collectionName, docId, data).catch(err => {
-      console.warn(`[Firestore] Sync error for ${collectionName}/${docId}:`, err);
-    });
+  public async persistDoc(collectionName: string, docId: string, data: any): Promise<void> {
+    await saveDocToFirestore(collectionName, docId, data);
     this.saveToDiskBackup();
   }
 
-  public removeDoc(collectionName: string, docId: string) {
-    deleteDocFromFirestore(collectionName, docId).catch(err => {
-      console.warn(`[Firestore] Delete error for ${collectionName}/${docId}:`, err);
-    });
+  public async removeDoc(collectionName: string, docId: string): Promise<void> {
+    await deleteDocFromFirestore(collectionName, docId);
     this.saveToDiskBackup();
   }
 
@@ -787,30 +783,40 @@ class DatabaseStore {
     try {
       const dbTenants = await loadCollectionFromFirestore<Tenant>('tenants');
       if (Array.isArray(dbTenants) && dbTenants.length > 0) {
-        // Merge with initial tenants to guarantee essential demo workspaces exist
-        const tenantMap = new Map<string, Tenant>();
-        INITIAL_TENANTS.forEach(t => tenantMap.set(t.id, t));
-        dbTenants.forEach(t => tenantMap.set(t.id, t));
-        this.tenants = Array.from(tenantMap.values());
+        this.tenants = dbTenants;
+        // Ensure baseline Apex Institute exists in Firestore if missing from initial provision
+        if (!this.tenants.some(t => t.id === 'tenant_apex_institute' || t.slug === 'apex-institute' || t.slug === 'apex' || t.subdomain === 'apex' || t.subdomain === 'apex-institute')) {
+          this.tenants.unshift(DEFAULT_INITIAL_TENANT);
+          await saveDocToFirestore('tenants', DEFAULT_INITIAL_TENANT.id, DEFAULT_INITIAL_TENANT).catch(() => {});
+        }
       } else {
         this.tenants = [...INITIAL_TENANTS];
+        for (const t of INITIAL_TENANTS) {
+          await saveDocToFirestore('tenants', t.id, t).catch(() => {});
+        }
       }
 
       const dbUsers = await loadCollectionFromFirestore<User>('users');
-      const userMap = new Map<string, User>();
-      INITIAL_USERS.forEach(sa => userMap.set(sa.id, sa));
-      if (Array.isArray(dbUsers)) {
-        dbUsers.forEach(du => userMap.set(du.id, du));
+      if (Array.isArray(dbUsers) && dbUsers.length > 0) {
+        this.users = dbUsers;
+        // Ensure primary Super Admin user exists
+        INITIAL_USERS.forEach(sa => {
+          if (!this.users.some(u => u.email.toLowerCase() === sa.email.toLowerCase() || u.id === sa.id)) {
+            this.users.push(sa);
+            saveDocToFirestore('users', sa.id, sa).catch(() => {});
+          }
+        });
+      } else {
+        this.users = [...INITIAL_USERS];
+        for (const u of INITIAL_USERS) {
+          await saveDocToFirestore('users', u.id, u).catch(() => {});
+        }
       }
-      this.users = Array.from(userMap.values());
 
       const dbDepartments = await loadCollectionFromFirestore<Department>('departments');
       if (Array.isArray(dbDepartments) && dbDepartments.length > 0) {
-        const deptMap = new Map<string, Department>();
-        INITIAL_DEPARTMENTS.forEach(d => deptMap.set(d.id, d));
-        dbDepartments.forEach(d => deptMap.set(d.id, d));
-        this.departments = Array.from(deptMap.values());
-      } else {
+        this.departments = dbDepartments;
+      } else if (this.departments.length === 0) {
         this.departments = [...INITIAL_DEPARTMENTS];
       }
 
@@ -862,11 +868,8 @@ class DatabaseStore {
 
       const dbPosProducts = await loadCollectionFromFirestore<PosProduct>('posProducts');
       if (Array.isArray(dbPosProducts) && dbPosProducts.length > 0) {
-        const prodMap = new Map<string, PosProduct>();
-        INITIAL_POS_PRODUCTS.forEach(p => prodMap.set(p.id, p));
-        dbPosProducts.forEach(p => prodMap.set(p.id, p));
-        this.posProducts = Array.from(prodMap.values());
-      } else {
+        this.posProducts = dbPosProducts;
+      } else if (this.posProducts.length === 0) {
         this.posProducts = [...INITIAL_POS_PRODUCTS];
       }
 
@@ -1056,50 +1059,29 @@ class DatabaseStore {
 
   public getTenantByDomain(hostnameOrSlug: string): Tenant | undefined {
     if (!hostnameOrSlug) return undefined;
-    let key = hostnameOrSlug.trim().toLowerCase();
+    const rawKey = hostnameOrSlug.trim().toLowerCase();
 
     // Check reserved platform subdomains - NEVER interpret as tenant
     const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'portal', 'dashboard', 'login'];
-    if (reserved.includes(key)) {
+    if (reserved.includes(rawKey)) {
       return undefined;
     }
 
-    // Map common aliases
-    const aliases: Record<string, string> = {
-      'apex': 'apex-institute',
-      'dreamline': 'dreamline-shop',
-      'blessed': 'blessed-sacco',
-      'grace': 'grace-cathedral',
-      'stjude': 'st-jude-hospital',
-      'st-jude': 'st-jude-hospital',
-      'st-judes-hospital': 'st-jude-hospital',
-      'grace-church': 'grace-cathedral',
-      'unity-sacco': 'blessed-sacco',
-      'quickmart-retail': 'dreamline-shop'
-    };
-    if (aliases[key]) {
-      key = aliases[key];
-    }
-
-    // 1. Direct Subdomain or Slug match
-    const bySubdomainOrSlug = this.tenants.find(
-      t => (t.subdomain && t.subdomain.toLowerCase() === key) || t.slug.toLowerCase() === key
+    // 1. Direct Subdomain, Slug, Custom Domain, or ID match FIRST
+    const directMatch = this.tenants.find(
+      t => (t.subdomain && t.subdomain.toLowerCase() === rawKey) ||
+           (t.slug && t.slug.toLowerCase() === rawKey) ||
+           (t.customDomain && t.customDomain.toLowerCase() === rawKey) ||
+           t.id.toLowerCase() === rawKey
     );
-    if (bySubdomainOrSlug) return bySubdomainOrSlug;
+    if (directMatch) return directMatch;
 
-    // 2. Custom Domain match (e.g. portal.customerdomain.co.ke)
-    const byCustomDomain = this.tenants.find(
-      t => t.customDomain && t.customDomain.toLowerCase() === key
-    );
-    if (byCustomDomain) return byCustomDomain;
-
-    // 3. ID match
-    const byId = this.tenants.find(t => t.id.toLowerCase() === key);
-    if (byId) return byId;
-
-    // 4. Fuzzy prefix match for active tenants (e.g. apex matching apex-institute if no exact match)
+    // 2. Fuzzy prefix match for active tenants (e.g. apex matching apex-institute if no exact match)
     const byPrefix = this.tenants.find(
-      t => t.status === 'ACTIVE' && (t.slug.toLowerCase().startsWith(`${key}-`) || (t.subdomain && t.subdomain.toLowerCase().startsWith(`${key}-`)))
+      t => t.status === 'ACTIVE' && (
+        (t.slug && t.slug.toLowerCase().startsWith(`${rawKey}-`)) ||
+        (t.subdomain && t.subdomain.toLowerCase().startsWith(`${rawKey}-`))
+      )
     );
     if (byPrefix) return byPrefix;
 
@@ -1108,50 +1090,35 @@ class DatabaseStore {
 
   public getTenantBySlugOrId(slugOrId: string): Tenant | undefined {
     if (!slugOrId) return undefined;
-    let key = slugOrId.trim().toLowerCase();
+    const rawKey = slugOrId.trim().toLowerCase();
 
-    // Check reserved platform subdomains - NEVER interpret as tenant
     const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'portal', 'dashboard', 'login'];
-    if (reserved.includes(key)) {
+    if (reserved.includes(rawKey)) {
       return undefined;
     }
 
-    // Map common aliases
-    const aliases: Record<string, string> = {
-      'apex': 'apex-institute',
-      'dreamline': 'dreamline-shop',
-      'blessed': 'blessed-sacco',
-      'grace': 'grace-cathedral',
-      'stjude': 'st-jude-hospital',
-      'st-jude': 'st-jude-hospital',
-      'st-judes-hospital': 'st-jude-hospital',
-      'grace-church': 'grace-cathedral',
-      'unity-sacco': 'blessed-sacco',
-      'quickmart-retail': 'dreamline-shop'
-    };
-    if (aliases[key]) {
-      key = aliases[key];
-    }
-
-    // Direct ID, Subdomain or exact slug match
-    let found = this.tenants.find(
-      t => t.id.toLowerCase() === key ||
-           t.slug.toLowerCase() === key ||
-           (t.subdomain && t.subdomain.toLowerCase() === key) ||
-           (t.customDomain && t.customDomain.toLowerCase() === key)
+    // Direct ID, Subdomain, exact slug match or customDomain
+    const found = this.tenants.find(
+      t => t.id.toLowerCase() === rawKey ||
+           (t.slug && t.slug.toLowerCase() === rawKey) ||
+           (t.subdomain && t.subdomain.toLowerCase() === rawKey) ||
+           (t.customDomain && t.customDomain.toLowerCase() === rawKey)
     );
     if (found) return found;
 
     // Fuzzy prefix match for active tenants
     const byPrefix = this.tenants.find(
-      t => t.status === 'ACTIVE' && (t.slug.toLowerCase().startsWith(`${key}-`) || (t.subdomain && t.subdomain.toLowerCase().startsWith(`${key}-`)))
+      t => t.status === 'ACTIVE' && (
+        (t.slug && t.slug.toLowerCase().startsWith(`${rawKey}-`)) ||
+        (t.subdomain && t.subdomain.toLowerCase().startsWith(`${rawKey}-`))
+      )
     );
     if (byPrefix) return byPrefix;
 
     return undefined;
   }
 
-  public createTenant(data: {
+  public async createTenant(data: {
     name: string;
     slug?: string;
     subdomain?: string;
@@ -1170,7 +1137,7 @@ class DatabaseStore {
     contactPhone?: string;
     contactEmail?: string;
     address?: string;
-  }): { tenant: Tenant; adminUser: User } {
+  }): Promise<{ tenant: Tenant; adminUser: User }> {
     const rawSlug = data.subdomain || data.slug || (data.name ? data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'tenant');
     const cleanSlug = rawSlug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 
@@ -1241,8 +1208,8 @@ class DatabaseStore {
     this.tenants.push(newTenant);
     this.users.push(adminUser);
 
-    this.persistDoc('tenants', newTenant.id, newTenant);
-    this.persistDoc('users', adminUser.id, adminUser);
+    await this.persistDoc('tenants', newTenant.id, newTenant);
+    await this.persistDoc('users', adminUser.id, adminUser);
 
     this.logAction(
       'platform_super_admin',
@@ -1258,7 +1225,7 @@ class DatabaseStore {
     return { tenant: newTenant, adminUser };
   }
 
-  public updateTenantModules(tenantId: string, enabledModules: ModuleId[], updatedBy: User): Tenant {
+  public async updateTenantModules(tenantId: string, enabledModules: ModuleId[], updatedBy: User): Promise<Tenant> {
     const tenant = this.getTenant(tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
@@ -1266,7 +1233,7 @@ class DatabaseStore {
     tenant.enabledModules = enabledModules;
     tenant.updatedAt = new Date().toISOString();
 
-    this.persistDoc('tenants', tenant.id, tenant);
+    await this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1282,7 +1249,7 @@ class DatabaseStore {
     return tenant;
   }
 
-  public updateTenantBranding(tenantId: string, branding: Partial<Tenant['branding']>, updatedBy: User): Tenant {
+  public async updateTenantBranding(tenantId: string, branding: Partial<Tenant['branding']>, updatedBy: User): Promise<Tenant> {
     const tenant = this.getTenant(tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
@@ -1292,7 +1259,7 @@ class DatabaseStore {
     tenant.branding = { ...tenant.branding, ...branding };
     tenant.updatedAt = new Date().toISOString();
 
-    this.persistDoc('tenants', tenant.id, tenant);
+    await this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       tenant.id,
@@ -1308,7 +1275,7 @@ class DatabaseStore {
     return tenant;
   }
 
-  public updateTenantPublicWebsite(tenantId: string, websiteConfig: Partial<Tenant['publicWebsite']>, updatedBy: User): Tenant {
+  public async updateTenantPublicWebsite(tenantId: string, websiteConfig: Partial<Tenant['publicWebsite']>, updatedBy: User): Promise<Tenant> {
     const tenant = this.getTenant(tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
@@ -1319,7 +1286,7 @@ class DatabaseStore {
     };
     tenant.updatedAt = new Date().toISOString();
 
-    this.persistDoc('tenants', tenant.id, tenant);
+    await this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       tenant.id,
@@ -1335,14 +1302,14 @@ class DatabaseStore {
     return tenant;
   }
 
-  public toggleTenantStatus(tenantId: string, status: 'ACTIVE' | 'SUSPENDED', updatedBy: User): Tenant {
+  public async toggleTenantStatus(tenantId: string, status: 'ACTIVE' | 'SUSPENDED', updatedBy: User): Promise<Tenant> {
     const tenant = this.getTenant(tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
     tenant.status = status;
     tenant.updatedAt = new Date().toISOString();
 
-    this.persistDoc('tenants', tenant.id, tenant);
+    await this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1358,7 +1325,7 @@ class DatabaseStore {
     return tenant;
   }
 
-  public updateTenant(
+  public async updateTenant(
     tenantId: string,
     data: {
       name?: string;
@@ -1375,7 +1342,7 @@ class DatabaseStore {
       enabledModules?: ModuleId[];
     },
     updatedBy: User
-  ): Tenant {
+  ): Promise<Tenant> {
     const tenant = this.getTenant(tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
@@ -1444,7 +1411,7 @@ class DatabaseStore {
     }
 
     tenant.updatedAt = new Date().toISOString();
-    this.persistDoc('tenants', tenant.id, tenant);
+    await this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1460,52 +1427,39 @@ class DatabaseStore {
     return tenant;
   }
 
-  public deleteTenant(tenantId: string, deletedBy: User): { success: boolean; deletedUsersCount: number } {
+  public async deleteTenant(tenantId: string, deletedBy: User): Promise<{ success: boolean; deletedUsersCount: number }> {
     const tenantIdx = this.tenants.findIndex(t => t.id === tenantId);
     if (tenantIdx === -1) throw new Error('Tenant not found');
     const tenant = this.tenants[tenantIdx];
 
     // 1. Remove tenant from memory and Firestore
     this.tenants.splice(tenantIdx, 1);
-    this.removeDoc('tenants', tenantId);
+    await this.removeDoc('tenants', tenantId);
 
     // 2. Remove and purge all tenant users
     const tenantUsers = this.users.filter(u => u.tenantId === tenantId);
     this.users = this.users.filter(u => u.tenantId !== tenantId);
-    tenantUsers.forEach(u => {
-      this.removeDoc('users', u.id);
-    });
+    for (const u of tenantUsers) {
+      await this.removeDoc('users', u.id);
+    }
 
     // 3. Remove and purge all tenant operational records
-    this.departments.filter(d => d.tenantId === tenantId).forEach(d => deleteDocFromFirestore('departments', d.id).catch(() => {}));
+    const deptDeletions = this.departments.filter(d => d.tenantId === tenantId).map(d => this.removeDoc('departments', d.id));
     this.departments = this.departments.filter(d => d.tenantId !== tenantId);
 
-    this.students.filter(s => s.tenantId === tenantId).forEach(s => deleteDocFromFirestore('students', s.id).catch(() => {}));
+    const studentDeletions = this.students.filter(s => s.tenantId === tenantId).map(s => this.removeDoc('students', s.id));
     this.students = this.students.filter(s => s.tenantId !== tenantId);
 
-    this.feePayments.filter(f => f.tenantId === tenantId).forEach(f => deleteDocFromFirestore('feePayments', f.id).catch(() => {}));
+    const feeDeletions = this.feePayments.filter(f => f.tenantId === tenantId).map(f => this.removeDoc('feePayments', f.id));
     this.feePayments = this.feePayments.filter(f => f.tenantId !== tenantId);
 
-    this.campuses.filter(c => c.tenantId === tenantId).forEach(c => deleteDocFromFirestore('campuses', c.id).catch(() => {}));
+    const campusDeletions = this.campuses.filter(c => c.tenantId === tenantId).map(c => this.removeDoc('campuses', c.id));
     this.campuses = this.campuses.filter(c => c.tenantId !== tenantId);
 
-    this.academicYears.filter(a => a.tenantId === tenantId).forEach(a => deleteDocFromFirestore('academicYears', a.id).catch(() => {}));
-    this.academicYears = this.academicYears.filter(a => a.tenantId !== tenantId);
-
-    this.terms.filter(t => t.tenantId === tenantId).forEach(t => deleteDocFromFirestore('terms', t.id).catch(() => {}));
-    this.terms = this.terms.filter(t => t.tenantId !== tenantId);
-
-    this.programs.filter(p => p.tenantId === tenantId).forEach(p => deleteDocFromFirestore('programs', p.id).catch(() => {}));
+    const progDeletions = this.programs.filter(p => p.tenantId === tenantId).map(p => this.removeDoc('programs', p.id));
     this.programs = this.programs.filter(p => p.tenantId !== tenantId);
 
-    this.units.filter(u => u.tenantId === tenantId).forEach(u => deleteDocFromFirestore('units', u.id).catch(() => {}));
-    this.units = this.units.filter(u => u.tenantId !== tenantId);
-
-    this.staff.filter(s => s.tenantId === tenantId).forEach(s => deleteDocFromFirestore('staff', s.id).catch(() => {}));
-    this.staff = this.staff.filter(s => s.tenantId !== tenantId);
-
-    this.timetable.filter(t => t.tenantId === tenantId).forEach(t => deleteDocFromFirestore('timetable', t.id).catch(() => {}));
-    this.timetable = this.timetable.filter(t => t.tenantId !== tenantId);
+    await Promise.allSettled([...deptDeletions, ...studentDeletions, ...feeDeletions, ...campusDeletions, ...progDeletions]);
 
     this.logAction(
       'platform_super_admin',

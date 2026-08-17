@@ -340,10 +340,10 @@ async function startServer() {
     return res.json(dbStore.getPlatformSettings());
   });
 
-  app.put('/api/platform/settings', requireAuth, requireSuperAdmin, (req, res) => {
+  app.put('/api/platform/settings', requireAuth, requireSuperAdmin, async (req, res) => {
     const user = (req as any).user as User;
     try {
-      const updated = dbStore.updatePlatformSettings(req.body, user);
+      const updated = await dbStore.updatePlatformSettings(req.body, user);
       return res.json({ success: true, settings: updated });
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to update platform settings' });
@@ -363,9 +363,9 @@ async function startServer() {
   app.get('/api/public/tenants', handleGetAllTenants);
   app.get('/api/tenants', handleGetAllTenants);
 
-  app.post('/api/platform/tenants', requireAuth, requireSuperAdmin, (req, res) => {
+  app.post('/api/platform/tenants', requireAuth, requireSuperAdmin, async (req, res) => {
     try {
-      const result = dbStore.createTenant(req.body);
+      const result = await dbStore.createTenant(req.body);
       return res.status(201).json(result);
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
@@ -380,10 +380,10 @@ async function startServer() {
   });
 
   // Edit / Update Tenant details
-  app.put('/api/platform/tenants/:id', requireAuth, requireSuperAdmin, (req, res) => {
+  app.put('/api/platform/tenants/:id', requireAuth, requireSuperAdmin, async (req, res) => {
     const user = (req as any).user as User;
     try {
-      const updatedTenant = dbStore.updateTenant(req.params.id, req.body, user);
+      const updatedTenant = await dbStore.updateTenant(req.params.id, req.body, user);
       return res.json({ success: true, tenant: updatedTenant });
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to update tenant' });
@@ -391,10 +391,10 @@ async function startServer() {
   });
 
   // Delete Tenant permanently
-  app.delete('/api/platform/tenants/:id', requireAuth, requireSuperAdmin, (req, res) => {
+  app.delete('/api/platform/tenants/:id', requireAuth, requireSuperAdmin, async (req, res) => {
     const user = (req as any).user as User;
     try {
-      const result = dbStore.deleteTenant(req.params.id, user);
+      const result = await dbStore.deleteTenant(req.params.id, user);
       return res.json({ success: true, message: 'Tenant successfully deleted', ...result });
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to delete tenant' });
@@ -549,7 +549,7 @@ async function startServer() {
   });
 
   // CRITICAL REQUIREMENT: Enable or disable modules live for a tenant!
-  app.put('/api/platform/tenants/:id/modules', requireAuth, requireSuperAdmin, (req, res) => {
+  app.put('/api/platform/tenants/:id/modules', requireAuth, requireSuperAdmin, async (req, res) => {
     const { enabledModules } = req.body;
     const user = (req as any).user as User;
 
@@ -558,19 +558,19 @@ async function startServer() {
     }
 
     try {
-      const updatedTenant = dbStore.updateTenantModules(req.params.id, enabledModules, user);
+      const updatedTenant = await dbStore.updateTenantModules(req.params.id, enabledModules, user);
       return res.json({ success: true, tenant: updatedTenant });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
   });
 
-  app.put('/api/platform/tenants/:id/status', requireAuth, requireSuperAdmin, (req, res) => {
+  app.put('/api/platform/tenants/:id/status', requireAuth, requireSuperAdmin, async (req, res) => {
     const { status } = req.body;
     const user = (req as any).user as User;
 
     try {
-      const updatedTenant = dbStore.toggleTenantStatus(req.params.id, status, user);
+      const updatedTenant = await dbStore.toggleTenantStatus(req.params.id, status, user);
       return res.json({ success: true, tenant: updatedTenant });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
@@ -598,24 +598,32 @@ async function startServer() {
     return res.json(tenant || { isPlatformAdmin: user.role === 'SUPER_ADMIN' });
   });
 
-  app.put('/api/tenant/branding', requireAuth, (req, res) => {
+  app.put('/api/tenant/branding', requireAuth, async (req, res) => {
     const user = (req as any).user as User;
     if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Only Tenant Admins can update branding' });
     }
     const tenantId = getEffectiveTenantId(req, user);
-    const updated = dbStore.updateTenantBranding(tenantId, req.body, user);
-    return res.json(updated);
+    try {
+      const updated = await dbStore.updateTenantBranding(tenantId, req.body, user);
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   });
 
-  app.put('/api/tenant/public-website', requireAuth, (req, res) => {
+  app.put('/api/tenant/public-website', requireAuth, async (req, res) => {
     const user = (req as any).user as User;
     if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ error: 'Only Tenant Admins can update public website settings' });
     }
     const tenantId = getEffectiveTenantId(req, user);
-    const updated = dbStore.updateTenantPublicWebsite(tenantId, req.body, user);
-    return res.json(updated);
+    try {
+      const updated = await dbStore.updateTenantPublicWebsite(tenantId, req.body, user);
+      return res.json(updated);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   });
 
   // ==================== TENANT PUBLIC WEBSITE ENDPOINTS (UNAUTHENTICATED) ====================
