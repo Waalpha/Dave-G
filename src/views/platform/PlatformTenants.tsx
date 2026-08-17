@@ -86,14 +86,10 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
     try {
       const res = await fetch('/api/platform/tenants', { headers: getHeaders() });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         if (Array.isArray(data) && data.length > 0) {
-          const tenantMap = new Map<string, Tenant>();
-          INITIAL_TENANTS.forEach(t => tenantMap.set(t.id, t));
-          data.forEach((t: Tenant) => tenantMap.set(t.id, t));
-          const merged = Array.from(tenantMap.values());
-          setTenants(merged);
-          localStorage.setItem('erp_cached_tenants', JSON.stringify(merged));
+          setTenants(data);
+          localStorage.setItem('erp_cached_tenants', JSON.stringify(data));
           return;
         }
       }

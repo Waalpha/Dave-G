@@ -1,4 +1,6 @@
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { saveDocToFirestore, deleteDocFromFirestore, loadCollectionFromFirestore } from '../lib/firestore';
 import {
   Tenant, User, AuditLog, Campus, AcademicYear, AcademicTerm, Department,
@@ -656,6 +658,7 @@ class DatabaseStore {
   };
 
   constructor() {
+    this.loadFromDiskBackup();
     this.ensureDefaultTenant();
     // Hash passwords for initial root super admin accounts securely with PBKDF2
     this.users.forEach(u => {
@@ -665,6 +668,107 @@ class DatabaseStore {
     });
     // Trigger initial async sync from Firestore
     this.syncFromFirestore().catch(err => console.error('[DatabaseStore] Initial sync failed:', err));
+  }
+
+  private getDiskBackupPath(): string {
+    return path.join(process.cwd(), 'data_store_cache.json');
+  }
+
+  public saveToDiskBackup() {
+    try {
+      const data = {
+        tenants: this.tenants,
+        users: this.users,
+        campuses: this.campuses,
+        academicYears: this.academicYears,
+        terms: this.terms,
+        departments: this.departments,
+        programs: this.programs,
+        units: this.units,
+        students: this.students,
+        staff: this.staff,
+        timetable: this.timetable,
+        feePayments: this.feePayments,
+        auditLogs: this.auditLogs,
+        notifications: this.notifications,
+        platformSettings: this.platformSettings,
+        chamaMembers: this.chamaMembers,
+        chamaContributions: this.chamaContributions,
+        chamaLoans: this.chamaLoans,
+        chamaRepayments: this.chamaRepayments,
+        chamaInvestments: this.chamaInvestments,
+        posProducts: this.posProducts,
+        posSales: this.posSales,
+        restaurantTables: this.restaurantTables,
+        restaurantMenu: this.restaurantMenu,
+        inventoryMovements: this.inventoryMovements,
+        ledgerEntries: this.ledgerEntries,
+        employees: this.employees,
+        crmLeads: this.crmLeads,
+        churchMembers: this.churchMembers,
+        churchGivings: this.churchGivings
+      };
+      fs.writeFileSync(this.getDiskBackupPath(), JSON.stringify(data, null, 2), 'utf8');
+    } catch (err) {
+      console.warn('[DatabaseStore] Notice saving disk cache:', err);
+    }
+  }
+
+  private loadFromDiskBackup() {
+    try {
+      const filePath = this.getDiskBackupPath();
+      if (fs.existsSync(filePath)) {
+        const raw = fs.readFileSync(filePath, 'utf8');
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.tenants) && data.tenants.length > 0) this.tenants = data.tenants;
+        if (Array.isArray(data.users) && data.users.length > 0) this.users = data.users;
+        if (Array.isArray(data.campuses)) this.campuses = data.campuses;
+        if (Array.isArray(data.academicYears)) this.academicYears = data.academicYears;
+        if (Array.isArray(data.terms)) this.terms = data.terms;
+        if (Array.isArray(data.departments)) this.departments = data.departments;
+        if (Array.isArray(data.programs)) this.programs = data.programs;
+        if (Array.isArray(data.units)) this.units = data.units;
+        if (Array.isArray(data.students)) this.students = data.students;
+        if (Array.isArray(data.staff)) this.staff = data.staff;
+        if (Array.isArray(data.timetable)) this.timetable = data.timetable;
+        if (Array.isArray(data.feePayments)) this.feePayments = data.feePayments;
+        if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
+        if (Array.isArray(data.notifications)) this.notifications = data.notifications;
+        if (data.platformSettings) this.platformSettings = { ...this.platformSettings, ...data.platformSettings };
+        if (Array.isArray(data.chamaMembers)) this.chamaMembers = data.chamaMembers;
+        if (Array.isArray(data.chamaContributions)) this.chamaContributions = data.chamaContributions;
+        if (Array.isArray(data.chamaLoans)) this.chamaLoans = data.chamaLoans;
+        if (Array.isArray(data.chamaRepayments)) this.chamaRepayments = data.chamaRepayments;
+        if (Array.isArray(data.chamaInvestments)) this.chamaInvestments = data.chamaInvestments;
+        if (Array.isArray(data.posProducts)) this.posProducts = data.posProducts;
+        if (Array.isArray(data.posSales)) this.posSales = data.posSales;
+        if (Array.isArray(data.restaurantTables)) this.restaurantTables = data.restaurantTables;
+        if (Array.isArray(data.restaurantMenu)) this.restaurantMenu = data.restaurantMenu;
+        if (Array.isArray(data.inventoryMovements)) this.inventoryMovements = data.inventoryMovements;
+        if (Array.isArray(data.ledgerEntries)) this.ledgerEntries = data.ledgerEntries;
+        if (Array.isArray(data.employees)) this.employees = data.employees;
+        if (Array.isArray(data.crmLeads)) this.crmLeads = data.crmLeads;
+        if (Array.isArray(data.churchMembers)) this.churchMembers = data.churchMembers;
+        if (Array.isArray(data.churchGivings)) this.churchGivings = data.churchGivings;
+        console.log('[DatabaseStore] Successfully loaded cache from disk');
+      }
+    } catch (err) {
+      console.warn('[DatabaseStore] Notice loading disk cache:', err);
+    }
+  }
+
+  public persistDoc(collectionName: string, docId: string, data: any) {
+    saveDocToFirestore(collectionName, docId, data).catch(err => {
+      console.warn(`[Firestore] Sync error for ${collectionName}/${docId}:`, err);
+    });
+    this.saveToDiskBackup();
+  }
+
+  public removeDoc(collectionName: string, docId: string) {
+    deleteDocFromFirestore(collectionName, docId).catch(err => {
+      console.warn(`[Firestore] Delete error for ${collectionName}/${docId}:`, err);
+    });
+    this.saveToDiskBackup();
   }
 
   public ensureDefaultTenant(): Tenant {
@@ -811,6 +915,7 @@ class DatabaseStore {
           publicWebsite: loaded.publicWebsite || { ...DEFAULT_PLATFORM_PUBLIC_WEBSITE_CONFIG }
         };
       }
+      this.saveToDiskBackup();
     } catch (err) {
       console.error('[DatabaseStore] Error syncing from Firestore:', err);
     }
@@ -834,7 +939,7 @@ class DatabaseStore {
       createdAt: new Date().toISOString()
     };
     this.notifications.unshift(newNotif);
-    saveDocToFirestore('notifications', newNotif.id, newNotif).catch(() => {});
+    this.persistDoc('notifications', newNotif.id, newNotif);
     return newNotif;
   }
 
@@ -842,7 +947,7 @@ class DatabaseStore {
     const notif = this.notifications.find(n => n.id === id);
     if (notif) {
       notif.isRead = true;
-      saveDocToFirestore('notifications', notif.id, notif).catch(() => {});
+      this.persistDoc('notifications', notif.id, notif);
       return true;
     }
     return false;
@@ -852,7 +957,7 @@ class DatabaseStore {
     this.notifications.forEach(n => {
       if (!tenantId || tenantId === 'platform_super_admin' || n.tenantId === tenantId) {
         n.isRead = true;
-        saveDocToFirestore('notifications', n.id, n).catch(() => {});
+        this.persistDoc('notifications', n.id, n);
       }
     });
   }
@@ -861,7 +966,7 @@ class DatabaseStore {
     const idx = this.notifications.findIndex(n => n.id === id);
     if (idx !== -1) {
       const removed = this.notifications.splice(idx, 1)[0];
-      deleteDocFromFirestore('notifications', removed.id).catch(() => {});
+      this.removeDoc('notifications', removed.id);
       return true;
     }
     return false;
@@ -869,13 +974,13 @@ class DatabaseStore {
 
   public clearAllNotifications(tenantId?: string): void {
     if (!tenantId || tenantId === 'platform_super_admin') {
-      this.notifications.forEach(n => deleteDocFromFirestore('notifications', n.id).catch(() => {}));
+      this.notifications.forEach(n => this.removeDoc('notifications', n.id));
       this.notifications = [];
     } else {
       const remaining: PlatformNotification[] = [];
       this.notifications.forEach(n => {
         if (n.tenantId === tenantId) {
-          deleteDocFromFirestore('notifications', n.id).catch(() => {});
+          this.removeDoc('notifications', n.id);
         } else {
           remaining.push(n);
         }
@@ -895,7 +1000,7 @@ class DatabaseStore {
       ...data,
       updatedAt: new Date().toISOString()
     };
-    saveDocToFirestore('platformSettings', 'global_config', this.platformSettings).catch(() => {});
+    this.persistDoc('platformSettings', 'global_config', this.platformSettings);
     this.logAction(
       'platform_super_admin',
       updatedBy.id,
@@ -933,7 +1038,7 @@ class DatabaseStore {
       timestamp: new Date().toISOString()
     };
     this.auditLogs.unshift(newLog);
-    saveDocToFirestore('auditLogs', newLog.id, newLog).catch(() => {});
+    this.persistDoc('auditLogs', newLog.id, newLog);
     return newLog;
   }
 
@@ -1136,8 +1241,8 @@ class DatabaseStore {
     this.tenants.push(newTenant);
     this.users.push(adminUser);
 
-    saveDocToFirestore('tenants', newTenant.id, newTenant).catch(() => {});
-    saveDocToFirestore('users', adminUser.id, adminUser).catch(() => {});
+    this.persistDoc('tenants', newTenant.id, newTenant);
+    this.persistDoc('users', adminUser.id, adminUser);
 
     this.logAction(
       'platform_super_admin',
@@ -1161,7 +1266,7 @@ class DatabaseStore {
     tenant.enabledModules = enabledModules;
     tenant.updatedAt = new Date().toISOString();
 
-    saveDocToFirestore('tenants', tenant.id, tenant).catch(() => {});
+    this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1187,7 +1292,7 @@ class DatabaseStore {
     tenant.branding = { ...tenant.branding, ...branding };
     tenant.updatedAt = new Date().toISOString();
 
-    saveDocToFirestore('tenants', tenant.id, tenant).catch(() => {});
+    this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       tenant.id,
@@ -1214,7 +1319,7 @@ class DatabaseStore {
     };
     tenant.updatedAt = new Date().toISOString();
 
-    saveDocToFirestore('tenants', tenant.id, tenant).catch(() => {});
+    this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       tenant.id,
@@ -1237,7 +1342,7 @@ class DatabaseStore {
     tenant.status = status;
     tenant.updatedAt = new Date().toISOString();
 
-    saveDocToFirestore('tenants', tenant.id, tenant).catch(() => {});
+    this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1339,7 +1444,7 @@ class DatabaseStore {
     }
 
     tenant.updatedAt = new Date().toISOString();
-    saveDocToFirestore('tenants', tenant.id, tenant).catch(() => {});
+    this.persistDoc('tenants', tenant.id, tenant);
 
     this.logAction(
       'platform_super_admin',
@@ -1362,13 +1467,13 @@ class DatabaseStore {
 
     // 1. Remove tenant from memory and Firestore
     this.tenants.splice(tenantIdx, 1);
-    deleteDocFromFirestore('tenants', tenantId).catch(() => {});
+    this.removeDoc('tenants', tenantId);
 
     // 2. Remove and purge all tenant users
     const tenantUsers = this.users.filter(u => u.tenantId === tenantId);
     this.users = this.users.filter(u => u.tenantId !== tenantId);
     tenantUsers.forEach(u => {
-      deleteDocFromFirestore('users', u.id).catch(() => {});
+      this.removeDoc('users', u.id);
     });
 
     // 3. Remove and purge all tenant operational records
@@ -1443,7 +1548,7 @@ class DatabaseStore {
         updatedAt: new Date().toISOString()
       };
       this.users.push(superAdminUser);
-      saveDocToFirestore('users', superAdminUser.id, superAdminUser).catch(() => {});
+      this.persistDoc('users', superAdminUser.id, superAdminUser);
       return superAdminUser;
     }
 
@@ -1462,7 +1567,7 @@ class DatabaseStore {
         user.name = data.name;
       }
       user.updatedAt = new Date().toISOString();
-      saveDocToFirestore('users', user.id, user).catch(() => {});
+      this.persistDoc('users', user.id, user);
       return user;
     }
 
@@ -1488,7 +1593,7 @@ class DatabaseStore {
     };
 
     this.users.push(newUser);
-    saveDocToFirestore('users', newUser.id, newUser).catch(() => {});
+    this.persistDoc('users', newUser.id, newUser);
 
     this.logAction(
       newUser.tenantId || 'platform_super_admin',
@@ -1530,7 +1635,7 @@ class DatabaseStore {
     }
 
     user.updatedAt = new Date().toISOString();
-    saveDocToFirestore('users', user.id, user).catch(() => {});
+    this.persistDoc('users', user.id, user);
 
     this.logAction(
       user.tenantId,
@@ -1688,7 +1793,7 @@ class DatabaseStore {
     }
 
     user.updatedAt = new Date().toISOString();
-    saveDocToFirestore('users', user.id, user).catch(() => {});
+    this.persistDoc('users', user.id, user);
 
     this.logAction(
       user.tenantId,
@@ -1718,7 +1823,7 @@ class DatabaseStore {
     delete user.resetTokenExpiresAt;
     user.updatedAt = new Date().toISOString();
 
-    saveDocToFirestore('users', user.id, user).catch(() => {});
+    this.persistDoc('users', user.id, user);
 
     this.logAction(
       user.tenantId,
@@ -1753,7 +1858,7 @@ class DatabaseStore {
     }
 
     this.users.splice(idx, 1);
-    deleteDocFromFirestore('users', userId).catch(() => {});
+    this.removeDoc('users', userId);
 
     this.logAction(
       user.tenantId,
@@ -1779,7 +1884,7 @@ class DatabaseStore {
     };
     this.users.push(newUser);
 
-    saveDocToFirestore('users', newUser.id, newUser).catch(() => {});
+    this.persistDoc('users', newUser.id, newUser);
 
     this.logAction(
       tenantId,

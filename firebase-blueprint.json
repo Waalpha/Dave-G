@@ -2,13 +2,20 @@
   "entities": {
     "tenants": {
       "title": "Tenant",
-      "description": "Multi-tenant organization configurations and branding",
+      "description": "Multi-tenant organization configurations, branding, and status",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "subdomain": { "type": "string" },
+        "customDomain": { "type": "string" },
         "type": { "type": "string" },
+        "educationType": { "type": "string" },
+        "status": { "type": "string" },
         "branding": { "type": "object" },
+        "enabledModules": { "type": "array" },
+        "publicWebsite": { "type": "object" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
@@ -16,7 +23,7 @@
     },
     "users": {
       "title": "User",
-      "description": "Platform and tenant users",
+      "description": "Platform and tenant users with authentication and RBAC roles",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -24,10 +31,26 @@
         "name": { "type": "string" },
         "email": { "type": "string" },
         "role": { "type": "string" },
+        "passwordHash": { "type": "string" },
+        "phone": { "type": "string" },
         "avatarUrl": { "type": "string" },
         "department": { "type": "string" }
       },
       "required": ["id", "email", "role"]
+    },
+    "platformSettings": {
+      "title": "PlatformSettings",
+      "description": "Global multi-tenant ERP platform identities and branding",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "platformName": { "type": "string" },
+        "tagline": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "publicWebsite": { "type": "object" }
+      },
+      "required": ["platformName"]
     },
     "students": {
       "title": "Student",
@@ -46,6 +69,41 @@
         "status": { "type": "string" }
       },
       "required": ["id", "tenantId", "fullName"]
+    },
+    "posProducts": {
+      "title": "PosProduct",
+      "description": "Wholesale and POS inventory items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "sellingPrice": { "type": "number" },
+        "quantityInStock": { "type": "number" }
+      },
+      "required": ["id", "tenantId", "name"]
+    }
+  },
+  "firestore": {
+    "/tenants/{tenantId}": {
+      "schema": "tenants",
+      "description": "Tenant configurations and settings"
+    },
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "Platform and tenant user profiles"
+    },
+    "/platformSettings/{settingId}": {
+      "schema": "platformSettings",
+      "description": "Platform global configuration"
+    },
+    "/students/{studentId}": {
+      "schema": "students",
+      "description": "Student management records"
+    },
+    "/posProducts/{productId}": {
+      "schema": "posProducts",
+      "description": "POS & inventory products"
     }
   }
 }
