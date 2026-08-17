@@ -14,6 +14,9 @@ import { GenericModuleView } from './views/tenant/GenericModuleView';
 import { TenantSettings } from './views/tenant/TenantSettings';
 import { TenantPublicWebsite } from './views/public/TenantPublicWebsite';
 import { DavetechMainWebsite } from './views/public/DavetechMainWebsite';
+import { SalesPortal } from './views/platform/portals/SalesPortal';
+import { SupportPortal } from './views/platform/portals/SupportPortal';
+import { BillingPortal } from './views/platform/portals/BillingPortal';
 import { SaccoDashboard } from './views/tenant/chama/SaccoDashboard';
 import { PosTerminalView } from './views/tenant/pos/PosTerminalView';
 import { RestaurantBarDashboard } from './views/tenant/restaurant/RestaurantBarDashboard';
@@ -96,7 +99,44 @@ function MainAppContent() {
     ? (domainResolution.tenantSlug || undefined)
     : (currentRoute.startsWith('/public/') ? currentRoute.replace(/^\/public\/?/, '').trim() : undefined);
 
-  // 0. PUBLIC WEBSITE ROUTE (/ or /public or /public/*)
+  // 0. PLATFORM PORTALS (SALES, SUPPORT, BILLING)
+  if (domainResolution.type === 'PLATFORM_SALES' && !currentRoute.startsWith('/platform') && !currentRoute.startsWith('/app')) {
+    return (
+      <SalesPortal
+        onNavigateHome={() => {
+          window.location.search = '';
+          navigateTo('/public');
+        }}
+        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+      />
+    );
+  }
+
+  if (domainResolution.type === 'PLATFORM_SUPPORT' && !currentRoute.startsWith('/platform') && !currentRoute.startsWith('/app')) {
+    return (
+      <SupportPortal
+        onNavigateHome={() => {
+          window.location.search = '';
+          navigateTo('/public');
+        }}
+        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+      />
+    );
+  }
+
+  if (domainResolution.type === 'PLATFORM_BILLING' && !currentRoute.startsWith('/platform') && !currentRoute.startsWith('/app')) {
+    return (
+      <BillingPortal
+        onNavigateHome={() => {
+          window.location.search = '';
+          navigateTo('/public');
+        }}
+        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+      />
+    );
+  }
+
+  // 0.1 PUBLIC WEBSITE ROUTE (/ or /public or /public/*)
   if (currentRoute === '/' || currentRoute === '/public' || currentRoute === '/public/' || currentRoute.startsWith('/public/')) {
     const slug = activeTenantSlug;
     

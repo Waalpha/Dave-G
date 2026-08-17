@@ -57,16 +57,18 @@ async function startServer() {
     // 3. Subdomain extraction from hostname (e.g. brightacademy.davetech.co.ke)
     const host = (req.headers.host || req.hostname || '').toLowerCase().split(':')[0];
     const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'login', 'dashboard', 'portal'];
+
     if (host.endsWith(`.${baseDomain}`)) {
-      const sub = host.slice(0, -(baseDomain.length + 1));
-      if (sub && sub !== 'admin' && sub !== 'www' && sub !== 'api') {
-        const t = dbStore.getTenantByDomain(sub);
+      const sub = host.slice(0, -(baseDomain.length + 1)).toLowerCase().trim();
+      if (sub && !reserved.includes(sub)) {
+        const t = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
         if (t) return t.id;
       }
     } else if (host.endsWith('.localhost')) {
-      const sub = host.split('.')[0];
-      if (sub && sub !== 'admin' && sub !== 'www' && sub !== 'api') {
-        const t = dbStore.getTenantByDomain(sub);
+      const sub = host.split('.')[0].toLowerCase().trim();
+      if (sub && !reserved.includes(sub)) {
+        const t = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
         if (t) return t.id;
       }
     }
@@ -622,16 +624,41 @@ async function startServer() {
     const hostname = ((req.query.hostname as string) || req.hostname || req.headers.host || '').toLowerCase().split(':')[0];
     const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
 
-    // 1. Check override query parameter
-    const override = ((req.query.subdomain as string) || (req.query.slug as string) || '').toLowerCase().trim();
+    // 1. Check override query parameter (e.g. ?area=sales or ?subdomain=apex)
+    const areaOverride = ((req.query.area as string) || (req.query.portal as string) || '').toLowerCase().trim();
+    if (areaOverride) {
+      if (areaOverride === 'admin' || areaOverride === 'platform') {
+        return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
+      }
+      if (areaOverride === 'sales') {
+        return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
+      }
+      if (areaOverride === 'support' || areaOverride === 'help') {
+        return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
+      }
+      if (areaOverride === 'billing') {
+        return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
+      }
+    }
+
+    const override = ((req.query.subdomain as string) || (req.query.slug as string) || (req.query.tenant as string) || '').toLowerCase().trim();
     if (override) {
       if (override === 'admin' || override === 'platform') {
-        return res.json({ type: 'PLATFORM_ADMIN', baseDomain });
+        return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
       }
-      if (override === 'www' || override === 'root' || override === 'davetech') {
-        return res.json({ type: 'PLATFORM_ROOT', baseDomain });
+      if (override === 'sales') {
+        return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
       }
-      const tenant = dbStore.getTenantByDomain(override);
+      if (override === 'support' || override === 'help') {
+        return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
+      }
+      if (override === 'billing') {
+        return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
+      }
+      if (override === 'www' || override === 'root' || override === 'davetech' || override === 'default') {
+        return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
+      }
+      const tenant = dbStore.getTenantByDomain(override) || dbStore.getTenantBySlugOrId(override);
       if (!tenant || tenant.status !== 'ACTIVE') {
         return res.status(404).json({ type: 'TENANT_NOT_FOUND', slug: override, baseDomain });
       }
@@ -647,20 +674,29 @@ async function startServer() {
 
     // 2. Exact match root
     if (hostname === baseDomain || hostname === `www.${baseDomain}` || hostname === 'localhost' || hostname === '127.0.0.1') {
-      return res.json({ type: 'PLATFORM_ROOT', baseDomain });
+      return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
     }
 
-    // 3. Admin portal subdomain
+    // 3. Reserved platform subdomains
     if (hostname === `admin.${baseDomain}` || hostname === 'admin.localhost') {
-      return res.json({ type: 'PLATFORM_ADMIN', baseDomain });
+      return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
+    }
+    if (hostname === `sales.${baseDomain}` || hostname === 'sales.localhost') {
+      return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
+    }
+    if (hostname === `support.${baseDomain}` || hostname === 'support.localhost' || hostname === `help.${baseDomain}`) {
+      return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
+    }
+    if (hostname === `billing.${baseDomain}` || hostname === 'billing.localhost') {
+      return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
     }
 
     // 4. Wildcard Subdomain match
     let sub = '';
     if (hostname.endsWith(`.${baseDomain}`)) {
-      sub = hostname.slice(0, -(baseDomain.length + 1)).toLowerCase();
+      sub = hostname.slice(0, -(baseDomain.length + 1)).toLowerCase().trim();
     } else if (hostname.endsWith('.localhost')) {
-      sub = hostname.split('.')[0].toLowerCase();
+      sub = hostname.split('.')[0].toLowerCase().trim();
     } else {
       // 5. Check Custom Domain match
       const customTenant = dbStore.getTenantByDomain(hostname);
@@ -675,17 +711,26 @@ async function startServer() {
           baseDomain
         });
       }
-      return res.json({ type: 'PLATFORM_ROOT', baseDomain });
+      return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
     }
 
     if (sub === 'admin' || sub === 'platform') {
-      return res.json({ type: 'PLATFORM_ADMIN', baseDomain });
+      return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
     }
-    if (sub === 'www' || sub === 'root') {
-      return res.json({ type: 'PLATFORM_ROOT', baseDomain });
+    if (sub === 'sales') {
+      return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
+    }
+    if (sub === 'support' || sub === 'help') {
+      return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
+    }
+    if (sub === 'billing') {
+      return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
+    }
+    if (sub === 'www' || sub === 'root' || sub === 'default') {
+      return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
     }
 
-    const tenant = dbStore.getTenantByDomain(sub);
+    const tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
     if (!tenant || tenant.status !== 'ACTIVE') {
       return res.status(404).json({ type: 'TENANT_NOT_FOUND', slug: sub, baseDomain });
     }

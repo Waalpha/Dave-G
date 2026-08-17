@@ -5,12 +5,13 @@ import { INITIAL_TENANTS } from '../../data/initialTenants';
 import { useAuth } from '../../context/AuthContext';
 import {
   Building2, Plus, ShieldCheck, Check, X, Edit2, AlertCircle, RefreshCw, 
-  Layers, ExternalLink, KeyRound, Users, Trash2, ShieldAlert, CheckCircle2, Globe
+  Layers, ExternalLink, KeyRound, Users, Trash2, ShieldAlert, CheckCircle2, Globe, Copy
 } from 'lucide-react';
 import { EditTenantModal } from './components/EditTenantModal';
 import { TenantUsersModal } from './components/TenantUsersModal';
 import { GlobalUsersList } from './components/GlobalUsersList';
 import { compressImageFile } from '../../lib/imageUtils';
+import { getBaseDomain, normalizeSubdomain, isReservedSubdomain } from '../../lib/domainResolver';
 
 interface PlatformTenantsProps {
   onInspectNavigate?: () => void;
@@ -55,7 +56,11 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
   const [isDeleting, setIsDeleting] = useState(false);
 
   // New Tenant Form
+  const baseDomain = getBaseDomain();
+  const [copiedSubdomain, setCopiedSubdomain] = useState<string | null>(null);
   const [newTenantName, setNewTenantName] = useState('');
+  const [newTenantSubdomain, setNewTenantSubdomain] = useState('');
+  const [isSubdomainManual, setIsSubdomainManual] = useState(false);
   const [newTenantLogoUrl, setNewTenantLogoUrl] = useState('');
   const [newTenantType, setNewTenantType] = useState<TenantType>('EDUCATION');
   const [newEducationType, setNewEducationType] = useState<EducationType>('TVET');
@@ -64,6 +69,13 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminName, setNewAdminName] = useState('');
   const [newModules, setNewModules] = useState<ModuleId[]>(['education', 'accounting', 'hr', 'inventory', 'crm']);
+
+  const handleCopySubdomain = (slug: string) => {
+    const url = `https://${slug}.${baseDomain}`;
+    navigator.clipboard.writeText(url);
+    setCopiedSubdomain(slug);
+    setTimeout(() => setCopiedSubdomain(null), 2500);
+  };
 
   const getHeaders = () => ({
     'Content-Type': 'application/json',
@@ -186,20 +198,33 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
       return;
     }
 
+    const cleanSlug = normalizeSubdomain(newTenantSubdomain || newTenantName);
+    if (!cleanSlug) {
+      alert('Please provide a valid subdomain slug (alphanumeric and hyphens only)');
+      return;
+    }
+
+    if (isReservedSubdomain(cleanSlug)) {
+      alert(`The subdomain "${cleanSlug}" is reserved for platform infrastructure. Please choose another slug.`);
+      return;
+    }
+
     try {
       setIsSaving(true);
       const res = await fetch('/api/platform/tenants', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
-          name: newTenantName,
+          name: newTenantName.trim(),
+          subdomain: cleanSlug,
+          slug: cleanSlug,
           logoUrl: newTenantLogoUrl,
           type: newTenantType,
           educationType: newTenantType === 'EDUCATION' ? newEducationType : undefined,
           currency: newCurrency,
           currencySymbol: newCurrencySymbol,
-          adminEmail: newAdminEmail,
-          adminName: newAdminName || `${newTenantName} Administrator`,
+          adminEmail: newAdminEmail.trim(),
+          adminName: newAdminName.trim() || `${newTenantName} Administrator`,
           enabledModules: newModules
         })
       });
@@ -207,18 +232,22 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
       if (res.ok) {
         await fetchTenants();
         setIsCreateModalOpen(false);
-        setNotification(`Organization "${newTenantName}" provisioned successfully with Admin account.`);
-        setTimeout(() => setNotification(null), 5000);
+        setNotification(`Organization "${newTenantName}" provisioned successfully at ${cleanSlug}.${baseDomain}`);
+        setTimeout(() => setNotification(null), 6000);
         // Reset
         setNewTenantName('');
+        setNewTenantSubdomain('');
+        setIsSubdomainManual(false);
         setNewTenantLogoUrl('');
         setNewAdminEmail('');
         setNewAdminName('');
       } else {
-        alert('Failed to provision tenant');
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || errData.message || 'Failed to provision tenant');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Create tenant error:', err);
+      alert(err.message || 'Network error while creating tenant');
     } finally {
       setIsSaving(false);
     }
@@ -297,6 +326,7 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
               <thead className="bg-[#F8FAFC] text-[#777E8C] uppercase font-mono text-[10px] border-b border-[#D8DCEB]">
                 <tr>
                   <th className="p-4 font-bold">Organization Name</th>
+                  <th className="p-4 font-bold">Subdomain (Wildcard DNS)</th>
                   <th className="p-4 font-bold">Type & Subtype</th>
                   <th className="p-4 font-bold">Currency</th>
                   <th className="p-4 font-bold">Status</th>
@@ -330,6 +360,27 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                             <p className="text-[10px] text-[#7CA4EF] font-mono">{t.branding.contactEmail}</p>
                           )}
                         </div>
+                      </div>
+                    </td>
+
+                    {/* Wildcard Subdomain & Copy */}
+                    <td className="p-4">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                          {t.slug || t.subdomain || 'tenant'}.{baseDomain}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopySubdomain(t.slug || t.subdomain || 'tenant')}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                          title="Copy Full Subdomain URL"
+                        >
+                          {copiedSubdomain === (t.slug || t.subdomain || 'tenant') ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
                       </div>
                     </td>
 
@@ -636,11 +687,40 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Kenya Medical College"
+                  placeholder="e.g. Apex Tech Academy"
                   value={newTenantName}
-                  onChange={e => setNewTenantName(e.target.value)}
+                  onChange={e => {
+                    const name = e.target.value;
+                    setNewTenantName(name);
+                    if (!isSubdomainManual) {
+                      setNewTenantSubdomain(normalizeSubdomain(name));
+                    }
+                  }}
                   className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-300 font-semibold">Subdomain Slug (Wildcard) *</label>
+                  <span className="text-[10px] text-slate-500 font-mono">*.{baseDomain}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. apex"
+                    value={newTenantSubdomain}
+                    onChange={e => {
+                      setIsSubdomainManual(true);
+                      setNewTenantSubdomain(normalizeSubdomain(e.target.value));
+                    }}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:outline-none focus:border-purple-500 font-mono text-xs"
+                  />
+                </div>
+                <p className="text-[11px] text-purple-400 font-mono truncate">
+                  URL: https://{newTenantSubdomain || 'slug'}.{baseDomain}
+                </p>
               </div>
 
               <div className="space-y-1">

@@ -953,8 +953,20 @@ class DatabaseStore {
     if (!hostnameOrSlug) return undefined;
     let key = hostnameOrSlug.trim().toLowerCase();
 
+    // Check reserved platform subdomains - NEVER interpret as tenant
+    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'portal', 'dashboard', 'login'];
+    if (reserved.includes(key)) {
+      return undefined;
+    }
+
     // Map common aliases
     const aliases: Record<string, string> = {
+      'apex': 'apex-institute',
+      'dreamline': 'dreamline-shop',
+      'blessed': 'blessed-sacco',
+      'grace': 'grace-cathedral',
+      'stjude': 'st-jude-hospital',
+      'st-jude': 'st-jude-hospital',
       'st-judes-hospital': 'st-jude-hospital',
       'grace-church': 'grace-cathedral',
       'unity-sacco': 'blessed-sacco',
@@ -980,6 +992,12 @@ class DatabaseStore {
     const byId = this.tenants.find(t => t.id.toLowerCase() === key);
     if (byId) return byId;
 
+    // 4. Fuzzy prefix match for active tenants (e.g. apex matching apex-institute if no exact match)
+    const byPrefix = this.tenants.find(
+      t => t.status === 'ACTIVE' && (t.slug.toLowerCase().startsWith(`${key}-`) || (t.subdomain && t.subdomain.toLowerCase().startsWith(`${key}-`)))
+    );
+    if (byPrefix) return byPrefix;
+
     return undefined;
   }
 
@@ -987,8 +1005,20 @@ class DatabaseStore {
     if (!slugOrId) return undefined;
     let key = slugOrId.trim().toLowerCase();
 
+    // Check reserved platform subdomains - NEVER interpret as tenant
+    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'portal', 'dashboard', 'login'];
+    if (reserved.includes(key)) {
+      return undefined;
+    }
+
     // Map common aliases
     const aliases: Record<string, string> = {
+      'apex': 'apex-institute',
+      'dreamline': 'dreamline-shop',
+      'blessed': 'blessed-sacco',
+      'grace': 'grace-cathedral',
+      'stjude': 'st-jude-hospital',
+      'st-jude': 'st-jude-hospital',
       'st-judes-hospital': 'st-jude-hospital',
       'grace-church': 'grace-cathedral',
       'unity-sacco': 'blessed-sacco',
@@ -1006,6 +1036,12 @@ class DatabaseStore {
            (t.customDomain && t.customDomain.toLowerCase() === key)
     );
     if (found) return found;
+
+    // Fuzzy prefix match for active tenants
+    const byPrefix = this.tenants.find(
+      t => t.status === 'ACTIVE' && (t.slug.toLowerCase().startsWith(`${key}-`) || (t.subdomain && t.subdomain.toLowerCase().startsWith(`${key}-`)))
+    );
+    if (byPrefix) return byPrefix;
 
     return undefined;
   }
@@ -1037,7 +1073,7 @@ class DatabaseStore {
       throw new Error('A valid subdomain or organization slug is required');
     }
 
-    const reserved = ['admin', 'api', 'app', 'www', 'mail', 'support', 'help', 'billing', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default'];
+    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'login', 'dashboard', 'portal'];
     if (reserved.includes(cleanSlug)) {
       throw new Error(`The subdomain "${cleanSlug}" is reserved for platform infrastructure and cannot be assigned to a tenant.`);
     }

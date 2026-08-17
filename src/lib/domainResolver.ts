@@ -1,18 +1,24 @@
 /**
- * Domain & Subdomain Resolution Engine for Davetech Multi-Tenant ERP
- * Supports Wildcard DNS (*.davetech.co.ke), Localhost subdomains (*.localhost),
- * Custom domains, and preview query/hash overrides.
+ * Central Hostname & Domain Resolution Engine for Davetech Multi-Tenant ERP
+ * 
+ * Supports:
+ * - Wildcard DNS (*.davetech.co.ke)
+ * - Reserved Platform Subdomains (admin, sales, support, billing)
+ * - Dynamic Multi-Tenant Subdomains (apex, dreamline, blessed, grace, stjude, etc.)
+ * - Local development (*.localhost, localhost, 127.0.0.1, query param overrides)
+ * - Custom Domains
  */
 
-export const RESERVED_SUBDOMAINS = [
+export const RESERVED_PLATFORM_SUBDOMAINS: string[] = [
   'admin',
+  'sales',
+  'support',
+  'billing',
   'api',
   'app',
   'www',
   'mail',
-  'support',
   'help',
-  'billing',
   'status',
   'cdn',
   'assets',
@@ -30,37 +36,48 @@ export const RESERVED_SUBDOMAINS = [
   'whm'
 ];
 
+export type PlatformArea = 'admin' | 'sales' | 'support' | 'billing' | 'root';
+
+export type HostContext =
+  | { type: 'platform'; area: 'admin' }
+  | { type: 'platform'; area: 'sales' }
+  | { type: 'platform'; area: 'support' }
+  | { type: 'platform'; area: 'billing' }
+  | { type: 'platform'; area: 'root' }
+  | { type: 'tenant'; slug: string }
+  | { type: 'public' }
+  | { type: 'unknown'; hostname: string };
+
 export interface ResolvedDomain {
-  type: 'PLATFORM_ROOT' | 'PLATFORM_ADMIN' | 'TENANT' | 'RESERVED';
+  type: 'PLATFORM_ROOT' | 'PLATFORM_ADMIN' | 'PLATFORM_SALES' | 'PLATFORM_SUPPORT' | 'PLATFORM_BILLING' | 'TENANT' | 'RESERVED' | 'UNKNOWN';
   tenantSlug: string | null;
   hostname: string;
   isCustomDomain: boolean;
   rawSubdomain: string | null;
+  platformArea?: PlatformArea;
+  hostContext: HostContext;
 }
 
 /**
  * Get base platform domain (defaults to davetech.co.ke)
  */
 export function getBaseDomain(): string {
-  // Vite client-side env
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
-  if (metaEnv && metaEnv.VITE_BASE_DOMAIN) {
-    return metaEnv.VITE_BASE_DOMAIN.toLowerCase().trim();
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_BASE_DOMAIN) {
+    return (import.meta as any).env.VITE_BASE_DOMAIN.toLowerCase().trim();
   }
-  // Node.js server-side env
-  if (typeof process !== 'undefined' && process.env && process.env.BASE_DOMAIN) {
+  if (typeof process !== 'undefined' && process.env?.BASE_DOMAIN) {
     return process.env.BASE_DOMAIN.toLowerCase().trim();
   }
   return 'davetech.co.ke';
 }
 
 /**
- * Checks if a given subdomain is reserved
+ * Checks if a given subdomain is reserved for platform infrastructure
  */
 export function isReservedSubdomain(subdomain: string): boolean {
   if (!subdomain) return false;
   const clean = subdomain.trim().toLowerCase();
-  return RESERVED_SUBDOMAINS.includes(clean);
+  return RESERVED_PLATFORM_SUBDOMAINS.includes(clean);
 }
 
 /**
@@ -114,187 +131,164 @@ export function isCloudOrDevHost(hostname: string): boolean {
 }
 
 /**
- * Parses a hostname (browser window.location.hostname or server req.hostname)
- * and resolves whether it belongs to the Root Website, Platform Admin, or a Tenant.
+ * Helper to construct a platform area resolution object
+ */
+function createPlatformResolution(
+  area: PlatformArea,
+  hostname: string,
+  rawSubdomain: string | null
+): ResolvedDomain {
+  let type: ResolvedDomain['type'] = 'PLATFORM_ROOT';
+  if (area === 'admin') type = 'PLATFORM_ADMIN';
+  else if (area === 'sales') type = 'PLATFORM_SALES';
+  else if (area === 'support') type = 'PLATFORM_SUPPORT';
+  else if (area === 'billing') type = 'PLATFORM_BILLING';
+
+  return {
+    type,
+    tenantSlug: null,
+    hostname,
+    isCustomDomain: false,
+    rawSubdomain,
+    platformArea: area,
+    hostContext: { type: 'platform', area } as HostContext
+  };
+}
+
+/**
+ * Helper to construct a tenant resolution object
+ */
+function createTenantResolution(
+  slug: string,
+  hostname: string,
+  isCustomDomain = false
+): ResolvedDomain {
+  const cleanSlug = slug.toLowerCase().trim();
+  return {
+    type: 'TENANT',
+    tenantSlug: cleanSlug,
+    hostname,
+    isCustomDomain,
+    rawSubdomain: cleanSlug,
+    hostContext: { type: 'tenant', slug: cleanSlug }
+  };
+}
+
+/**
+ * Parses a hostname and resolves whether it belongs to the Root Website,
+ * a Reserved Platform Area (admin, sales, support, billing), or a Tenant.
  */
 export function resolveHostname(hostnameInput?: string, searchParams?: URLSearchParams): ResolvedDomain {
   let hostname = (hostnameInput || (typeof window !== 'undefined' ? window.location.hostname : ''))
     .toLowerCase()
     .trim();
 
-  // Strip port if present
+  // Strip port if present (e.g. localhost:3000 -> localhost)
   if (hostname.includes(':')) {
     hostname = hostname.split(':')[0];
   }
 
-  // 1. Check for manual dev query param override (e.g. ?subdomain=brightacademy or ?tenant=apex-institute)
-  if (searchParams) {
-    const override = searchParams.get('subdomain') || searchParams.get('tenant');
-    if (override) {
-      const cleanOverride = override.toLowerCase().trim();
-      if (cleanOverride === 'admin' || cleanOverride === 'platform') {
-        return {
-          type: 'PLATFORM_ADMIN',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: 'admin'
-        };
-      }
-      if (cleanOverride === 'www' || cleanOverride === 'root' || cleanOverride === 'davetech' || cleanOverride === 'default') {
-        return {
-          type: 'PLATFORM_ROOT',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: null
-        };
-      }
-      return {
-        type: 'TENANT',
-        tenantSlug: cleanOverride,
-        hostname,
-        isCustomDomain: false,
-        rawSubdomain: cleanOverride
-      };
-    }
+  // 1. Check for manual dev query param override (e.g. ?subdomain=apex or ?tenant=dreamline or ?area=sales)
+  let params = searchParams;
+  if (!params && typeof window !== 'undefined' && window.location.search) {
+    params = new URLSearchParams(window.location.search);
   }
 
-  // Also check window.location.search in browser if not explicitly passed
-  if (typeof window !== 'undefined' && window.location.search) {
-    const params = new URLSearchParams(window.location.search);
-    const override = params.get('subdomain') || params.get('tenant');
-    if (override) {
-      const cleanOverride = override.toLowerCase().trim();
-      if (cleanOverride === 'admin' || cleanOverride === 'platform') {
-        return {
-          type: 'PLATFORM_ADMIN',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: 'admin'
-        };
+  if (params) {
+    const areaOverride = params.get('area') || params.get('portal');
+    if (areaOverride) {
+      const cleanArea = areaOverride.toLowerCase().trim();
+      if (cleanArea === 'admin' || cleanArea === 'platform') return createPlatformResolution('admin', hostname, 'admin');
+      if (cleanArea === 'sales') return createPlatformResolution('sales', hostname, 'sales');
+      if (cleanArea === 'support') return createPlatformResolution('support', hostname, 'support');
+      if (cleanArea === 'billing') return createPlatformResolution('billing', hostname, 'billing');
+    }
+
+    const tenantOverride = params.get('subdomain') || params.get('tenant') || params.get('slug');
+    if (tenantOverride) {
+      const clean = tenantOverride.toLowerCase().trim();
+      if (clean === 'admin' || clean === 'platform') return createPlatformResolution('admin', hostname, 'admin');
+      if (clean === 'sales') return createPlatformResolution('sales', hostname, 'sales');
+      if (clean === 'support') return createPlatformResolution('support', hostname, 'support');
+      if (clean === 'billing') return createPlatformResolution('billing', hostname, 'billing');
+      if (clean === 'www' || clean === 'root' || clean === 'davetech' || clean === 'default') {
+        return createPlatformResolution('root', hostname, null);
       }
-      if (cleanOverride === 'www' || cleanOverride === 'root' || cleanOverride === 'davetech' || cleanOverride === 'default') {
-        return {
-          type: 'PLATFORM_ROOT',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: null
-        };
-      }
-      return {
-        type: 'TENANT',
-        tenantSlug: cleanOverride,
-        hostname,
-        isCustomDomain: false,
-        rawSubdomain: cleanOverride
-      };
+      return createTenantResolution(clean, hostname, false);
     }
   }
 
   const baseDomain = getBaseDomain();
 
-  // 2. Cloud deployment domains (e.g. davetech-2026.onrender.com, *.run.app, *.vercel.app, localhost)
-  if (isCloudOrDevHost(hostname)) {
-    // Check if hostname has a subdomain prefix before localhost, e.g. brightacademy.localhost
-    if (hostname.endsWith('.localhost')) {
-      const parts = hostname.split('.');
-      const sub = parts[0];
-      if (sub === 'admin' || sub === 'platform') {
-        return {
-          type: 'PLATFORM_ADMIN',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: sub
-        };
-      }
-      if (sub === 'www') {
-        return {
-          type: 'PLATFORM_ROOT',
-          tenantSlug: null,
-          hostname,
-          isCustomDomain: false,
-          rawSubdomain: null
-        };
-      }
-      return {
-        type: 'TENANT',
-        tenantSlug: sub,
-        hostname,
-        isCustomDomain: false,
-        rawSubdomain: sub
-      };
-    }
-
-    // Default cloud deployment host without query override -> Root Platform
-    return {
-      type: 'PLATFORM_ROOT',
-      tenantSlug: null,
-      hostname,
-      isCustomDomain: false,
-      rawSubdomain: null
-    };
+  // 2. Exact Root Domain match (e.g. davetech.co.ke or www.davetech.co.ke)
+  if (hostname === baseDomain || hostname === `www.${baseDomain}`) {
+    return createPlatformResolution('root', hostname, null);
   }
 
-  // 3. Exact Root Domain match (e.g. davetech.co.ke or www.davetech.co.ke)
-  if (hostname === baseDomain || hostname === `www.${baseDomain}`) {
-    return {
-      type: 'PLATFORM_ROOT',
-      tenantSlug: null,
-      hostname,
-      isCustomDomain: false,
-      rawSubdomain: null
-    };
+  // 3. Localhost & Cloud preview deployment domains (e.g. *.run.app, *.onrender.com, localhost)
+  if (isCloudOrDevHost(hostname)) {
+    // Check if hostname has a subdomain prefix before localhost (e.g. apex.localhost, sales.localhost)
+    if (hostname.endsWith('.localhost')) {
+      const sub = hostname.split('.')[0].toLowerCase().trim();
+      if (sub === 'admin' || sub === 'platform') return createPlatformResolution('admin', hostname, sub);
+      if (sub === 'sales') return createPlatformResolution('sales', hostname, sub);
+      if (sub === 'support') return createPlatformResolution('support', hostname, sub);
+      if (sub === 'billing') return createPlatformResolution('billing', hostname, sub);
+      if (sub === 'www' || sub === 'root') return createPlatformResolution('root', hostname, null);
+      return createTenantResolution(sub, hostname, false);
+    }
+
+    // Default cloud deployment host without query override -> Root Platform Public Website
+    return createPlatformResolution('root', hostname, null);
   }
 
   // 4. Wildcard Subdomain match (e.g. *.davetech.co.ke)
   if (hostname.endsWith(`.${baseDomain}`)) {
     const subdomain = hostname.slice(0, -(baseDomain.length + 1)).toLowerCase().trim();
 
-    // Check Platform Admin subdomain: admin.davetech.co.ke
+    // 4.1 Reserved Platform Subdomains (NEVER treated as tenant slugs)
     if (subdomain === 'admin' || subdomain === 'platform') {
-      return {
-        type: 'PLATFORM_ADMIN',
-        tenantSlug: null,
-        hostname,
-        isCustomDomain: false,
-        rawSubdomain: subdomain
-      };
+      return createPlatformResolution('admin', hostname, subdomain);
+    }
+    if (subdomain === 'sales') {
+      return createPlatformResolution('sales', hostname, subdomain);
+    }
+    if (subdomain === 'support' || subdomain === 'help') {
+      return createPlatformResolution('support', hostname, subdomain);
+    }
+    if (subdomain === 'billing') {
+      return createPlatformResolution('billing', hostname, subdomain);
+    }
+    if (subdomain === 'www' || subdomain === 'root' || subdomain === 'default') {
+      return createPlatformResolution('root', hostname, null);
     }
 
-    // Check other reserved subdomains (api, support, etc.)
+    // 4.2 Other reserved infrastructure subdomains
     if (isReservedSubdomain(subdomain) && subdomain !== 'app') {
       return {
         type: 'RESERVED',
         tenantSlug: null,
         hostname,
         isCustomDomain: false,
-        rawSubdomain: subdomain
+        rawSubdomain: subdomain,
+        hostContext: { type: 'unknown', hostname }
       };
     }
 
-    // Valid Tenant Subdomain: brightacademy.davetech.co.ke
-    return {
-      type: 'TENANT',
-      tenantSlug: subdomain,
-      hostname,
-      isCustomDomain: false,
-      rawSubdomain: subdomain
-    };
+    // 4.3 Dynamic Tenant Subdomain (e.g. apex.davetech.co.ke -> slug: "apex")
+    return createTenantResolution(subdomain, hostname, false);
   }
 
-  // 5. Custom Domain fallback:
-  // If it's a domain that doesn't match base domain or cloud provider, treat as Root Platform unless specified
-  return {
-    type: 'PLATFORM_ROOT',
-    tenantSlug: null,
-    hostname,
-    isCustomDomain: false,
-    rawSubdomain: null
-  };
+  // 5. Fallback for custom domains or unknown host
+  return createPlatformResolution('root', hostname, null);
+}
+
+/**
+ * Returns the simplified HostContext
+ */
+export function resolveHostContext(hostname?: string): HostContext {
+  const resolved = resolveHostname(hostname);
+  return resolved.hostContext;
 }
 
 /**
