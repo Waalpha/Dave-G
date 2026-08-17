@@ -4,8 +4,9 @@ import path from 'path';
 import { saveDocToFirestore, deleteDocFromFirestore, loadCollectionFromFirestore } from '../lib/firestore';
 import {
   Tenant, User, AuditLog, Campus, AcademicYear, AcademicTerm, Department,
-  Program, UnitSubject, Student, LecturerStaff, TimetableEntry,
-  FeeStructure, FeePayment, LibraryBook, HostelRoom, ModuleId, PlatformSettings,
+  Program, UnitSubject, SchoolClass, Student, LecturerStaff, TimetableEntry,
+  StudentAttendance, FeeStructure, StudentInvoice, FeePayment, StudentGradeRecord,
+  LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
   ChamaMember, ChamaContribution, ChamaLoan, ChamaRepayment, ChamaInvestment,
   PosProduct, PosSaleOrder, RestaurantTable, RestaurantMenuItem,
@@ -620,10 +621,18 @@ class DatabaseStore {
   private departments: Department[] = [...INITIAL_DEPARTMENTS];
   private programs: Program[] = [...INITIAL_PROGRAMS];
   private units: UnitSubject[] = [];
+  private schoolClasses: SchoolClass[] = [];
   private students: Student[] = [];
   private staff: LecturerStaff[] = [];
   private timetable: TimetableEntry[] = [];
+  private studentAttendance: StudentAttendance[] = [];
+  private feeStructures: FeeStructure[] = [];
+  private studentInvoices: StudentInvoice[] = [];
   private feePayments: FeePayment[] = [];
+  private studentGrades: StudentGradeRecord[] = [];
+  private libraryBooks: LibraryBook[] = [];
+  private libraryLoans: LibraryLoan[] = [];
+  private hostelRooms: HostelRoom[] = [];
   private auditLogs: AuditLog[] = [];
   private notifications: PlatformNotification[] = [...INITIAL_NOTIFICATIONS];
   // Multi-Industry Collections
@@ -685,10 +694,18 @@ class DatabaseStore {
         departments: this.departments,
         programs: this.programs,
         units: this.units,
+        schoolClasses: this.schoolClasses,
         students: this.students,
         staff: this.staff,
         timetable: this.timetable,
+        studentAttendance: this.studentAttendance,
+        feeStructures: this.feeStructures,
+        studentInvoices: this.studentInvoices,
         feePayments: this.feePayments,
+        studentGrades: this.studentGrades,
+        libraryBooks: this.libraryBooks,
+        libraryLoans: this.libraryLoans,
+        hostelRooms: this.hostelRooms,
         auditLogs: this.auditLogs,
         notifications: this.notifications,
         platformSettings: this.platformSettings,
@@ -728,10 +745,18 @@ class DatabaseStore {
         if (Array.isArray(data.departments)) this.departments = data.departments;
         if (Array.isArray(data.programs)) this.programs = data.programs;
         if (Array.isArray(data.units)) this.units = data.units;
+        if (Array.isArray(data.schoolClasses)) this.schoolClasses = data.schoolClasses;
         if (Array.isArray(data.students)) this.students = data.students;
         if (Array.isArray(data.staff)) this.staff = data.staff;
         if (Array.isArray(data.timetable)) this.timetable = data.timetable;
+        if (Array.isArray(data.studentAttendance)) this.studentAttendance = data.studentAttendance;
+        if (Array.isArray(data.feeStructures)) this.feeStructures = data.feeStructures;
+        if (Array.isArray(data.studentInvoices)) this.studentInvoices = data.studentInvoices;
         if (Array.isArray(data.feePayments)) this.feePayments = data.feePayments;
+        if (Array.isArray(data.studentGrades)) this.studentGrades = data.studentGrades;
+        if (Array.isArray(data.libraryBooks)) this.libraryBooks = data.libraryBooks;
+        if (Array.isArray(data.libraryLoans)) this.libraryLoans = data.libraryLoans;
+        if (Array.isArray(data.hostelRooms)) this.hostelRooms = data.hostelRooms;
         if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
         if (Array.isArray(data.notifications)) this.notifications = data.notifications;
         if (data.platformSettings) this.platformSettings = { ...this.platformSettings, ...data.platformSettings };
@@ -841,11 +866,35 @@ class DatabaseStore {
       const dbUnits = await loadCollectionFromFirestore<UnitSubject>('units');
       this.units = Array.isArray(dbUnits) ? dbUnits : [];
 
+      const dbClasses = await loadCollectionFromFirestore<SchoolClass>('schoolClasses');
+      this.schoolClasses = Array.isArray(dbClasses) ? dbClasses : [];
+
       const dbStaff = await loadCollectionFromFirestore<LecturerStaff>('staff');
       this.staff = Array.isArray(dbStaff) ? dbStaff : [];
 
       const dbTimetable = await loadCollectionFromFirestore<TimetableEntry>('timetable');
       this.timetable = Array.isArray(dbTimetable) ? dbTimetable : [];
+
+      const dbAttendance = await loadCollectionFromFirestore<StudentAttendance>('studentAttendance');
+      this.studentAttendance = Array.isArray(dbAttendance) ? dbAttendance : [];
+
+      const dbFeeStructures = await loadCollectionFromFirestore<FeeStructure>('feeStructures');
+      this.feeStructures = Array.isArray(dbFeeStructures) ? dbFeeStructures : [];
+
+      const dbInvoices = await loadCollectionFromFirestore<StudentInvoice>('studentInvoices');
+      this.studentInvoices = Array.isArray(dbInvoices) ? dbInvoices : [];
+
+      const dbGrades = await loadCollectionFromFirestore<StudentGradeRecord>('studentGrades');
+      this.studentGrades = Array.isArray(dbGrades) ? dbGrades : [];
+
+      const dbBooks = await loadCollectionFromFirestore<LibraryBook>('libraryBooks');
+      this.libraryBooks = Array.isArray(dbBooks) ? dbBooks : [];
+
+      const dbLoans = await loadCollectionFromFirestore<LibraryLoan>('libraryLoans');
+      this.libraryLoans = Array.isArray(dbLoans) ? dbLoans : [];
+
+      const dbHostels = await loadCollectionFromFirestore<HostelRoom>('hostelRooms');
+      this.hostelRooms = Array.isArray(dbHostels) ? dbHostels : [];
 
       const dbLogs = await loadCollectionFromFirestore<AuditLog>('auditLogs');
       this.auditLogs = Array.isArray(dbLogs) ? dbLogs : [];
@@ -1859,12 +1908,187 @@ class DatabaseStore {
     return this.campuses.filter(c => c.tenantId === tenantId);
   }
 
+  public addCampus(tenantId: string, data: Partial<Campus>, user: User): Campus {
+    const name = data.name?.trim();
+    const code = data.code?.trim();
+    if (!name || !code) throw new Error('Campus Name and Code are required.');
+
+    const newCampus: Campus = {
+      id: `camp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      name,
+      code: code.toUpperCase(),
+      location: data.location?.trim() || 'Main Campus',
+      isMain: !!data.isMain,
+      contactEmail: data.contactEmail?.trim() || '',
+      contactPhone: data.contactPhone?.trim() || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (newCampus.isMain) {
+      this.campuses.filter(c => c.tenantId === tenantId).forEach(c => { c.isMain = false; });
+    }
+
+    this.campuses.unshift(newCampus);
+    saveDocToFirestore('campuses', newCampus.id, newCampus).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_CAMPUS', 'Campus', newCampus.id, `Created campus "${newCampus.name}"`);
+    return newCampus;
+  }
+
+  public updateCampus(tenantId: string, id: string, data: Partial<Campus>, user: User): Campus {
+    const campus = this.campuses.find(c => c.tenantId === tenantId && c.id === id);
+    if (!campus) throw new Error('Campus not found.');
+
+    if (data.name) campus.name = data.name.trim();
+    if (data.code) campus.code = data.code.trim().toUpperCase();
+    if (data.location !== undefined) campus.location = data.location.trim();
+    if (data.contactEmail !== undefined) campus.contactEmail = data.contactEmail.trim();
+    if (data.contactPhone !== undefined) campus.contactPhone = data.contactPhone.trim();
+    if (data.isMain !== undefined) {
+      campus.isMain = data.isMain;
+      if (campus.isMain) {
+        this.campuses.filter(c => c.tenantId === tenantId && c.id !== id).forEach(c => { c.isMain = false; });
+      }
+    }
+    campus.updatedAt = new Date().toISOString();
+
+    saveDocToFirestore('campuses', campus.id, campus).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_CAMPUS', 'Campus', campus.id, `Updated campus "${campus.name}"`);
+    return campus;
+  }
+
+  public deleteCampus(tenantId: string, id: string, user: User): boolean {
+    const idx = this.campuses.findIndex(c => c.tenantId === tenantId && c.id === id);
+    if (idx === -1) throw new Error('Campus not found.');
+    const camp = this.campuses[idx];
+    this.campuses.splice(idx, 1);
+    deleteDocFromFirestore('campuses', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_CAMPUS', 'Campus', id, `Deleted campus "${camp.name}"`);
+    return true;
+  }
+
   public getAcademicYears(tenantId: string): AcademicYear[] {
     return this.academicYears.filter(a => a.tenantId === tenantId);
   }
 
+  public addAcademicYear(tenantId: string, data: Partial<AcademicYear>, user: User): AcademicYear {
+    const yearName = data.yearName?.trim();
+    if (!yearName) throw new Error('Academic Year Name is required (e.g. 2025/2026).');
+
+    const newYear: AcademicYear = {
+      id: `ay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      yearName,
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      endDate: data.endDate || new Date(Date.now() + 31536000000).toISOString().split('T')[0],
+      isCurrent: !!data.isCurrent,
+      createdAt: new Date().toISOString()
+    };
+
+    if (newYear.isCurrent) {
+      this.academicYears.filter(y => y.tenantId === tenantId).forEach(y => { y.isCurrent = false; });
+    }
+
+    this.academicYears.unshift(newYear);
+    saveDocToFirestore('academicYears', newYear.id, newYear).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_ACADEMIC_YEAR', 'AcademicYear', newYear.id, `Created academic year "${newYear.yearName}"`);
+    return newYear;
+  }
+
+  public updateAcademicYear(tenantId: string, id: string, data: Partial<AcademicYear>, user: User): AcademicYear {
+    const yr = this.academicYears.find(y => y.tenantId === tenantId && y.id === id);
+    if (!yr) throw new Error('Academic year not found.');
+    if (data.yearName) yr.yearName = data.yearName.trim();
+    if (data.startDate) yr.startDate = data.startDate;
+    if (data.endDate) yr.endDate = data.endDate;
+    if (data.isCurrent !== undefined) {
+      yr.isCurrent = data.isCurrent;
+      if (yr.isCurrent) {
+        this.academicYears.filter(y => y.tenantId === tenantId && y.id !== id).forEach(y => { y.isCurrent = false; });
+      }
+    }
+    saveDocToFirestore('academicYears', yr.id, yr).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_ACADEMIC_YEAR', 'AcademicYear', yr.id, `Updated academic year "${yr.yearName}"`);
+    return yr;
+  }
+
+  public deleteAcademicYear(tenantId: string, id: string, user: User): boolean {
+    const idx = this.academicYears.findIndex(y => y.tenantId === tenantId && y.id === id);
+    if (idx === -1) throw new Error('Academic year not found.');
+    const yr = this.academicYears[idx];
+    this.academicYears.splice(idx, 1);
+    deleteDocFromFirestore('academicYears', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_ACADEMIC_YEAR', 'AcademicYear', id, `Deleted academic year "${yr.yearName}"`);
+    return true;
+  }
+
   public getTerms(tenantId: string): AcademicTerm[] {
     return this.terms.filter(t => t.tenantId === tenantId);
+  }
+
+  public addTerm(tenantId: string, data: Partial<AcademicTerm>, user: User): AcademicTerm {
+    const termName = data.termName?.trim();
+    if (!termName) throw new Error('Term / Semester Name is required (e.g. Semester 1).');
+
+    let academicYearName = data.academicYearName || '';
+    if (data.academicYearId) {
+      const yr = this.academicYears.find(y => y.tenantId === tenantId && y.id === data.academicYearId);
+      if (yr) academicYearName = yr.yearName;
+    }
+
+    const newTerm: AcademicTerm = {
+      id: `term_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      academicYearId: data.academicYearId || '',
+      academicYearName,
+      termName,
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      endDate: data.endDate || new Date(Date.now() + 10368000000).toISOString().split('T')[0],
+      isCurrent: !!data.isCurrent,
+      createdAt: new Date().toISOString()
+    };
+
+    if (newTerm.isCurrent) {
+      this.terms.filter(t => t.tenantId === tenantId).forEach(t => { t.isCurrent = false; });
+    }
+
+    this.terms.unshift(newTerm);
+    saveDocToFirestore('terms', newTerm.id, newTerm).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_TERM', 'AcademicTerm', newTerm.id, `Created term "${newTerm.termName}"`);
+    return newTerm;
+  }
+
+  public updateTerm(tenantId: string, id: string, data: Partial<AcademicTerm>, user: User): AcademicTerm {
+    const term = this.terms.find(t => t.tenantId === tenantId && t.id === id);
+    if (!term) throw new Error('Academic term not found.');
+    if (data.termName) term.termName = data.termName.trim();
+    if (data.academicYearId !== undefined) {
+      term.academicYearId = data.academicYearId;
+      const yr = this.academicYears.find(y => y.tenantId === tenantId && y.id === data.academicYearId);
+      if (yr) term.academicYearName = yr.yearName;
+    }
+    if (data.startDate) term.startDate = data.startDate;
+    if (data.endDate) term.endDate = data.endDate;
+    if (data.isCurrent !== undefined) {
+      term.isCurrent = data.isCurrent;
+      if (term.isCurrent) {
+        this.terms.filter(t => t.tenantId === tenantId && t.id !== id).forEach(t => { t.isCurrent = false; });
+      }
+    }
+    saveDocToFirestore('terms', term.id, term).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_TERM', 'AcademicTerm', term.id, `Updated term "${term.termName}"`);
+    return term;
+  }
+
+  public deleteTerm(tenantId: string, id: string, user: User): boolean {
+    const idx = this.terms.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) throw new Error('Academic term not found.');
+    const term = this.terms[idx];
+    this.terms.splice(idx, 1);
+    deleteDocFromFirestore('terms', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_TERM', 'AcademicTerm', id, `Deleted term "${term.termName}"`);
+    return true;
   }
 
   public getDepartments(tenantId: string): Department[] {
@@ -1883,7 +2107,6 @@ class DatabaseStore {
       throw new Error('Department Name and Department Code are required.');
     }
 
-    // Uniqueness validation (Case-insensitive PER TENANT)
     const existingCode = this.departments.find(
       d => d.tenantId === tenantId && d.code.toLowerCase() === code.toLowerCase()
     );
@@ -1898,14 +2121,12 @@ class DatabaseStore {
       throw new Error(`Department name "${name}" already exists for this institution.`);
     }
 
-    // Lookup campus details if campusId provided
     let campusName = data.campusName || '';
     if (data.campusId) {
       const campus = this.getCampuses(tenantId).find(c => c.id === data.campusId);
       if (campus) campusName = campus.name;
     }
 
-    // Lookup head of department name if headOfDepartmentId provided
     let headOfDeptName = data.headOfDepartmentName || data.headOfDepartment || '';
     if (data.headOfDepartmentId) {
       const staff = this.getStaff(tenantId).find(s => s.id === data.headOfDepartmentId);
@@ -1914,7 +2135,7 @@ class DatabaseStore {
 
     const newDepartment: Department = {
       id: `dept_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
-      tenantId, // Derived strictly from authenticated user session
+      tenantId,
       code: code.toUpperCase(),
       name,
       description: data.description?.trim() || '',
@@ -1998,7 +2219,6 @@ class DatabaseStore {
     if (data.status) dept.status = data.status;
 
     dept.updatedAt = new Date().toISOString();
-
     saveDocToFirestore('departments', dept.id, dept).catch(() => {});
 
     this.logAction(
@@ -2023,7 +2243,6 @@ class DatabaseStore {
 
     dept.status = status;
     dept.updatedAt = new Date().toISOString();
-
     saveDocToFirestore('departments', dept.id, dept).catch(() => {});
 
     this.logAction(
@@ -2046,7 +2265,6 @@ class DatabaseStore {
       throw new Error('Department not found.');
     }
 
-    // Delete Protection checks
     const hasPrograms = this.programs.some(p => p.tenantId === tenantId && p.departmentId === id);
     const hasStaff = this.staff.some(s => s.tenantId === tenantId && s.departmentId === id);
 
@@ -2060,7 +2278,6 @@ class DatabaseStore {
       );
     }
 
-    // Perform safe deletion
     this.departments = this.departments.filter(d => !(d.tenantId === tenantId && d.id === id));
     deleteDocFromFirestore('departments', id).catch(() => {});
 
@@ -2082,21 +2299,320 @@ class DatabaseStore {
     return this.programs.filter(p => p.tenantId === tenantId);
   }
 
+  public addProgram(tenantId: string, data: Partial<Program>, user: User): Program {
+    const name = data.name?.trim();
+    const code = data.code?.trim();
+    if (!name || !code) throw new Error('Program Name and Code are required.');
+
+    let departmentName = data.departmentName || '';
+    if (data.departmentId) {
+      const dept = this.getDepartmentById(tenantId, data.departmentId);
+      if (dept) departmentName = dept.name;
+    }
+
+    const newProg: Program = {
+      id: `prog_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      departmentId: data.departmentId || '',
+      departmentName,
+      name,
+      code: code.toUpperCase(),
+      level: data.level || 'Diploma',
+      durationYears: Number(data.durationYears) || 2,
+      description: data.description?.trim() || '',
+      totalCredits: Number(data.totalCredits) || 120,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+
+    this.programs.unshift(newProg);
+    saveDocToFirestore('programs', newProg.id, newProg).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_PROGRAM', 'Program', newProg.id, `Created program "${newProg.name}" (${newProg.code})`);
+    return newProg;
+  }
+
+  public updateProgram(tenantId: string, id: string, data: Partial<Program>, user: User): Program {
+    const prog = this.programs.find(p => p.tenantId === tenantId && p.id === id);
+    if (!prog) throw new Error('Program not found.');
+
+    if (data.name) prog.name = data.name.trim();
+    if (data.code) prog.code = data.code.trim().toUpperCase();
+    if (data.departmentId !== undefined) {
+      prog.departmentId = data.departmentId;
+      const dept = this.getDepartmentById(tenantId, data.departmentId);
+      if (dept) prog.departmentName = dept.name;
+    }
+    if (data.level) prog.level = data.level;
+    if (data.durationYears !== undefined) prog.durationYears = Number(data.durationYears) || 1;
+    if (data.description !== undefined) prog.description = data.description.trim();
+    if (data.totalCredits !== undefined) prog.totalCredits = Number(data.totalCredits);
+    if (data.status) prog.status = data.status;
+
+    saveDocToFirestore('programs', prog.id, prog).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_PROGRAM', 'Program', prog.id, `Updated program "${prog.name}"`);
+    return prog;
+  }
+
+  public deleteProgram(tenantId: string, id: string, user: User): boolean {
+    const idx = this.programs.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) throw new Error('Program not found.');
+    const prog = this.programs[idx];
+
+    const hasStudents = this.students.some(s => s.tenantId === tenantId && s.programId === id);
+    if (hasStudents) {
+      throw new Error(`Cannot delete program "${prog.name}" because it has enrolled students.`);
+    }
+
+    this.programs.splice(idx, 1);
+    deleteDocFromFirestore('programs', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_PROGRAM', 'Program', id, `Deleted program "${prog.name}"`);
+    return true;
+  }
+
   public getUnits(tenantId: string): UnitSubject[] {
     return this.units.filter(u => u.tenantId === tenantId);
+  }
+
+  public addUnit(tenantId: string, data: Partial<UnitSubject>, user: User): UnitSubject {
+    const name = data.name?.trim();
+    const code = data.code?.trim();
+    if (!name || !code) throw new Error('Unit Name and Code are required.');
+
+    let programName = data.programName || '';
+    if (data.programId) {
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) programName = prog.name;
+    }
+
+    let lecturerName = data.lecturerName || '';
+    if (data.lecturerId) {
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.lecturerId);
+      if (staff) lecturerName = staff.fullName;
+    }
+
+    const newUnit: UnitSubject = {
+      id: `unit_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      programId: data.programId || '',
+      programName,
+      departmentId: data.departmentId || '',
+      code: code.toUpperCase(),
+      name,
+      creditHours: Number(data.creditHours) || 3,
+      yearLevel: Number(data.yearLevel) || 1,
+      semester: Number(data.semester) || 1,
+      lecturerId: data.lecturerId || '',
+      lecturerName,
+      createdAt: new Date().toISOString()
+    };
+
+    this.units.unshift(newUnit);
+    saveDocToFirestore('units', newUnit.id, newUnit).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_UNIT', 'UnitSubject', newUnit.id, `Created unit "${newUnit.name}" (${newUnit.code})`);
+    return newUnit;
+  }
+
+  public updateUnit(tenantId: string, id: string, data: Partial<UnitSubject>, user: User): UnitSubject {
+    const unit = this.units.find(u => u.tenantId === tenantId && u.id === id);
+    if (!unit) throw new Error('Unit not found.');
+
+    if (data.name) unit.name = data.name.trim();
+    if (data.code) unit.code = data.code.trim().toUpperCase();
+    if (data.programId !== undefined) {
+      unit.programId = data.programId;
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) unit.programName = prog.name;
+    }
+    if (data.creditHours !== undefined) unit.creditHours = Number(data.creditHours) || 3;
+    if (data.yearLevel !== undefined) unit.yearLevel = Number(data.yearLevel);
+    if (data.semester !== undefined) unit.semester = Number(data.semester);
+    if (data.lecturerId !== undefined) {
+      unit.lecturerId = data.lecturerId;
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.lecturerId);
+      if (staff) unit.lecturerName = staff.fullName;
+    }
+
+    saveDocToFirestore('units', unit.id, unit).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_UNIT', 'UnitSubject', unit.id, `Updated unit "${unit.name}"`);
+    return unit;
+  }
+
+  public deleteUnit(tenantId: string, id: string, user: User): boolean {
+    const idx = this.units.findIndex(u => u.tenantId === tenantId && u.id === id);
+    if (idx === -1) throw new Error('Unit not found.');
+    const unit = this.units[idx];
+    this.units.splice(idx, 1);
+    deleteDocFromFirestore('units', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_UNIT', 'UnitSubject', id, `Deleted unit "${unit.name}"`);
+    return true;
+  }
+
+  public getClasses(tenantId: string): SchoolClass[] {
+    return this.schoolClasses.filter(c => c.tenantId === tenantId);
+  }
+
+  public addClass(tenantId: string, data: Partial<SchoolClass>, user: User): SchoolClass {
+    const name = data.name?.trim();
+    if (!name) throw new Error('Class Name is required.');
+
+    let programName = data.programName || '';
+    if (data.programId) {
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) programName = prog.name;
+    }
+
+    let campusName = data.campusName || '';
+    if (data.campusId) {
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (camp) campusName = camp.name;
+    }
+
+    let teacherName = data.classTeacherName || '';
+    if (data.classTeacherId) {
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.classTeacherId);
+      if (staff) teacherName = staff.fullName;
+    }
+
+    const newClass: SchoolClass = {
+      id: `cls_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      name,
+      code: data.code?.trim().toUpperCase() || name.substring(0, 8).toUpperCase(),
+      programId: data.programId || '',
+      programName,
+      academicYear: data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+      academicTerm: data.academicTerm || 'Semester 1',
+      campusId: data.campusId || '',
+      campusName,
+      capacity: Number(data.capacity) || 40,
+      classTeacherId: data.classTeacherId || '',
+      classTeacherName: teacherName,
+      roomVenue: data.roomVenue?.trim() || '',
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+
+    this.schoolClasses.unshift(newClass);
+    saveDocToFirestore('schoolClasses', newClass.id, newClass).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_CLASS', 'SchoolClass', newClass.id, `Created class "${newClass.name}"`);
+    return newClass;
+  }
+
+  public updateClass(tenantId: string, id: string, data: Partial<SchoolClass>, user: User): SchoolClass {
+    const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === id);
+    if (!cls) throw new Error('Class not found.');
+
+    if (data.name) cls.name = data.name.trim();
+    if (data.code) cls.code = data.code.trim().toUpperCase();
+    if (data.programId !== undefined) {
+      cls.programId = data.programId;
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) cls.programName = prog.name;
+    }
+    if (data.academicYear) cls.academicYear = data.academicYear;
+    if (data.academicTerm) cls.academicTerm = data.academicTerm;
+    if (data.campusId !== undefined) {
+      cls.campusId = data.campusId;
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (camp) cls.campusName = camp.name;
+    }
+    if (data.capacity !== undefined) cls.capacity = Number(data.capacity);
+    if (data.classTeacherId !== undefined) {
+      cls.classTeacherId = data.classTeacherId;
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.classTeacherId);
+      if (staff) cls.classTeacherName = staff.fullName;
+    }
+    if (data.roomVenue !== undefined) cls.roomVenue = data.roomVenue.trim();
+    if (data.status) cls.status = data.status;
+
+    saveDocToFirestore('schoolClasses', cls.id, cls).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_CLASS', 'SchoolClass', cls.id, `Updated class "${cls.name}"`);
+    return cls;
+  }
+
+  public deleteClass(tenantId: string, id: string, user: User): boolean {
+    const idx = this.schoolClasses.findIndex(c => c.tenantId === tenantId && c.id === id);
+    if (idx === -1) throw new Error('Class not found.');
+    const cls = this.schoolClasses[idx];
+    this.schoolClasses.splice(idx, 1);
+    deleteDocFromFirestore('schoolClasses', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_CLASS', 'SchoolClass', id, `Deleted class "${cls.name}"`);
+    return true;
   }
 
   public getStudents(tenantId: string): Student[] {
     return this.students.filter(s => s.tenantId === tenantId);
   }
 
+  public getStudentById(tenantId: string, id: string): Student | undefined {
+    return this.students.find(s => s.tenantId === tenantId && s.id === id);
+  }
+
   public addStudent(tenantId: string, studentData: Omit<Student, 'id' | 'tenantId' | 'enrolledAt'>, createdBy: User): Student {
+    const fullName = studentData.fullName?.trim();
+    if (!fullName) throw new Error('Student Full Name is required.');
+
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    const admissionNo = studentData.admissionNo?.trim() || `ADM/${new Date().getFullYear()}/${randNum}`;
+
+    const existing = this.students.find(s => s.tenantId === tenantId && s.admissionNo.toLowerCase() === admissionNo.toLowerCase());
+    if (existing) throw new Error(`Admission number "${admissionNo}" is already in use.`);
+
+    let programName = studentData.programName || '';
+    if (studentData.programId) {
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === studentData.programId);
+      if (prog) programName = prog.name;
+    }
+
+    let campusName = studentData.campusName || '';
+    if (studentData.campusId) {
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === studentData.campusId);
+      if (camp) campusName = camp.name;
+    }
+
+    let className = studentData.className || '';
+    if (studentData.classId) {
+      const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === studentData.classId);
+      if (cls) className = cls.name;
+    }
+
+    let deptName = studentData.departmentName || '';
+    if (studentData.departmentId) {
+      const dept = this.departments.find(d => d.tenantId === tenantId && d.id === studentData.departmentId);
+      if (dept) deptName = dept.name;
+    }
+
     const newStudent: Student = {
-      id: `stud_${Date.now().toString(36)}`,
+      id: `stud_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
-      ...studentData,
+      admissionNo: admissionNo.toUpperCase(),
+      fullName,
+      email: studentData.email?.trim() || `${fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`,
+      phone: studentData.phone?.trim() || '',
+      gender: studentData.gender || 'OTHER',
+      dateOfBirth: studentData.dateOfBirth || '2004-01-01',
+      nationalId: studentData.nationalId?.trim() || '',
+      address: studentData.address?.trim() || '',
+      programId: studentData.programId || '',
+      programName,
+      departmentId: studentData.departmentId || '',
+      departmentName: deptName,
+      classId: studentData.classId || '',
+      className,
+      campusId: studentData.campusId || '',
+      campusName,
+      intake: studentData.intake || 'January 2026',
+      academicYear: studentData.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+      academicTerm: studentData.academicTerm || 'Semester 1',
+      status: studentData.status || 'ACTIVE',
+      feeBalance: Number(studentData.feeBalance) || 0,
+      guardianName: studentData.guardianName?.trim() || '',
+      guardianPhone: studentData.guardianPhone?.trim() || '',
+      guardianEmail: studentData.guardianEmail?.trim() || '',
+      guardianRelation: studentData.guardianRelation?.trim() || 'Parent',
       enrolledAt: new Date().toISOString()
     };
+
     this.students.unshift(newStudent);
     saveDocToFirestore('students', newStudent.id, newStudent).catch(() => {});
 
@@ -2107,11 +2623,66 @@ class DatabaseStore {
       createdBy.role,
       'STUDENT_ADMITTED',
       'Student',
-      `Admitted new student ${newStudent.fullName} (${newStudent.admissionNo}) into ${newStudent.programName}`,
-      newStudent.id
+      newStudent.id,
+      `Admitted student "${newStudent.fullName}" (${newStudent.admissionNo})`
     );
 
     return newStudent;
+  }
+
+  public updateStudent(tenantId: string, studentId: string, data: Partial<Student>, updatedBy: User): Student {
+    const student = this.getStudentById(tenantId, studentId);
+    if (!student) throw new Error('Student not found.');
+
+    if (data.admissionNo && data.admissionNo.trim()) {
+      const newAdm = data.admissionNo.trim().toUpperCase();
+      const existing = this.students.find(s => s.tenantId === tenantId && s.id !== studentId && s.admissionNo.toLowerCase() === newAdm.toLowerCase());
+      if (existing) throw new Error(`Admission number "${newAdm}" is already assigned to another student.`);
+      student.admissionNo = newAdm;
+    }
+
+    if (data.fullName) student.fullName = data.fullName.trim();
+    if (data.email) student.email = data.email.trim();
+    if (data.phone !== undefined) student.phone = data.phone.trim();
+    if (data.gender) student.gender = data.gender;
+    if (data.dateOfBirth) student.dateOfBirth = data.dateOfBirth;
+    if (data.nationalId !== undefined) student.nationalId = data.nationalId.trim();
+    if (data.address !== undefined) student.address = data.address.trim();
+
+    if (data.programId !== undefined) {
+      student.programId = data.programId;
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) student.programName = prog.name;
+    }
+    if (data.departmentId !== undefined) {
+      student.departmentId = data.departmentId;
+      const dept = this.departments.find(d => d.tenantId === tenantId && d.id === data.departmentId);
+      if (dept) student.departmentName = dept.name;
+    }
+    if (data.campusId !== undefined) {
+      student.campusId = data.campusId;
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (camp) student.campusName = camp.name;
+    }
+    if (data.classId !== undefined) {
+      student.classId = data.classId;
+      const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === data.classId);
+      if (cls) student.className = cls.name;
+    }
+
+    if (data.intake) student.intake = data.intake;
+    if (data.academicYear) student.academicYear = data.academicYear;
+    if (data.academicTerm) student.academicTerm = data.academicTerm;
+    if (data.status) student.status = data.status;
+    if (data.feeBalance !== undefined) student.feeBalance = Number(data.feeBalance);
+    if (data.guardianName !== undefined) student.guardianName = data.guardianName.trim();
+    if (data.guardianPhone !== undefined) student.guardianPhone = data.guardianPhone.trim();
+    if (data.guardianEmail !== undefined) student.guardianEmail = data.guardianEmail.trim();
+    if (data.guardianRelation !== undefined) student.guardianRelation = data.guardianRelation.trim();
+
+    saveDocToFirestore('students', student.id, student).catch(() => {});
+    this.logAction(tenantId, updatedBy.id, updatedBy.name, updatedBy.role, 'STUDENT_UPDATED', 'Student', student.id, `Updated student "${student.fullName}" (${student.admissionNo})`);
+    return student;
   }
 
   public bulkAddStudents(tenantId: string, studentsData: Array<Partial<Student>>, createdBy: User): { addedCount: number; students: Student[] } {
@@ -2124,8 +2695,7 @@ class DatabaseStore {
     studentsData.forEach((sData, idx) => {
       if (!sData.fullName) return;
       const randNum = Math.floor(1000 + Math.random() * 9000);
-      const admissionNo = sData.admissionNo || `ADM/${new Date().getFullYear()}/${randNum}`;
-      
+      const admissionNo = (sData.admissionNo || `ADM/${new Date().getFullYear()}/${randNum}`).toUpperCase();
       const cleanName = sData.fullName.trim();
       const defaultEmail = `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`;
 
@@ -2135,18 +2705,28 @@ class DatabaseStore {
         admissionNo,
         fullName: cleanName,
         email: sData.email?.trim() || defaultEmail,
-        phone: sData.phone?.trim() || '+254700000000',
-        programId: sData.programId || programs[0]?.id || 'prog_1',
-        programName: sData.programName?.trim() || defaultProg,
-        campusId: sData.campusId || campuses[0]?.id || 'camp_1',
-        campusName: sData.campusName?.trim() || defaultCampus,
-        guardianName: sData.guardianName?.trim() || 'N/A',
-        guardianPhone: sData.guardianPhone?.trim() || 'N/A',
-        academicYear: sData.academicYear?.trim() || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        phone: sData.phone?.trim() || '',
         gender: sData.gender || 'OTHER',
-        dateOfBirth: sData.dateOfBirth || '2000-01-01',
-        feeBalance: typeof sData.feeBalance === 'number' ? sData.feeBalance : (parseFloat(sData.feeBalance as any) || 0),
+        dateOfBirth: sData.dateOfBirth || '2004-01-01',
+        nationalId: sData.nationalId?.trim() || '',
+        address: sData.address?.trim() || '',
+        programId: sData.programId || programs[0]?.id || '',
+        programName: sData.programName?.trim() || defaultProg,
+        departmentId: sData.departmentId || '',
+        departmentName: sData.departmentName || '',
+        classId: sData.classId || '',
+        className: sData.className || '',
+        campusId: sData.campusId || campuses[0]?.id || '',
+        campusName: sData.campusName?.trim() || defaultCampus,
+        intake: sData.intake || 'January 2026',
+        academicYear: sData.academicYear?.trim() || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        academicTerm: sData.academicTerm || 'Semester 1',
         status: (sData.status as any) || 'ACTIVE',
+        feeBalance: typeof sData.feeBalance === 'number' ? sData.feeBalance : (parseFloat(sData.feeBalance as any) || 0),
+        guardianName: sData.guardianName?.trim() || '',
+        guardianPhone: sData.guardianPhone?.trim() || '',
+        guardianEmail: sData.guardianEmail?.trim() || '',
+        guardianRelation: sData.guardianRelation?.trim() || 'Parent',
         enrolledAt: new Date().toISOString()
       };
       this.students.unshift(student);
@@ -2184,8 +2764,8 @@ class DatabaseStore {
       deletedBy.role,
       'STUDENT_DELETED',
       'Student',
-      `Deleted student record for "${student.fullName}" (${student.admissionNo})`,
-      studentId
+      studentId,
+      `Deleted student record for "${student.fullName}" (${student.admissionNo})`
     );
 
     return true;
@@ -2193,6 +2773,69 @@ class DatabaseStore {
 
   public getStaff(tenantId: string): LecturerStaff[] {
     return this.staff.filter(s => s.tenantId === tenantId);
+  }
+
+  public addStaff(tenantId: string, data: Partial<LecturerStaff>, user: User): LecturerStaff {
+    const fullName = data.fullName?.trim();
+    if (!fullName) throw new Error('Staff Full Name is required.');
+
+    const randNum = Math.floor(100 + Math.random() * 900);
+    const staffNo = (data.staffNo?.trim() || `STF/${randNum}`).toUpperCase();
+
+    let deptName = data.departmentName || '';
+    if (data.departmentId) {
+      const dept = this.getDepartmentById(tenantId, data.departmentId);
+      if (dept) deptName = dept.name;
+    }
+
+    const newStaff: LecturerStaff = {
+      id: `stf_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      staffNo,
+      fullName,
+      email: data.email?.trim() || `${fullName.toLowerCase().replace(/[^a-z0-9]/g, '')}@institution.edu`,
+      phone: data.phone?.trim() || '',
+      departmentId: data.departmentId || '',
+      departmentName: deptName,
+      designation: data.designation?.trim() || 'Lecturer',
+      employmentType: data.employmentType || 'FULL_TIME',
+      specialization: data.specialization?.trim() || '',
+      qualification: data.qualification?.trim() || '',
+      nationalId: data.nationalId?.trim() || '',
+      status: data.status || 'ACTIVE',
+      hireDate: data.hireDate || new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString()
+    };
+
+    this.staff.unshift(newStaff);
+    saveDocToFirestore('staff', newStaff.id, newStaff).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_STAFF', 'Staff', newStaff.id, `Added faculty/staff "${newStaff.fullName}" (${newStaff.staffNo})`);
+    return newStaff;
+  }
+
+  public updateStaff(tenantId: string, id: string, data: Partial<LecturerStaff>, user: User): LecturerStaff {
+    const member = this.staff.find(s => s.tenantId === tenantId && s.id === id);
+    if (!member) throw new Error('Staff member not found.');
+
+    if (data.staffNo) member.staffNo = data.staffNo.trim().toUpperCase();
+    if (data.fullName) member.fullName = data.fullName.trim();
+    if (data.email) member.email = data.email.trim();
+    if (data.phone !== undefined) member.phone = data.phone.trim();
+    if (data.departmentId !== undefined) {
+      member.departmentId = data.departmentId;
+      const dept = this.getDepartmentById(tenantId, data.departmentId);
+      if (dept) member.departmentName = dept.name;
+    }
+    if (data.designation) member.designation = data.designation.trim();
+    if (data.employmentType) member.employmentType = data.employmentType;
+    if (data.specialization !== undefined) member.specialization = data.specialization.trim();
+    if (data.qualification !== undefined) member.qualification = data.qualification.trim();
+    if (data.nationalId !== undefined) member.nationalId = data.nationalId.trim();
+    if (data.status) member.status = data.status;
+
+    saveDocToFirestore('staff', member.id, member).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_STAFF', 'Staff', member.id, `Updated faculty/staff "${member.fullName}"`);
+    return member;
   }
 
   public deleteStaff(tenantId: string, staffId: string, deletedBy: User): boolean {
@@ -2210,8 +2853,8 @@ class DatabaseStore {
       deletedBy.role,
       'STAFF_DELETED',
       'Staff',
-      `Deleted faculty/staff record for "${member.fullName}" (${member.staffNo || member.id})`,
-      staffId
+      staffId,
+      `Deleted faculty/staff record for "${member.fullName}" (${member.staffNo || member.id})`
     );
 
     return true;
@@ -2221,8 +2864,247 @@ class DatabaseStore {
     return this.timetable.filter(t => t.tenantId === tenantId);
   }
 
-  public getFeePayments(tenantId: string): FeePayment[] {
-    return this.feePayments.filter(f => f.tenantId === tenantId);
+  public addTimetableEntry(tenantId: string, data: Partial<TimetableEntry>, user: User): TimetableEntry {
+    let unitName = data.unitName || '';
+    if (data.unitId) {
+      const u = this.units.find(un => un.tenantId === tenantId && un.id === data.unitId);
+      if (u) unitName = u.name;
+    }
+
+    let lecturerName = data.lecturerName || '';
+    if (data.lecturerId) {
+      const s = this.staff.find(st => st.tenantId === tenantId && st.id === data.lecturerId);
+      if (s) lecturerName = s.fullName;
+    }
+
+    const entry: TimetableEntry = {
+      id: `tt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      unitId: data.unitId || '',
+      unitCode: data.unitCode?.trim().toUpperCase() || 'UNIT',
+      unitName,
+      lecturerId: data.lecturerId || '',
+      lecturerName,
+      classId: data.classId || '',
+      groupName: data.groupName?.trim() || 'All Groups',
+      roomVenue: data.roomVenue?.trim() || 'Room 101',
+      dayOfWeek: data.dayOfWeek || 'Monday',
+      startTime: data.startTime || '08:00',
+      endTime: data.endTime || '10:00',
+      campusId: data.campusId || '',
+      campusName: data.campusName || ''
+    };
+
+    this.timetable.unshift(entry);
+    saveDocToFirestore('timetable', entry.id, entry).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_TIMETABLE_ENTRY', 'TimetableEntry', entry.id, `Created timetable entry for ${entry.unitCode}`);
+    return entry;
+  }
+
+  public deleteTimetableEntry(tenantId: string, id: string, user: User): boolean {
+    const idx = this.timetable.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) throw new Error('Timetable entry not found.');
+    this.timetable.splice(idx, 1);
+    deleteDocFromFirestore('timetable', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_TIMETABLE_ENTRY', 'TimetableEntry', id, `Deleted timetable entry`);
+    return true;
+  }
+
+  public getAttendance(tenantId: string, filters?: { classId?: string; unitId?: string; date?: string }): StudentAttendance[] {
+    let list = this.studentAttendance.filter(a => a.tenantId === tenantId);
+    if (filters?.classId) list = list.filter(a => a.classId === filters.classId);
+    if (filters?.unitId) list = list.filter(a => a.unitId === filters.unitId);
+    if (filters?.date) list = list.filter(a => a.date === filters.date);
+    return list;
+  }
+
+  public recordAttendance(tenantId: string, records: Array<Partial<StudentAttendance>>, user: User): { recordedCount: number } {
+    let count = 0;
+    records.forEach(r => {
+      if (!r.studentId) return;
+      const student = this.students.find(s => s.tenantId === tenantId && s.id === r.studentId);
+      if (!student) return;
+
+      const dateStr = r.date || new Date().toISOString().split('T')[0];
+      const existingIdx = this.studentAttendance.findIndex(
+        a => a.tenantId === tenantId && a.studentId === student.id && a.date === dateStr && a.unitId === r.unitId
+      );
+
+      const entry: StudentAttendance = {
+        id: existingIdx >= 0 ? this.studentAttendance[existingIdx].id : `att_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        date: dateStr,
+        classId: r.classId || student.classId || '',
+        className: r.className || student.className || '',
+        unitId: r.unitId || '',
+        unitCode: r.unitCode || '',
+        unitName: r.unitName || '',
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        status: r.status || 'PRESENT',
+        remarks: r.remarks || '',
+        markedBy: user.name,
+        createdAt: new Date().toISOString()
+      };
+
+      if (existingIdx >= 0) {
+        this.studentAttendance[existingIdx] = entry;
+      } else {
+        this.studentAttendance.unshift(entry);
+      }
+      saveDocToFirestore('studentAttendance', entry.id, entry).catch(() => {});
+      count++;
+    });
+
+    this.logAction(tenantId, user.id, user.name, user.role, 'RECORD_ATTENDANCE', 'StudentAttendance', `Marked attendance for ${count} students`);
+    return { recordedCount: count };
+  }
+
+  public getFeeStructures(tenantId: string): FeeStructure[] {
+    return this.feeStructures.filter(f => f.tenantId === tenantId);
+  }
+
+  public addFeeStructure(tenantId: string, data: Partial<FeeStructure>, user: User): FeeStructure {
+    let programName = data.programName || '';
+    if (data.programId) {
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) programName = prog.name;
+    }
+
+    const tuition = Number(data.tuitionFee) || 0;
+    const exam = Number(data.examFee) || 0;
+    const library = Number(data.libraryFee) || 0;
+    const activity = Number(data.activityFee) || 0;
+    const other = Number(data.otherFees) || 0;
+    const total = tuition + exam + library + activity + other;
+
+    const struct: FeeStructure = {
+      id: `fee_struct_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      programId: data.programId || '',
+      programName,
+      academicYear: data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+      academicTerm: data.academicTerm || 'Semester 1',
+      tuitionFee: tuition,
+      examFee: exam,
+      libraryFee: library,
+      activityFee: activity,
+      otherFees: other,
+      totalFee: total,
+      createdAt: new Date().toISOString()
+    };
+
+    this.feeStructures.unshift(struct);
+    saveDocToFirestore('feeStructures', struct.id, struct).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Created fee structure for ${struct.programName}`);
+    return struct;
+  }
+
+  public updateFeeStructure(tenantId: string, id: string, data: Partial<FeeStructure>, user: User): FeeStructure {
+    const struct = this.feeStructures.find(f => f.tenantId === tenantId && f.id === id);
+    if (!struct) throw new Error('Fee structure not found.');
+
+    if (data.programId !== undefined) {
+      struct.programId = data.programId;
+      const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
+      if (prog) struct.programName = prog.name;
+    }
+    if (data.academicYear) struct.academicYear = data.academicYear;
+    if (data.academicTerm) struct.academicTerm = data.academicTerm;
+    if (data.tuitionFee !== undefined) struct.tuitionFee = Number(data.tuitionFee);
+    if (data.examFee !== undefined) struct.examFee = Number(data.examFee);
+    if (data.libraryFee !== undefined) struct.libraryFee = Number(data.libraryFee);
+    if (data.activityFee !== undefined) struct.activityFee = Number(data.activityFee);
+    if (data.otherFees !== undefined) struct.otherFees = Number(data.otherFees);
+    struct.totalFee = struct.tuitionFee + struct.examFee + struct.libraryFee + struct.activityFee + (struct.otherFees || 0);
+
+    saveDocToFirestore('feeStructures', struct.id, struct).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Updated fee structure for ${struct.programName}`);
+    return struct;
+  }
+
+  public deleteFeeStructure(tenantId: string, id: string, user: User): boolean {
+    const idx = this.feeStructures.findIndex(f => f.tenantId === tenantId && f.id === id);
+    if (idx === -1) throw new Error('Fee structure not found.');
+    this.feeStructures.splice(idx, 1);
+    deleteDocFromFirestore('feeStructures', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_FEE_STRUCTURE', 'FeeStructure', id, `Deleted fee structure`);
+    return true;
+  }
+
+  public getInvoices(tenantId: string, studentId?: string): StudentInvoice[] {
+    let list = this.studentInvoices.filter(i => i.tenantId === tenantId);
+    if (studentId) list = list.filter(i => i.studentId === studentId);
+    return list;
+  }
+
+  public createInvoice(tenantId: string, data: Partial<StudentInvoice>, user: User): StudentInvoice {
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === data.studentId);
+    if (!student) throw new Error('Student not found.');
+
+    const items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [
+      { description: 'Tuition Fee', amount: Number(data.totalAmount) || 25000 }
+    ];
+    const total = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    const invoiceNo = data.invoiceNo || `INV-${new Date().getFullYear()}-${randNum}`;
+
+    const inv: StudentInvoice = {
+      id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      invoiceNo,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      programId: student.programId,
+      programName: student.programName,
+      academicTerm: data.academicTerm || 'Semester 1',
+      academicYear: data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+      feeStructureId: data.feeStructureId || '',
+      items,
+      totalAmount: total,
+      amountPaid: 0,
+      balance: total,
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      dueDate: data.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      status: 'UNPAID',
+      createdAt: new Date().toISOString()
+    };
+
+    student.feeBalance += total;
+    this.studentInvoices.unshift(inv);
+    saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+    saveDocToFirestore('students', student.id, student).catch(() => {});
+
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_INVOICE', 'StudentInvoice', inv.id, `Generated invoice ${inv.invoiceNo} of ${inv.totalAmount} for ${student.fullName}`);
+    return inv;
+  }
+
+  public generateClassInvoices(tenantId: string, params: { classId?: string; programId?: string; academicTerm: string; academicYear: string; feeStructureId?: string; totalAmount?: number }, user: User): { count: number; invoices: StudentInvoice[] } {
+    let targetStudents = this.students.filter(s => s.tenantId === tenantId && s.status === 'ACTIVE');
+    if (params.classId) targetStudents = targetStudents.filter(s => s.classId === params.classId);
+    if (params.programId) targetStudents = targetStudents.filter(s => s.programId === params.programId);
+
+    const generated: StudentInvoice[] = [];
+    targetStudents.forEach(st => {
+      const inv = this.createInvoice(tenantId, {
+        studentId: st.id,
+        academicTerm: params.academicTerm,
+        academicYear: params.academicYear,
+        feeStructureId: params.feeStructureId,
+        totalAmount: params.totalAmount || 30000
+      }, user);
+      generated.push(inv);
+    });
+
+    return { count: generated.length, invoices: generated };
+  }
+
+  public getFeePayments(tenantId: string, studentId?: string): FeePayment[] {
+    let list = this.feePayments.filter(f => f.tenantId === tenantId);
+    if (studentId) list = list.filter(f => f.studentId === studentId);
+    return list;
   }
 
   public recordFeePayment(
@@ -2230,31 +3112,53 @@ class DatabaseStore {
     data: {
       studentId: string;
       amount: number;
-      paymentMethod: 'M-PESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD';
+      paymentMethod: 'M-PESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD' | 'CASH';
       referenceNo: string;
-      receivedBy: string;
+      receivedBy?: string;
+      invoiceId?: string;
+      bankName?: string;
+      notes?: string;
     },
     createdBy: User
   ): FeePayment {
     const student = this.students.find(s => s.id === data.studentId && s.tenantId === tenantId);
-    if (!student) throw new Error('Student not found for this tenant');
+    if (!student) throw new Error('Student not found for this institution');
+
+    const paymentAmount = Number(data.amount) || 0;
+    if (paymentAmount <= 0) throw new Error('Payment amount must be greater than zero.');
+
+    let invNo = '';
+    if (data.invoiceId) {
+      const invoice = this.studentInvoices.find(i => i.tenantId === tenantId && i.id === data.invoiceId);
+      if (invoice) {
+        invNo = invoice.invoiceNo;
+        invoice.amountPaid += paymentAmount;
+        invoice.balance = Math.max(0, invoice.totalAmount - invoice.amountPaid);
+        invoice.status = invoice.balance === 0 ? 'PAID' : (invoice.amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+        saveDocToFirestore('studentInvoices', invoice.id, invoice).catch(() => {});
+      }
+    }
 
     const payment: FeePayment = {
-      id: `pay_${Date.now().toString(36)}`,
+      id: `pay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
       receiptNo: `RCT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
       studentId: student.id,
       studentName: student.fullName,
       admissionNo: student.admissionNo,
-      amount: data.amount,
+      invoiceId: data.invoiceId,
+      invoiceNo: invNo,
+      amount: paymentAmount,
       paymentMethod: data.paymentMethod,
-      referenceNo: data.referenceNo,
+      referenceNo: data.referenceNo?.trim() || `TXN${Date.now().toString(36).toUpperCase()}`,
       paidAt: new Date().toISOString(),
-      receivedBy: data.receivedBy || createdBy.name
+      receivedBy: data.receivedBy || createdBy.name,
+      bankName: data.bankName?.trim() || '',
+      notes: data.notes?.trim() || ''
     };
 
-    // Deduct fee balance
-    student.feeBalance = Math.max(0, student.feeBalance - data.amount);
+    // Deduct student's total fee balance
+    student.feeBalance = Math.max(0, student.feeBalance - paymentAmount);
 
     this.feePayments.unshift(payment);
     saveDocToFirestore('feePayments', payment.id, payment).catch(() => {});
@@ -2267,11 +3171,239 @@ class DatabaseStore {
       createdBy.role,
       'FEE_PAYMENT_RECORDED',
       'FeePayment',
-      `Recorded fee payment of ${payment.amount} for student ${student.fullName} (${student.admissionNo}). Ref: ${data.referenceNo}`,
-      payment.id
+      payment.id,
+      `Recorded fee payment of ${payment.amount} for student ${student.fullName} (${student.admissionNo}). Receipt: ${payment.receiptNo}`
     );
 
     return payment;
+  }
+
+  public getStudentGrades(tenantId: string, studentId?: string, unitId?: string): StudentGradeRecord[] {
+    let list = this.studentGrades.filter(g => g.tenantId === tenantId);
+    if (studentId) list = list.filter(g => g.studentId === studentId);
+    if (unitId) list = list.filter(g => g.unitId === unitId);
+    return list;
+  }
+
+  public recordStudentGrades(tenantId: string, grades: Array<Partial<StudentGradeRecord>>, user: User): { recordedCount: number } {
+    let count = 0;
+    grades.forEach(g => {
+      if (!g.studentId || !g.unitId) return;
+      const student = this.students.find(s => s.tenantId === tenantId && s.id === g.studentId);
+      const unit = this.units.find(u => u.tenantId === tenantId && u.id === g.unitId);
+      if (!student || !unit) return;
+
+      const cat = Number(g.catScore) || 0;
+      const exam = Number(g.examScore) || 0;
+      const total = Math.min(100, Math.round(cat + exam));
+
+      let grade = 'F';
+      let points = 0;
+      let remarks = 'Fail';
+      if (total >= 70) { grade = 'A'; points = 4.0; remarks = 'Distinction / Excellent'; }
+      else if (total >= 60) { grade = 'B'; points = 3.0; remarks = 'Credit / Very Good'; }
+      else if (total >= 50) { grade = 'C'; points = 2.0; remarks = 'Pass / Good'; }
+      else if (total >= 40) { grade = 'D'; points = 1.0; remarks = 'Pass / Satisfactory'; }
+      else { grade = 'F'; points = 0; remarks = 'Fail / Referral'; }
+
+      const existingIdx = this.studentGrades.findIndex(
+        ex => ex.tenantId === tenantId && ex.studentId === student.id && ex.unitId === unit.id && ex.academicTerm === (g.academicTerm || 'Semester 1')
+      );
+
+      const record: StudentGradeRecord = {
+        id: existingIdx >= 0 ? this.studentGrades[existingIdx].id : `grd_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        programId: student.programId,
+        classId: student.classId,
+        unitId: unit.id,
+        unitCode: unit.code,
+        unitName: unit.name,
+        academicTerm: g.academicTerm || 'Semester 1',
+        academicYear: g.academicYear || student.academicYear,
+        catScore: cat,
+        examScore: exam,
+        totalScore: total,
+        grade,
+        points,
+        remarks,
+        lecturerName: unit.lecturerName || user.name,
+        publishedAt: new Date().toISOString()
+      };
+
+      if (existingIdx >= 0) {
+        this.studentGrades[existingIdx] = record;
+      } else {
+        this.studentGrades.unshift(record);
+      }
+      saveDocToFirestore('studentGrades', record.id, record).catch(() => {});
+      count++;
+    });
+
+    this.logAction(tenantId, user.id, user.name, user.role, 'RECORD_GRADES', 'StudentGradeRecord', `Recorded exam grades for ${count} entries`);
+    return { recordedCount: count };
+  }
+
+  public getLibraryBooks(tenantId: string): LibraryBook[] {
+    return this.libraryBooks.filter(b => b.tenantId === tenantId);
+  }
+
+  public addLibraryBook(tenantId: string, data: Partial<LibraryBook>, user: User): LibraryBook {
+    const title = data.title?.trim();
+    if (!title) throw new Error('Book title is required.');
+
+    const newBook: LibraryBook = {
+      id: `bk_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      isbn: data.isbn?.trim() || `ISBN-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      title,
+      author: data.author?.trim() || 'Various Authors',
+      publisher: data.publisher?.trim() || '',
+      edition: data.edition?.trim() || '',
+      category: data.category?.trim() || 'General Reference',
+      shelfLocation: data.shelfLocation?.trim() || 'Section A-1',
+      copiesTotal: Number(data.copiesTotal) || 1,
+      copiesAvailable: Number(data.copiesAvailable !== undefined ? data.copiesAvailable : data.copiesTotal) || 1,
+      createdAt: new Date().toISOString()
+    };
+
+    this.libraryBooks.unshift(newBook);
+    saveDocToFirestore('libraryBooks', newBook.id, newBook).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_BOOK', 'LibraryBook', newBook.id, `Cataloged book "${newBook.title}"`);
+    return newBook;
+  }
+
+  public updateLibraryBook(tenantId: string, id: string, data: Partial<LibraryBook>, user: User): LibraryBook {
+    const book = this.libraryBooks.find(b => b.tenantId === tenantId && b.id === id);
+    if (!book) throw new Error('Book not found.');
+    if (data.title) book.title = data.title.trim();
+    if (data.author) book.author = data.author.trim();
+    if (data.isbn) book.isbn = data.isbn.trim();
+    if (data.category) book.category = data.category.trim();
+    if (data.shelfLocation !== undefined) book.shelfLocation = data.shelfLocation.trim();
+    if (data.copiesTotal !== undefined) book.copiesTotal = Number(data.copiesTotal);
+    if (data.copiesAvailable !== undefined) book.copiesAvailable = Number(data.copiesAvailable);
+
+    saveDocToFirestore('libraryBooks', book.id, book).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_BOOK', 'LibraryBook', book.id, `Updated book "${book.title}"`);
+    return book;
+  }
+
+  public deleteLibraryBook(tenantId: string, id: string, user: User): boolean {
+    const idx = this.libraryBooks.findIndex(b => b.tenantId === tenantId && b.id === id);
+    if (idx === -1) throw new Error('Book not found.');
+    this.libraryBooks.splice(idx, 1);
+    deleteDocFromFirestore('libraryBooks', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_BOOK', 'LibraryBook', id, `Deleted book`);
+    return true;
+  }
+
+  public getLibraryLoans(tenantId: string): LibraryLoan[] {
+    return this.libraryLoans.filter(l => l.tenantId === tenantId);
+  }
+
+  public issueLibraryLoan(tenantId: string, data: { bookId: string; studentId: string; dueDate?: string }, user: User): LibraryLoan {
+    const book = this.libraryBooks.find(b => b.tenantId === tenantId && b.id === data.bookId);
+    if (!book) throw new Error('Book not found.');
+    if (book.copiesAvailable <= 0) throw new Error(`No copies of "${book.title}" are currently available for issue.`);
+
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === data.studentId);
+    if (!student) throw new Error('Student not found.');
+
+    const loan: LibraryLoan = {
+      id: `loan_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      bookId: book.id,
+      bookTitle: book.title,
+      isbn: book.isbn,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      borrowDate: new Date().toISOString().split('T')[0],
+      dueDate: data.dueDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      status: 'ISSUED',
+      issuedBy: user.name
+    };
+
+    book.copiesAvailable = Math.max(0, book.copiesAvailable - 1);
+    this.libraryLoans.unshift(loan);
+    saveDocToFirestore('libraryLoans', loan.id, loan).catch(() => {});
+    saveDocToFirestore('libraryBooks', book.id, book).catch(() => {});
+
+    this.logAction(tenantId, user.id, user.name, user.role, 'ISSUE_BOOK', 'LibraryLoan', loan.id, `Issued "${book.title}" to ${student.fullName}`);
+    return loan;
+  }
+
+  public returnLibraryLoan(tenantId: string, loanId: string, user: User): LibraryLoan {
+    const loan = this.libraryLoans.find(l => l.tenantId === tenantId && l.id === loanId);
+    if (!loan) throw new Error('Loan record not found.');
+
+    loan.status = 'RETURNED';
+    loan.returnDate = new Date().toISOString().split('T')[0];
+
+    const book = this.libraryBooks.find(b => b.tenantId === tenantId && b.id === loan.bookId);
+    if (book) {
+      book.copiesAvailable = Math.min(book.copiesTotal, book.copiesAvailable + 1);
+      saveDocToFirestore('libraryBooks', book.id, book).catch(() => {});
+    }
+
+    saveDocToFirestore('libraryLoans', loan.id, loan).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'RETURN_BOOK', 'LibraryLoan', loan.id, `Returned book "${loan.bookTitle}"`);
+    return loan;
+  }
+
+  public getHostelRooms(tenantId: string): HostelRoom[] {
+    return this.hostelRooms.filter(h => h.tenantId === tenantId);
+  }
+
+  public addHostelRoom(tenantId: string, data: Partial<HostelRoom>, user: User): HostelRoom {
+    const block = data.blockName?.trim() || 'Block A';
+    const roomNo = data.roomNumber?.trim() || '101';
+
+    const room: HostelRoom = {
+      id: `hostel_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      campusId: data.campusId || '',
+      blockName: block,
+      roomNumber: roomNo,
+      gender: data.gender || 'MIXED',
+      capacity: Number(data.capacity) || 4,
+      occupied: Number(data.occupied) || 0,
+      feePerTerm: Number(data.feePerTerm) || 12000,
+      status: data.status || 'AVAILABLE'
+    };
+
+    this.hostelRooms.unshift(room);
+    saveDocToFirestore('hostelRooms', room.id, room).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_HOSTEL_ROOM', 'HostelRoom', room.id, `Added hostel room ${room.blockName} - ${room.roomNumber}`);
+    return room;
+  }
+
+  public updateHostelRoom(tenantId: string, id: string, data: Partial<HostelRoom>, user: User): HostelRoom {
+    const room = this.hostelRooms.find(h => h.tenantId === tenantId && h.id === id);
+    if (!room) throw new Error('Hostel room not found.');
+    if (data.blockName) room.blockName = data.blockName.trim();
+    if (data.roomNumber) room.roomNumber = data.roomNumber.trim();
+    if (data.gender) room.gender = data.gender;
+    if (data.capacity !== undefined) room.capacity = Number(data.capacity);
+    if (data.occupied !== undefined) room.occupied = Number(data.occupied);
+    if (data.feePerTerm !== undefined) room.feePerTerm = Number(data.feePerTerm);
+    if (data.status) room.status = data.status;
+
+    saveDocToFirestore('hostelRooms', room.id, room).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_HOSTEL_ROOM', 'HostelRoom', room.id, `Updated hostel room ${room.blockName} - ${room.roomNumber}`);
+    return room;
+  }
+
+  public deleteHostelRoom(tenantId: string, id: string, user: User): boolean {
+    const idx = this.hostelRooms.findIndex(h => h.tenantId === tenantId && h.id === id);
+    if (idx === -1) throw new Error('Hostel room not found.');
+    this.hostelRooms.splice(idx, 1);
+    deleteDocFromFirestore('hostelRooms', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_HOSTEL_ROOM', 'HostelRoom', id, `Deleted hostel room`);
+    return true;
   }
 
   // ==========================================

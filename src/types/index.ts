@@ -349,6 +349,10 @@ export interface Campus {
   code: string;
   location: string;
   isMain: boolean;
+  contactEmail?: string;
+  contactPhone?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AcademicYear {
@@ -358,16 +362,19 @@ export interface AcademicYear {
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  createdAt?: string;
 }
 
 export interface AcademicTerm {
   id: string;
   tenantId: string;
   academicYearId: string;
+  academicYearName?: string;
   termName: string; // e.g. "Semester 1", "Term 2"
   startDate: string;
   endDate: string;
   isCurrent: boolean;
+  createdAt?: string;
 }
 
 export interface Department {
@@ -392,19 +399,50 @@ export interface Program {
   id: string;
   tenantId: string;
   departmentId: string;
+  departmentName?: string;
   name: string; // e.g. "Diploma in Information Technology"
   code: string; // e.g. "DIT"
-  level: string; // Diploma, Certificate, Degree, Higher Diploma
+  level: string; // Diploma, Certificate, Degree, Higher Diploma, Artisan, Short Course
   durationYears: number;
+  description?: string;
+  totalCredits?: number;
+  status?: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
 }
 
 export interface UnitSubject {
   id: string;
   tenantId: string;
   programId: string;
+  programName?: string;
+  departmentId?: string;
   code: string; // e.g. "BIT 1102"
   name: string; // e.g. "Database Systems Architecture"
   creditHours: number;
+  yearLevel?: number;
+  semester?: number;
+  lecturerId?: string;
+  lecturerName?: string;
+  createdAt?: string;
+}
+
+export interface SchoolClass {
+  id: string;
+  tenantId: string;
+  name: string; // e.g. "DIT Jan 2025 Group A"
+  code: string; // e.g. "DIT-2025-A"
+  programId: string;
+  programName: string;
+  academicYear: string;
+  academicTerm?: string;
+  campusId?: string;
+  campusName?: string;
+  capacity?: number;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  roomVenue?: string;
+  status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
+  createdAt?: string;
 }
 
 export interface Student {
@@ -414,18 +452,29 @@ export interface Student {
   fullName: string;
   email: string;
   phone: string;
-  programId: string;
-  programName: string;
-  campusId: string;
-  campusName: string;
-  academicYear: string;
-  status: 'ACTIVE' | 'GRADUATED' | 'SUSPENDED' | 'APPLICANT';
-  feeBalance: number;
   gender: string;
   dateOfBirth: string;
+  nationalId?: string;
+  address?: string;
+  programId: string;
+  programName: string;
+  departmentId?: string;
+  departmentName?: string;
+  classId?: string;
+  className?: string;
+  campusId: string;
+  campusName: string;
+  intake?: string; // e.g. "January 2026"
+  academicYear: string;
+  academicTerm?: string;
+  status: 'ACTIVE' | 'GRADUATED' | 'SUSPENDED' | 'APPLICANT' | 'DEFERRED' | 'ALUMNI';
+  feeBalance: number;
   guardianName: string;
   guardianPhone: string;
+  guardianEmail?: string;
+  guardianRelation?: string;
   enrolledAt: string;
+  avatarUrl?: string;
 }
 
 export interface LecturerStaff {
@@ -437,21 +486,50 @@ export interface LecturerStaff {
   phone: string;
   departmentId: string;
   departmentName: string;
-  designation: string; // e.g. Senior Lecturer, Dean, Instructor
+  designation: string; // e.g. Senior Lecturer, Dean, Head of Department, Instructor
   employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT';
+  specialization?: string;
+  qualification?: string;
+  nationalId?: string;
+  status?: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE';
+  hireDate?: string;
+  createdAt?: string;
 }
 
 export interface TimetableEntry {
   id: string;
   tenantId: string;
+  unitId?: string;
   unitCode: string;
   unitName: string;
+  lecturerId?: string;
   lecturerName: string;
+  classId?: string;
+  groupName: string;
   roomVenue: string;
   dayOfWeek: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
   startTime: string;
   endTime: string;
-  groupName: string;
+  campusId?: string;
+  campusName?: string;
+}
+
+export interface StudentAttendance {
+  id: string;
+  tenantId: string;
+  date: string;
+  classId?: string;
+  className?: string;
+  unitId?: string;
+  unitCode?: string;
+  unitName?: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+  remarks?: string;
+  markedBy?: string;
+  createdAt?: string;
 }
 
 export interface FeeStructure {
@@ -459,12 +537,37 @@ export interface FeeStructure {
   tenantId: string;
   programId: string;
   programName: string;
+  academicYear?: string;
   academicTerm: string;
   tuitionFee: number;
   examFee: number;
   libraryFee: number;
   activityFee: number;
+  otherFees?: number;
   totalFee: number;
+  createdAt?: string;
+}
+
+export interface StudentInvoice {
+  id: string;
+  tenantId: string;
+  invoiceNo: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  programId: string;
+  programName: string;
+  academicTerm: string;
+  academicYear: string;
+  feeStructureId?: string;
+  items: Array<{ description: string; amount: number }>;
+  totalAmount: number;
+  amountPaid: number;
+  balance: number;
+  issueDate: string;
+  dueDate: string;
+  status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'OVERDUE';
+  createdAt?: string;
 }
 
 export interface FeePayment {
@@ -474,11 +577,38 @@ export interface FeePayment {
   studentId: string;
   studentName: string;
   admissionNo: string;
+  invoiceId?: string;
+  invoiceNo?: string;
   amount: number;
-  paymentMethod: 'M-PESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD';
+  paymentMethod: 'M-PESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD' | 'CASH';
   referenceNo: string;
   paidAt: string;
   receivedBy: string;
+  bankName?: string;
+  notes?: string;
+}
+
+export interface StudentGradeRecord {
+  id: string;
+  tenantId: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  programId?: string;
+  classId?: string;
+  unitId: string;
+  unitCode: string;
+  unitName: string;
+  academicTerm: string;
+  academicYear: string;
+  catScore: number; // Continuous Assessment Tests (e.g., out of 30 or 40)
+  examScore: number; // Final Exam (e.g., out of 70 or 60)
+  totalScore: number; // 0 - 100
+  grade: string; // A, B, C, D, E, F / Distinction, Credit, Pass, Referral
+  points?: number; // Grade points (e.g., 4.0, 3.0, etc.)
+  remarks?: string; // Excellent, Good, Satisfactory, Needs Improvement
+  lecturerName?: string;
+  publishedAt?: string;
 }
 
 export interface LibraryBook {
@@ -487,19 +617,42 @@ export interface LibraryBook {
   isbn: string;
   title: string;
   author: string;
+  publisher?: string;
+  edition?: string;
+  category: string;
+  shelfLocation?: string;
   copiesTotal: number;
   copiesAvailable: number;
-  category: string;
+  createdAt?: string;
+}
+
+export interface LibraryLoan {
+  id: string;
+  tenantId: string;
+  bookId: string;
+  bookTitle: string;
+  isbn?: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  status: 'ISSUED' | 'RETURNED' | 'OVERDUE';
+  issuedBy: string;
 }
 
 export interface HostelRoom {
   id: string;
   tenantId: string;
+  campusId?: string;
   blockName: string;
   roomNumber: string;
+  gender: 'MALE' | 'FEMALE' | 'MIXED';
   capacity: number;
   occupied: number;
   feePerTerm: number;
+  status?: 'AVAILABLE' | 'FULL' | 'MAINTENANCE';
 }
 
 // ==========================================

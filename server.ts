@@ -14,6 +14,23 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  // Comprehensive CORS middleware for custom domains, subdomains (*.davetech.co.ke), and local development
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-user-id, x-tenant-id, x-tenant-slug');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
   // Robust Authentication Parser supporting x-user-id and Authorization: Bearer <token>
   const getAuthUser = (req: express.Request): User | undefined => {
     let userId = (req.headers['x-user-id'] as string) || '';
@@ -1421,6 +1438,522 @@ async function startServer() {
     try {
       const payment = dbStore.recordFeePayment(tenantId, req.body, user);
       return res.status(201).json(payment);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Campuses
+  app.get('/api/app/education/campuses', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getCampuses(tenantId));
+  });
+
+  app.post('/api/app/education/campuses', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const campus = dbStore.addCampus(tenantId, req.body, user);
+      return res.status(201).json(campus);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/campuses/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const campus = dbStore.updateCampus(tenantId, req.params.id, req.body, user);
+      return res.json(campus);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/campuses/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteCampus(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Academic Years
+  app.get('/api/app/education/academic-years', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getAcademicYears(tenantId));
+  });
+
+  app.post('/api/app/education/academic-years', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const year = dbStore.addAcademicYear(tenantId, req.body, user);
+      return res.status(201).json(year);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/academic-years/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const year = dbStore.updateAcademicYear(tenantId, req.params.id, req.body, user);
+      return res.json(year);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/academic-years/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteAcademicYear(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Terms
+  app.get('/api/app/education/terms', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getTerms(tenantId));
+  });
+
+  app.post('/api/app/education/terms', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const term = dbStore.addTerm(tenantId, req.body, user);
+      return res.status(201).json(term);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/terms/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const term = dbStore.updateTerm(tenantId, req.params.id, req.body, user);
+      return res.json(term);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/terms/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteTerm(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Programs / Courses
+  app.get('/api/app/education/programs', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getPrograms(tenantId));
+  });
+
+  app.post('/api/app/education/programs', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const program = dbStore.addProgram(tenantId, req.body, user);
+      return res.status(201).json(program);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/programs/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const program = dbStore.updateProgram(tenantId, req.params.id, req.body, user);
+      return res.json(program);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/programs/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteProgram(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Units / Subjects
+  app.get('/api/app/education/units', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getUnits(tenantId));
+  });
+
+  app.post('/api/app/education/units', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const unit = dbStore.addUnit(tenantId, req.body, user);
+      return res.status(201).json(unit);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/units/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const unit = dbStore.updateUnit(tenantId, req.params.id, req.body, user);
+      return res.json(unit);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/units/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteUnit(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Classes / Cohorts
+  app.get('/api/app/education/classes', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getClasses(tenantId));
+  });
+
+  app.post('/api/app/education/classes', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const cls = dbStore.addClass(tenantId, req.body, user);
+      return res.status(201).json(cls);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/classes/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const cls = dbStore.updateClass(tenantId, req.params.id, req.body, user);
+      return res.json(cls);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/classes/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteClass(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Students update
+  app.put('/api/app/education/students/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const student = dbStore.updateStudent(tenantId, req.params.id, req.body, user);
+      return res.json(student);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Faculty / Staff
+  app.post('/api/app/education/faculty', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const staff = dbStore.addStaff(tenantId, req.body, user);
+      return res.status(201).json(staff);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/faculty/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const staff = dbStore.updateStaff(tenantId, req.params.id, req.body, user);
+      return res.json(staff);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Timetable
+  app.post('/api/app/education/timetable', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const entry = dbStore.addTimetableEntry(tenantId, req.body, user);
+      return res.status(201).json(entry);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/timetable/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteTimetableEntry(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Attendance
+  app.get('/api/app/education/attendance', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const { classId, unitId, date } = req.query as { classId?: string; unitId?: string; date?: string };
+    return res.json(dbStore.getAttendance(tenantId, { classId, unitId, date }));
+  });
+
+  app.post('/api/app/education/attendance', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const records = Array.isArray(req.body.records) ? req.body.records : [req.body];
+      const result = dbStore.recordAttendance(tenantId, records, user);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Fee Structures
+  app.get('/api/app/education/fee-structures', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getFeeStructures(tenantId));
+  });
+
+  app.post('/api/app/education/fee-structures', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const struct = dbStore.addFeeStructure(tenantId, req.body, user);
+      return res.status(201).json(struct);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/fee-structures/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const struct = dbStore.updateFeeStructure(tenantId, req.params.id, req.body, user);
+      return res.json(struct);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/fee-structures/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteFeeStructure(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Student Invoices
+  app.get('/api/app/education/invoices', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const { studentId } = req.query as { studentId?: string };
+    return res.json(dbStore.getInvoices(tenantId, studentId));
+  });
+
+  app.post('/api/app/education/invoices', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const inv = dbStore.createInvoice(tenantId, req.body, user);
+      return res.status(201).json(inv);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/invoices/batch-generate', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.generateClassInvoices(tenantId, req.body, user);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Student Grades
+  app.get('/api/app/education/grades', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const { studentId, unitId } = req.query as { studentId?: string; unitId?: string };
+    return res.json(dbStore.getStudentGrades(tenantId, studentId, unitId));
+  });
+
+  app.post('/api/app/education/grades', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const grades = Array.isArray(req.body.grades) ? req.body.grades : [req.body];
+      const result = dbStore.recordStudentGrades(tenantId, grades, user);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Library
+  app.get('/api/app/education/library/books', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getLibraryBooks(tenantId));
+  });
+
+  app.post('/api/app/education/library/books', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const book = dbStore.addLibraryBook(tenantId, req.body, user);
+      return res.status(201).json(book);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/library/books/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const book = dbStore.updateLibraryBook(tenantId, req.params.id, req.body, user);
+      return res.json(book);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/library/books/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteLibraryBook(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/education/library/loans', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getLibraryLoans(tenantId));
+  });
+
+  app.post('/api/app/education/library/loans/issue', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const loan = dbStore.issueLibraryLoan(tenantId, req.body, user);
+      return res.status(201).json(loan);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/library/loans/:id/return', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const loan = dbStore.returnLibraryLoan(tenantId, req.params.id, user);
+      return res.json(loan);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Hostel / Accommodation
+  app.get('/api/app/education/hostel', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getHostelRooms(tenantId));
+  });
+
+  app.post('/api/app/education/hostel', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const room = dbStore.addHostelRoom(tenantId, req.body, user);
+      return res.status(201).json(room);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/hostel/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const room = dbStore.updateHostelRoom(tenantId, req.params.id, req.body, user);
+      return res.json(room);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/hostel/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteHostelRoom(tenantId, req.params.id, user);
+      return res.json({ success: true });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }

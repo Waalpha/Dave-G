@@ -32,13 +32,13 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     try {
       const res = await fetch('/api/notifications', { headers: getHeaders() });
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
         if (data && Array.isArray(data.notifications)) {
           setNotifications(data.notifications);
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+    } catch {
+      // Gracefully ignore background polling errors
     }
   };
 
