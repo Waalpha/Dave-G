@@ -202,6 +202,17 @@ export interface PlatformHeroSlide {
   subtitleItalic?: boolean;
 }
 
+export interface PublicWebsiteMediaItem {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  badge?: string;
+  buttonText?: string;
+  buttonLink?: string;
+  order: number;
+}
+
 export interface PlatformPricingPlanConfig {
   id: string;
   name: string;
@@ -214,10 +225,12 @@ export interface PlatformPricingPlanConfig {
 
 export interface PlatformPublicWebsiteConfig {
   enabled: boolean;
+  publicLogoUrl?: string;
   announcementBarEnabled?: boolean;
   announcementBarText?: string;
   announcementBarLink?: string;
   heroSlides?: PlatformHeroSlide[];
+  mediaSlides?: PublicWebsiteMediaItem[];
   autoSlideInterval?: number; // seconds
   heroLayout?: 'split' | 'overlay' | 'banner';
   heroPhotoOverlayOpacity?: number; // 0 - 100
@@ -262,7 +275,9 @@ export interface PlatformNotification {
 export interface PlatformSettings {
   platformName: string;
   tagline: string;
-  logoUrl?: string;
+  logoUrl?: string; // Internal authenticated ERP logo
+  publicWebsiteLogoUrl?: string; // Public marketing website logo
+  publicWebsiteMedia?: PublicWebsiteMediaItem[]; // Promotional image carousel
   faviconUrl?: string;
   primaryColor: string;
   secondaryColor?: string;
@@ -376,6 +391,7 @@ export interface AcademicTerm {
   isCurrent: boolean;
   createdAt?: string;
 }
+export type Term = AcademicTerm;
 
 export interface Department {
   id: string;
@@ -419,12 +435,15 @@ export interface UnitSubject {
   code: string; // e.g. "BIT 1102"
   name: string; // e.g. "Database Systems Architecture"
   creditHours: number;
+  credits?: number;
+  description?: string;
   yearLevel?: number;
   semester?: number;
   lecturerId?: string;
   lecturerName?: string;
   createdAt?: string;
 }
+export type Unit = UnitSubject;
 
 export interface SchoolClass {
   id: string;
@@ -435,12 +454,14 @@ export interface SchoolClass {
   programName: string;
   academicYear: string;
   academicTerm?: string;
+  term?: string;
   campusId?: string;
   campusName?: string;
   capacity?: number;
   classTeacherId?: string;
   classTeacherName?: string;
   roomVenue?: string;
+  room?: string;
   status: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
   createdAt?: string;
 }
@@ -481,11 +502,14 @@ export interface LecturerStaff {
   id: string;
   tenantId: string;
   staffNo: string;
+  staffNumber?: string;
   fullName: string;
   email: string;
   phone: string;
   departmentId: string;
   departmentName: string;
+  campusId?: string;
+  campusName?: string;
   designation: string; // e.g. Senior Lecturer, Dean, Head of Department, Instructor
   employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACT';
   specialization?: string;
@@ -600,12 +624,14 @@ export interface StudentGradeRecord {
   unitCode: string;
   unitName: string;
   academicTerm: string;
+  term?: string;
   academicYear: string;
   catScore: number; // Continuous Assessment Tests (e.g., out of 30 or 40)
   examScore: number; // Final Exam (e.g., out of 70 or 60)
   totalScore: number; // 0 - 100
   grade: string; // A, B, C, D, E, F / Distinction, Credit, Pass, Referral
   points?: number; // Grade points (e.g., 4.0, 3.0, etc.)
+  gradePoint?: number;
   remarks?: string; // Excellent, Good, Satisfactory, Needs Improvement
   lecturerName?: string;
   publishedAt?: string;

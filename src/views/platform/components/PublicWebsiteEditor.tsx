@@ -48,8 +48,79 @@ export const PublicWebsiteEditor: React.FC<PublicWebsiteEditorProps> = ({
   onSave,
   saving
 }) => {
-  const [activeSection, setActiveSection] = useState<'hero' | 'typography' | 'announcement' | 'architecture' | 'pricing' | 'contact' | 'cta'>('hero');
+  const [activeSection, setActiveSection] = useState<'logo' | 'media' | 'hero' | 'typography' | 'announcement' | 'architecture' | 'pricing' | 'contact' | 'cta'>('logo');
   
+  // Public website logo state
+  const [publicLogoUrl, setPublicLogoUrl] = useState<string>(settings.publicWebsiteLogoUrl || settings.publicWebsite?.publicLogoUrl || '');
+
+  // Media carousel slides state
+  const [mediaSlides, setMediaSlides] = useState<any[]>(() => {
+    return settings.publicWebsiteMedia || settings.publicWebsite?.mediaSlides || [
+      {
+        id: 'media_1',
+        title: 'Davetech ERP Dashboard',
+        description: 'Your organization at a glance — unified KPIs, real-time activity feeds, cash balances, and operational alerts across all departments.',
+        badge: 'EXECUTIVE OVERVIEW',
+        imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore Dashboard',
+        buttonLink: '#overview',
+        order: 1
+      },
+      {
+        id: 'media_2',
+        title: 'Education Management',
+        description: 'Manage students, staff, courses, departments, classes and fees — automated fee reconciliation, transcripts, timetables, and admissions.',
+        badge: 'HIGHER ED & SCHOOLS',
+        imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore School ERP',
+        buttonLink: '#education-showcase',
+        order: 2
+      },
+      {
+        id: 'media_3',
+        title: 'Retail & POS',
+        description: 'Connect sales, inventory and customers — high-speed touch counter checkouts, thermal receipt printing, barcode scanning, and multi-store transfers.',
+        badge: 'POINT OF SALE',
+        imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67e557b445?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore POS System',
+        buttonLink: '#retail-showcase',
+        order: 3
+      },
+      {
+        id: 'media_4',
+        title: 'Accounting & Finance',
+        description: 'Track financial activity and business performance — multi-currency double-entry general ledger, automated P&L, balance sheets, and tax compliance.',
+        badge: 'FINANCIAL CONTROL',
+        imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore Accounting',
+        buttonLink: '#finance-showcase',
+        order: 4
+      },
+      {
+        id: 'media_5',
+        title: 'Inventory Management',
+        description: 'Manage stock, purchasing and suppliers — batch tracking, automated reorder triggers, purchase requisitions, and multi-warehouse valuation.',
+        badge: 'SUPPLY CHAIN',
+        imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore Inventory',
+        buttonLink: '#modules',
+        order: 5
+      },
+      {
+        id: 'media_6',
+        title: 'Reports & Analytics',
+        description: 'Turn operational data into useful insights — automated financial statements, sales trend analysis, student demographics, and audit logs.',
+        badge: 'BUSINESS INTELLIGENCE',
+        imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&q=80',
+        buttonText: 'Explore Analytics',
+        buttonLink: '#reports-analytics',
+        order: 6
+      }
+    ];
+  });
+
+  const [editingMediaId, setEditingMediaId] = useState<string | null>(null);
+
   // Local Config copy
   const [websiteConfig, setWebsiteConfig] = useState<PlatformPublicWebsiteConfig>(() => {
     return settings.publicWebsite || {
@@ -90,16 +161,81 @@ export const PublicWebsiteEditor: React.FC<PublicWebsiteEditorProps> = ({
     if (settings.publicWebsite) {
       setWebsiteConfig(settings.publicWebsite);
     }
+    if (settings.publicWebsiteLogoUrl) {
+      setPublicLogoUrl(settings.publicWebsiteLogoUrl);
+    }
+    if (settings.publicWebsiteMedia) {
+      setMediaSlides(settings.publicWebsiteMedia);
+    }
   }, [settings]);
 
   const handleSaveConfig = async () => {
     const updatedSettings: PlatformSettings = {
       ...settings,
-      publicWebsite: websiteConfig
+      publicWebsiteLogoUrl: publicLogoUrl,
+      publicWebsiteMedia: mediaSlides,
+      publicWebsite: {
+        ...websiteConfig,
+        publicLogoUrl: publicLogoUrl,
+        mediaSlides: mediaSlides
+      }
     };
     await onSave(updatedSettings);
     setNotification('Davetech Public Website configuration saved and published live!');
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  // Media Slide Handlers
+  const handleAddMediaSlide = () => {
+    const newMedia = {
+      id: `media_${Date.now()}`,
+      title: 'New Feature Showcase',
+      description: 'Highlight a core module or capability of Davetech ERP for prospective organizations.',
+      badge: 'FEATURE HIGHLIGHT',
+      imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore Capability',
+      buttonLink: '#overview',
+      order: mediaSlides.length + 1
+    };
+    setMediaSlides(prev => [...prev, newMedia]);
+    setEditingMediaId(newMedia.id);
+  };
+
+  const handleUpdateMediaSlide = (id: string, updates: any) => {
+    setMediaSlides(prev => prev.map(m => m.id === id ? { ...m, ...updates } : m));
+  };
+
+  const handleDeleteMediaSlide = (id: string) => {
+    if (confirm('Delete this showcase slide from the public website?')) {
+      setMediaSlides(prev => prev.filter(m => m.id !== id));
+      if (editingMediaId === id) setEditingMediaId(null);
+    }
+  };
+
+  const handleMoveMediaSlide = (index: number, direction: 'up' | 'down') => {
+    const slides = [...mediaSlides];
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= slides.length) return;
+
+    const temp = slides[index];
+    slides[index] = slides[targetIdx];
+    slides[targetIdx] = temp;
+
+    // re-assign order numbers
+    const reordered = slides.map((s, idx) => ({ ...s, order: idx + 1 }));
+    setMediaSlides(reordered);
+  };
+
+  const handleMediaImageUpload = async (mediaId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const compressed = await compressImageFile(file, 1600, 900, 0.88);
+        handleUpdateMediaSlide(mediaId, { imageUrl: compressed });
+      } catch (err) {
+        console.error('Image upload compression failed:', err);
+      }
+    }
   };
 
   // Slide CRUD Operations
@@ -259,7 +395,9 @@ export const PublicWebsiteEditor: React.FC<PublicWebsiteEditorProps> = ({
       {/* Section Navigation Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         {[
-          { id: 'hero', label: 'Hero Carousel & Slides', icon: Sparkles, count: websiteConfig.heroSlides?.length || 0 },
+          { id: 'logo', label: 'Public Website Logo', icon: ImageIcon },
+          { id: 'media', label: 'Public Website Media & Carousel', icon: Sliders, count: mediaSlides.length },
+          { id: 'hero', label: 'Hero Banners & Slides', icon: Sparkles, count: websiteConfig.heroSlides?.length || 0 },
           { id: 'typography', label: 'Typography & Fonts', icon: Type },
           { id: 'announcement', label: 'Announcement Bar', icon: Megaphone },
           { id: 'architecture', label: 'Architecture & Highlights', icon: ShieldCheck },
@@ -292,6 +430,329 @@ export const PublicWebsiteEditor: React.FC<PublicWebsiteEditorProps> = ({
           );
         })}
       </div>
+
+      {/* ==================== 0A. PUBLIC WEBSITE LOGO SETTING ==================== */}
+      {activeSection === 'logo' && (
+        <div className="space-y-6">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 space-y-5 shadow-xs">
+            <div className="border-b border-slate-200 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Public Website Logo Management</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure the primary brand logo displayed exclusively on the public-facing Davetech ERP marketing website header and footer.
+                </p>
+              </div>
+              {publicLogoUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPublicLogoUrl('')}
+                  className="text-xs text-red-500 hover:text-red-600 font-bold cursor-pointer"
+                >
+                  Remove Custom Logo (Use Default)
+                </button>
+              )}
+            </div>
+
+            {/* Logo Preview & Upload Box */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center bg-slate-50 p-5 rounded-2xl border border-slate-200">
+              
+              {/* Preview Cards: Light and Dark Header Preview */}
+              <div className="md:col-span-5 space-y-3">
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Live Logo Header Preview
+                </div>
+                
+                {/* Light Mode Preview */}
+                <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs flex items-center space-x-3">
+                  <div className="h-10 w-32 flex items-center justify-center bg-slate-50 rounded-lg p-1 border border-slate-100">
+                    <img 
+                      src={publicLogoUrl || settings.logoUrl || '/davetech-logo.svg'} 
+                      alt="Public Website Logo"
+                      className="h-8 max-w-full object-contain"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-black text-slate-900">Davetech ERP</span>
+                </div>
+
+                {/* Dark Mode Footer Preview */}
+                <div className="p-4 bg-slate-950 rounded-xl border border-slate-800 shadow-2xs flex items-center space-x-3 text-white">
+                  <div className="h-10 w-32 flex items-center justify-center bg-slate-900 rounded-lg p-1 border border-slate-800">
+                    <img 
+                      src={publicLogoUrl || settings.logoUrl || '/davetech-logo.svg'} 
+                      alt="Public Website Logo"
+                      className="h-8 max-w-full object-contain brightness-0 invert"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
+                      }}
+                    />
+                  </div>
+                  <span className="text-sm font-black text-white">Davetech ERP</span>
+                </div>
+              </div>
+
+              {/* Upload Controls */}
+              <div className="md:col-span-7 space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-800 block">
+                    Upload Logo File (PNG, JPG, SVG, WebP)
+                  </label>
+                  
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs flex items-center space-x-2 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span>Choose Logo File</span>
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            try {
+                              const compressed = await compressImageFile(file, 600, 200, 0.9);
+                              setPublicLogoUrl(compressed);
+                              setNotification('Public logo updated! Click "Save & Publish Website" to apply.');
+                              setTimeout(() => setNotification(null), 3500);
+                            } catch (err) {
+                              console.error('Failed to compress logo file:', err);
+                            }
+                          }
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+
+                    <span className="text-xs text-slate-500 font-medium">
+                      Recommended size: 240 × 60px (Transparent PNG or SVG)
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Or specify Direct Public Logo Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={publicLogoUrl}
+                    onChange={(e) => setPublicLogoUrl(e.target.value)}
+                    placeholder="https://yourdomain.com/public-logo.png"
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 font-mono"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== 0B. PUBLIC WEBSITE MEDIA & CAROUSEL SLIDES ==================== */}
+      {activeSection === 'media' && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Public Website Product Showcase Media</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Manage high-resolution screenshots and product slides displayed in the "SEE DAVETECH ERP IN ACTION" interactive slider on the public website.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddMediaSlide}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow-xs cursor-pointer transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Media Slide</span>
+            </button>
+          </div>
+
+          {/* Media Slides Grid */}
+          <div className="space-y-4">
+            {mediaSlides.map((slide, index) => {
+              const isEditing = editingMediaId === slide.id;
+              return (
+                <div 
+                  key={slide.id || index}
+                  className={`bg-white rounded-2xl border transition-all overflow-hidden ${
+                    isEditing ? 'border-blue-500 shadow-md ring-1 ring-blue-500/20' : 'border-slate-200 shadow-2xs'
+                  }`}
+                >
+                  {/* Row Summary Bar */}
+                  <div className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50">
+                    <div className="flex items-center space-x-4">
+                      {/* Drag / Order controls */}
+                      <div className="flex items-center space-x-1">
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => handleMoveMediaSlide(index, 'up')}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none"
+                          title="Move Slide Up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-xs font-extrabold text-slate-500 font-mono w-5 text-center">
+                          {index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={index === mediaSlides.length - 1}
+                          onClick={() => handleMoveMediaSlide(index, 'down')}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 disabled:opacity-30 disabled:pointer-events-none"
+                          title="Move Slide Down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Image Thumbnail */}
+                      <div className="w-16 h-12 rounded-lg bg-slate-900 overflow-hidden border border-slate-200 shrink-0">
+                        <img 
+                          src={slide.imageUrl} 
+                          alt={slide.title} 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+
+                      {/* Slide Information */}
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                            {slide.badge || 'SLIDE'}
+                          </span>
+                          <h4 className="text-xs font-extrabold text-slate-900">
+                            {slide.title}
+                          </h4>
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate max-w-md mt-0.5">
+                          {slide.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center space-x-2 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        onClick={() => setEditingMediaId(isEditing ? null : slide.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition-colors ${
+                          isEditing 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        <span>{isEditing ? 'Done Editing' : 'Edit Slide'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMediaSlide(slide.id)}
+                        className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title="Delete Slide"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded Edit Form */}
+                  {isEditing && (
+                    <div className="p-6 border-t border-slate-200 bg-white space-y-4 animate-in fade-in">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Slide Badge Label</label>
+                          <input
+                            type="text"
+                            value={slide.badge || ''}
+                            onChange={e => handleUpdateMediaSlide(slide.id, { badge: e.target.value })}
+                            placeholder="e.g. EXECUTIVE OVERVIEW"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Slide Title</label>
+                          <input
+                            type="text"
+                            value={slide.title || ''}
+                            onChange={e => handleUpdateMediaSlide(slide.id, { title: e.target.value })}
+                            placeholder="e.g. Davetech ERP Dashboard"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 font-bold"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Slide Description / Caption</label>
+                          <textarea
+                            rows={2}
+                            value={slide.description || ''}
+                            onChange={e => handleUpdateMediaSlide(slide.id, { description: e.target.value })}
+                            placeholder="Describe what this interface screenshot demonstrates..."
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Button Text</label>
+                          <input
+                            type="text"
+                            value={slide.buttonText || ''}
+                            onChange={e => handleUpdateMediaSlide(slide.id, { buttonText: e.target.value })}
+                            placeholder="e.g. Explore Dashboard"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700">Button Target / Anchor</label>
+                          <input
+                            type="text"
+                            value={slide.buttonLink || ''}
+                            onChange={e => handleUpdateMediaSlide(slide.id, { buttonLink: e.target.value })}
+                            placeholder="e.g. #overview or #education-showcase"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 font-mono"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
+                          <label className="text-xs font-bold text-slate-700 block">Slide Image Asset</label>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <label className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold cursor-pointer border border-slate-200 flex items-center space-x-1.5 transition-colors">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>Upload New Image</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={e => handleMediaImageUpload(slide.id, e)}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <input
+                              type="url"
+                              value={slide.imageUrl || ''}
+                              onChange={e => handleUpdateMediaSlide(slide.id, { imageUrl: e.target.value })}
+                              placeholder="Or enter direct image URL (https://...)"
+                              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 font-mono"
+                            />
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ==================== 1. HERO CAROUSEL SLIDES ==================== */}
       {activeSection === 'hero' && (

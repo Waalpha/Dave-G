@@ -72,17 +72,6 @@ function MainAppContent() {
     setCurrentRoute(`/platform/${tab}`);
   };
 
-  // If user visits /login, redirect directly to Platform Dashboard or Workspace
-  useEffect(() => {
-    if (currentRoute === '/login') {
-      if (user && user.role !== 'SUPER_ADMIN') {
-        navigateTo('/app/dashboard');
-      } else {
-        navigateTo('/platform/dashboard');
-      }
-    }
-  }, [user, currentRoute, inspectingTenant]);
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-100">
@@ -99,6 +88,22 @@ function MainAppContent() {
     ? (domainResolution.tenantSlug || undefined)
     : (currentRoute.startsWith('/public/') ? currentRoute.replace(/^\/public\/?/, '').trim() : undefined);
 
+  // 0. LOGIN ROUTE (/login)
+  if (currentRoute === '/login') {
+    return (
+      <LoginView
+        tenantSlug={activeTenantSlug}
+        onNavigateToPublic={(slug) => {
+          if (slug) {
+            navigateTo(`/public/${slug}`);
+          } else {
+            navigateTo('/public');
+          }
+        }}
+      />
+    );
+  }
+
   // 0. PLATFORM PORTALS (SALES, SUPPORT, BILLING)
   if (domainResolution.type === 'PLATFORM_SALES' && !currentRoute.startsWith('/platform') && !currentRoute.startsWith('/app')) {
     return (
@@ -107,7 +112,7 @@ function MainAppContent() {
           window.location.search = '';
           navigateTo('/public');
         }}
-        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+        onNavigateToLogin={() => navigateTo('/login')}
       />
     );
   }
@@ -119,7 +124,7 @@ function MainAppContent() {
           window.location.search = '';
           navigateTo('/public');
         }}
-        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+        onNavigateToLogin={() => navigateTo('/login')}
       />
     );
   }
@@ -131,7 +136,7 @@ function MainAppContent() {
           window.location.search = '';
           navigateTo('/public');
         }}
-        onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+        onNavigateToLogin={() => navigateTo('/login')}
       />
     );
   }
@@ -144,7 +149,8 @@ function MainAppContent() {
     if (!slug || slug === 'default' || slug === 'root' || slug === 'www') {
       return (
         <DavetechMainWebsite
-          onNavigateToLogin={() => navigateTo('/platform/dashboard')}
+          onSignInClick={() => navigateTo('/login')}
+          onNavigateToLogin={() => navigateTo('/login')}
           onNavigateToTenant={(tenantSlug) => navigateTo(`/public/${tenantSlug}`)}
           onNavigateToTenantWorkspace={async (tenantSlug) => {
             await inspectTenant(tenantSlug);
@@ -166,7 +172,7 @@ function MainAppContent() {
               const targetSlug = moduleTenantMap[modId] || 'apex-institute';
               navigateTo(`/public/${targetSlug}`);
             } else {
-              navigateTo('/platform/dashboard');
+              navigateTo('/login');
             }
           }}
         />
@@ -177,8 +183,8 @@ function MainAppContent() {
     return (
       <TenantPublicWebsite
         tenantSlug={slug}
-        onNavigateToLogin={() => navigateTo('/app/dashboard')}
-        onPortalLogin={() => navigateTo('/app/dashboard')}
+        onNavigateToLogin={() => navigateTo('/login')}
+        onPortalLogin={() => navigateTo('/login')}
         onNavigateToMainPlatform={() => {
           window.location.search = '';
           navigateTo('/public');

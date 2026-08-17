@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { PlatformSettings as PlatformSettingsType } from '../../types';
 import {
-  Settings, Building2, Sparkles, Upload, Image, Shield, CheckCircle2,
+  Settings, Building2, Sparkles, Upload, Image as ImageIcon, Shield, CheckCircle2,
   RefreshCw, AlertCircle, Eye, Palette, Mail, Phone, Lock, Save, Globe,
   Sliders, Layout, ExternalLink
 } from 'lucide-react';
@@ -60,12 +60,31 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
     try {
       setLoading(true);
       const res = await fetch('/api/platform/settings', { headers: getHeaders() });
-      if (res.ok) {
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         setSettings(data);
+      } else {
+        // Fallback to public settings endpoint
+        const publicRes = await fetch('/api/public/platform-settings');
+        const pubContentType = publicRes.headers.get('content-type');
+        if (publicRes.ok && pubContentType && pubContentType.includes('application/json')) {
+          const publicData = await publicRes.json();
+          setSettings(publicData);
+        }
       }
     } catch (err) {
-      console.error('Failed to fetch platform settings:', err);
+      console.warn('Failed to fetch platform settings, attempting public fallback:', err);
+      try {
+        const publicRes = await fetch('/api/public/platform-settings');
+        const pubContentType = publicRes.headers.get('content-type');
+        if (publicRes.ok && pubContentType && pubContentType.includes('application/json')) {
+          const publicData = await publicRes.json();
+          setSettings(publicData);
+        }
+      } catch (e) {
+        // Ignore fallback error
+      }
     } finally {
       setLoading(false);
     }
@@ -317,7 +336,7 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
               <div className="space-y-2 border-t border-[#D8DCEB] pt-4">
                 <label className="text-[#1F2937] font-bold flex items-center justify-between">
                   <span className="flex items-center space-x-1.5">
-                    <Image className="w-4 h-4 text-[#1D53D9]" />
+                    <ImageIcon className="w-4 h-4 text-[#1D53D9]" />
                     <span>Main ERP Platform Logo</span>
                   </span>
                   {settings.logoUrl && (
@@ -369,9 +388,88 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
                     <div className="space-y-1">
                       <input
                         type="url"
-                        value={settings.logoUrl}
+                        value={settings.logoUrl || ''}
                         onChange={e => setSettings({ ...settings, logoUrl: e.target.value })}
                         placeholder="Or enter direct image URL (https://...)"
+                        className="w-full bg-white border border-[#D8DCEB] rounded-lg p-2 text-[#1F2937] text-xs focus:outline-none focus:border-[#1D53D9] font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Website Logo Section (Dedicated) */}
+              <div className="space-y-2 border-t border-[#D8DCEB] pt-4">
+                <label className="text-[#1F2937] font-bold flex items-center justify-between">
+                  <span className="flex items-center space-x-1.5">
+                    <Globe className="w-4 h-4 text-blue-600" />
+                    <span>Public Marketing Website Logo</span>
+                  </span>
+                  {settings.publicWebsiteLogoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setSettings({ ...settings, publicWebsiteLogoUrl: '' })}
+                      className="text-[11px] text-red-500 hover:text-red-600 font-bold cursor-pointer"
+                    >
+                      Remove Logo (Use Default Davetech Logo)
+                    </button>
+                  )}
+                </label>
+                <p className="text-[11px] text-[#777E8C]">
+                  Dedicated brand mark displayed exclusively on the public-facing marketing website header and footer.
+                </p>
+
+                {/* Public Logo Preview & Upload Box */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-[#F8FAFC] p-4 rounded-xl border border-[#D8DCEB]">
+                  {/* Visual Box */}
+                  <div className="w-28 h-16 rounded-xl bg-white border border-[#D8DCEB] flex items-center justify-center overflow-hidden shrink-0 shadow-2xs p-2">
+                    {settings.publicWebsiteLogoUrl ? (
+                      <img
+                        src={settings.publicWebsiteLogoUrl}
+                        alt="Public Website Logo"
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <img
+                        src={settings.logoUrl || '/davetech-logo.svg'}
+                        alt="Davetech Logo"
+                        className="w-full h-full object-contain opacity-60"
+                      />
+                    )}
+                  </div>
+
+                  {/* Upload & URL Controls */}
+                  <div className="flex-1 space-y-2.5 w-full">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-xs flex items-center space-x-1.5 transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Public Website Logo</span>
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const compressed = await compressImageFile(file, 600, 200, 0.9);
+                                setSettings(prev => ({ ...prev, publicWebsiteLogoUrl: compressed }));
+                              } catch (err: any) {
+                                setError(err.message || 'Failed to process public website logo.');
+                              }
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[11px] text-[#777E8C] font-mono">PNG, JPG, SVG or WEBP (Transparent recommended)</span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <input
+                        type="url"
+                        value={settings.publicWebsiteLogoUrl || ''}
+                        onChange={e => setSettings({ ...settings, publicWebsiteLogoUrl: e.target.value })}
+                        placeholder="Or enter direct public logo image URL (https://...)"
                         className="w-full bg-white border border-[#D8DCEB] rounded-lg p-2 text-[#1F2937] text-xs focus:outline-none focus:border-[#1D53D9] font-mono"
                       />
                     </div>

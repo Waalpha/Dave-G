@@ -61,6 +61,19 @@ async function startServer() {
   const getEffectiveTenantId = (req: express.Request, user?: User): string => {
     // 1. If non-super admin user, strictly enforce user's home tenant ID
     if (user && user.tenantId && user.tenantId !== 'platform_super_admin' && user.role !== 'SUPER_ADMIN') {
+      const requestedTenantId = (req.headers['x-tenant-id'] as string) ||
+                                (req.headers['x-tenant-slug'] as string) ||
+                                (req.query.tenantId as string) ||
+                                (req.query.slug as string) ||
+                                (req.body && req.body.tenantId ? (req.body.tenantId as string) : undefined);
+      if (requestedTenantId && requestedTenantId !== user.tenantId) {
+        const userTenant = dbStore.getTenant(user.tenantId);
+        if (!userTenant || (userTenant.slug !== requestedTenantId && userTenant.subdomain !== requestedTenantId && userTenant.id !== requestedTenantId)) {
+          const forbiddenError: any = new Error('FORBIDDEN_CROSS_TENANT_ACCESS: You do not have permission to access another organization\'s workspace or records.');
+          forbiddenError.statusCode = 403;
+          throw forbiddenError;
+        }
+      }
       return user.tenantId;
     }
 
@@ -125,7 +138,16 @@ async function startServer() {
         return res.status(401).json({ error: 'UNAUTHENTICATED', message: 'Authentication required' });
       }
 
-      const tenantId = getEffectiveTenantId(req, user);
+      let tenantId: string;
+      try {
+        tenantId = getEffectiveTenantId(req, user);
+      } catch (err: any) {
+        if (err.statusCode === 403 || err.message?.includes('FORBIDDEN')) {
+          return res.status(403).json({ error: 'FORBIDDEN', message: err.message });
+        }
+        throw err;
+      }
+
       const tenant = dbStore.getTenant(tenantId);
 
       // Super Admin bypasses module check for testing/management
@@ -136,15 +158,20 @@ async function startServer() {
       }
 
       if (!tenant) {
-        (req as any).effectiveTenantId = tenantId;
-        return next();
+        return res.status(404).json({ error: 'TENANT_NOT_FOUND', message: 'Tenant organization not found' });
       }
 
       if (tenant.status !== 'ACTIVE') {
         return res.status(403).json({ error: 'TENANT_SUSPENDED', message: 'Tenant organization account is suspended' });
       }
 
-      // Automatically permit module access if active tenant is configured
+      if (tenant.enabledModules && !tenant.enabledModules.includes(moduleId)) {
+        return res.status(403).json({
+          error: 'FORBIDDEN_MODULE',
+          message: `The ${moduleId} module is not enabled for your organization.`
+        });
+      }
+
       (req as any).tenant = tenant;
       (req as any).effectiveTenantId = tenantId;
       next();
@@ -376,9 +403,19 @@ async function startServer() {
     return res.json(tenants);
   };
 
-  app.get('/api/platform/tenants', handleGetAllTenants);
-  app.get('/api/public/tenants', handleGetAllTenants);
-  app.get('/api/tenants', handleGetAllTenants);
+  // Platform tenants endpoint is strictly reserved for Super Admins
+  app.get('/api/platform/tenants', requireAuth, requireSuperAdmin, handleGetAllTenants);
+  app.get('/api/public/tenants', requireAuth, requireSuperAdmin, handleGetAllTenants);
+
+  // Tenant-safe tenants listing: returns all tenants for SUPER_ADMIN, or ONLY the user's tenant for TENANT_ADMIN / STAFF
+  app.get('/api/tenants', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role === 'SUPER_ADMIN') {
+      return handleGetAllTenants(req, res);
+    }
+    const tenant = dbStore.getTenant(user.tenantId);
+    return res.json(tenant ? [tenant] : []);
+  });
 
   app.post('/api/platform/tenants', requireAuth, requireSuperAdmin, async (req, res) => {
     try {
@@ -509,6 +546,48 @@ async function startServer() {
       return res.json({ success: true, message: `User account "${targetUser.name}" successfully deleted` });
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to delete user' });
+    }
+  });
+
+  // Tenant-scoped User Management (Strictly isolated to user's effective tenant)
+  app.get('/api/tenant/users', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = getEffectiveTenantId(req, user);
+    const users = dbStore.getTenantUsers(tenantId);
+    const safeUsers = users.map(({ passwordHash, resetToken, resetTokenExpiresAt, ...u }) => u);
+    return res.json(safeUsers);
+  });
+
+  app.post('/api/tenant/users', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'FORBIDDEN', message: 'Only Tenant Administrators can create user accounts' });
+    }
+    const tenantId = getEffectiveTenantId(req, user);
+    const { name, email, role, department, password, permissions } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+    // Prevent non-superadmins from assigning SUPER_ADMIN role
+    const assignedRole = (user.role !== 'SUPER_ADMIN' && role === 'SUPER_ADMIN') ? 'STAFF' : (role || 'STAFF');
+    try {
+      const initialPassword = password || 'password123';
+      const newUser = dbStore.createTenantUser(
+        tenantId,
+        {
+          name,
+          email,
+          role: assignedRole,
+          department: department || undefined,
+          permissions: Array.isArray(permissions) ? permissions : ['*'],
+          passwordHash: hashPassword(initialPassword)
+        },
+        user
+      );
+      const { passwordHash, resetToken, resetTokenExpiresAt, ...safeUser } = newUser;
+      return res.status(201).json({ success: true, user: safeUser, initialPassword });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || 'Failed to create user account' });
     }
   });
 
@@ -1392,10 +1471,47 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/app/education/students/all', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.deleteAllStudents(tenantId, user);
+      return res.json({ success: true, message: `Successfully deleted all ${result.deletedCount} students.`, deletedCount: result.deletedCount });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/students/delete-all', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.deleteAllStudents(tenantId, user);
+      return res.json({ success: true, message: `Successfully deleted all ${result.deletedCount} students.`, deletedCount: result.deletedCount });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/students', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.deleteAllStudents(tenantId, user);
+      return res.json({ success: true, message: `Successfully deleted all ${result.deletedCount} students.`, deletedCount: result.deletedCount });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   app.delete('/api/app/education/students/:id', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
+      if (req.params.id === 'all' || req.params.id === 'delete-all') {
+        const result = dbStore.deleteAllStudents(tenantId, user);
+        return res.json({ success: true, message: `Successfully deleted all ${result.deletedCount} students.`, deletedCount: result.deletedCount });
+      }
       dbStore.deleteStudent(tenantId, req.params.id, user);
       return res.json({ success: true, message: 'Student record successfully deleted' });
     } catch (err: any) {
@@ -2353,6 +2469,18 @@ async function startServer() {
   // Catch-all 404 for unhandled API requests to prevent returning HTML index for API calls
   app.all('/api/*', (req, res) => {
     return res.status(404).json({ error: 'API_NOT_FOUND', message: `API endpoint ${req.originalUrl} not found` });
+  });
+
+  // Global JSON Error Handler for API routes
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const status = err.statusCode || (err.message?.includes('FORBIDDEN') ? 403 : 500);
+    if (req.path.startsWith('/api/')) {
+      return res.status(status).json({
+        error: err.statusCode === 403 || err.message?.includes('FORBIDDEN') ? 'FORBIDDEN' : 'SERVER_ERROR',
+        message: err.message || 'An unexpected error occurred'
+      });
+    }
+    next(err);
   });
 
   // Vite middleware for development vs static build in production

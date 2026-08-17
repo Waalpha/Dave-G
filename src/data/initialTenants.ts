@@ -350,8 +350,99 @@ export const TENANT_HEALTHCARE: Tenant = {
   updatedAt: '2026-08-15T00:00:00Z'
 };
 
+export const TENANT_BREAKTHROUGH_COLLEGE: Tenant = {
+  id: 'tenant_breakthrough_college',
+  name: 'Breakthrough International Training College',
+  slug: 'breakthrough',
+  subdomain: 'breakthrough',
+  domainType: 'subdomain',
+  type: 'EDUCATION',
+  educationType: 'TVET',
+  status: 'ACTIVE',
+  planId: 'plan_enterprise',
+  websiteEnabled: true,
+  branding: {
+    companyName: 'Breakthrough International Training College',
+    primaryColor: '#1E40AF',
+    secondaryColor: '#D97706',
+    currency: 'KES',
+    currencySymbol: 'KSh',
+    fiscalYearStartMonth: 1,
+    contactEmail: 'admissions@breakthrough.ac.ke',
+    contactPhone: '+254 722 123 456',
+    address: 'Breakthrough Towers, Haile Selassie Avenue, Nairobi, Kenya'
+  },
+  publicWebsite: {
+    enabled: true,
+    heroTitle: 'Excellence in Technical, Vocational & Professional Training',
+    tagline: 'Accredited TVET & Career Development College',
+    heroDescription: 'Equipping learners with hands-on technical skills, industry-certified diploma programs, cutting-edge computer laboratories, and direct corporate internship linkages.',
+    aboutText: 'Breakthrough International Training College is a leading tertiary institution providing accredited certificate, diploma, and executive professional qualifications.',
+    mission: 'To deliver competency-based technical and vocational training that empowers students for self-reliance, innovation, and global workplace success.',
+    vision: 'To be Eastern Africa\'s premier center of vocational excellence, practical engineering, and ICT innovation.',
+    coreValues: ['Integrity', 'Practical Competence', 'Innovation', 'Industry Relevance'],
+    primaryColor: '#1E40AF',
+    secondaryColor: '#D97706',
+    admissionNotice: 'Applications for the upcoming 2026/2027 Academic Intake are now open. Apply online today for priority admission processing.',
+    autoSlideInterval: 6,
+    heroSlides: [
+      {
+        id: 'bt_slide_1',
+        title: 'Industry-Certified Technical & Vocational Qualifications',
+        subtitle: 'Hands-on practical training in ICT, Electrical Engineering, Hospitality, Business Management, and Health Sciences.',
+        tagline: 'KNEC & TVETA Accredited Institution',
+        badgeText: '🎓 ADMISSIONS OPEN 2026/2027',
+        imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1920&q=80',
+        primaryBtnText: 'Apply Online Now',
+        primaryBtnAction: 'apply',
+        secondaryBtnText: 'Explore Courses',
+        secondaryBtnAction: 'programs',
+        alignment: 'center',
+        overlayOpacity: 70
+      },
+      {
+        id: 'bt_slide_2',
+        title: 'Modern ICT Labs & Engineering Workshops',
+        subtitle: 'State-of-the-art computer labs, electronics benches, and industrial culinary training kitchens.',
+        tagline: '100% Practical Experiential Learning',
+        badgeText: '🔬 PRACTICAL WORKSHOPS',
+        imageUrl: 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80',
+        primaryBtnText: 'View Departments',
+        primaryBtnAction: 'departments',
+        secondaryBtnText: 'Campus Tour',
+        secondaryBtnAction: 'campuses',
+        alignment: 'left',
+        overlayOpacity: 75
+      }
+    ],
+    news: [
+      {
+        id: 'bt_news_1',
+        title: 'Breakthrough 2026 Career Fair & Corporate Exhibitions',
+        summary: 'Over 40 employer partners will conduct on-campus hiring interviews for graduating diploma students.',
+        date: '2026-09-12',
+        category: 'Event'
+      }
+    ],
+    events: [
+      {
+        id: 'bt_ev_1',
+        title: 'New Student Orientation & Skills Induction',
+        date: '2026-09-08',
+        time: '09:00 AM - 01:00 PM',
+        location: 'Breakthrough Main Hall',
+        description: 'Orientation for new students across all certificate and diploma departments.'
+      }
+    ]
+  },
+  enabledModules: ['education', 'accounting', 'hr', 'inventory', 'crm', 'general_erp'],
+  createdAt: '2025-01-01T00:00:00Z',
+  updatedAt: '2026-08-15T00:00:00Z'
+};
+
 export const INITIAL_TENANTS: Tenant[] = [
   DEFAULT_INITIAL_TENANT,
+  TENANT_BREAKTHROUGH_COLLEGE,
   TENANT_DREAMLINE_WHOLESALE,
   TENANT_SACCO,
   TENANT_CHURCH,

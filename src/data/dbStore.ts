@@ -216,6 +216,14 @@ export const INITIAL_CAMPUSES: Campus[] = [
     code: 'WST',
     location: 'Parklands Road, Westlands',
     isMain: false
+  },
+  {
+    id: 'camp_bt_main',
+    tenantId: 'tenant_breakthrough_college',
+    name: 'Breakthrough Towers Main Campus',
+    code: 'BT-MAIN',
+    location: 'Haile Selassie Avenue, Nairobi',
+    isMain: true
   }
 ];
 
@@ -252,6 +260,34 @@ export const INITIAL_DEPARTMENTS: Department[] = [
     tenantId: 'tenant_apex_institute',
     name: 'Health Sciences & Community Nutrition',
     code: 'HSC',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-12T00:00:00Z'
+  },
+  // Departments for Breakthrough International Training College
+  {
+    id: 'dept_bt_ict',
+    tenantId: 'tenant_breakthrough_college',
+    name: 'Information Communication Technology & Software Dev',
+    code: 'BT-ICT',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-12T00:00:00Z'
+  },
+  {
+    id: 'dept_bt_biz',
+    tenantId: 'tenant_breakthrough_college',
+    name: 'Business Management & Accounting Studies',
+    code: 'BT-BUS',
+    status: 'ACTIVE',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-12T00:00:00Z'
+  },
+  {
+    id: 'dept_bt_elec',
+    tenantId: 'tenant_breakthrough_college',
+    name: 'Electrical & Electronics Engineering',
+    code: 'BT-ELEC',
     status: 'ACTIVE',
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2026-08-12T00:00:00Z'
@@ -340,6 +376,34 @@ export const INITIAL_PROGRAMS: Program[] = [
     code: 'CIT-05',
     level: 'Certificate',
     durationYears: 1
+  },
+  // Breakthrough College Programs
+  {
+    id: 'prog_bt_dip_ict',
+    tenantId: 'tenant_breakthrough_college',
+    departmentId: 'dept_bt_ict',
+    name: 'Diploma in Information Communication Technology (KNEC)',
+    code: 'BT-DICT',
+    level: 'Diploma',
+    durationYears: 2
+  },
+  {
+    id: 'prog_bt_dip_biz',
+    tenantId: 'tenant_breakthrough_college',
+    departmentId: 'dept_bt_biz',
+    name: 'Diploma in Business Management & Entrepreneurship',
+    code: 'BT-DBM',
+    level: 'Diploma',
+    durationYears: 2
+  },
+  {
+    id: 'prog_bt_cert_elec',
+    tenantId: 'tenant_breakthrough_college',
+    departmentId: 'dept_bt_elec',
+    name: 'Certificate in Electrical Installation & Solar Tech',
+    code: 'BT-CEIT',
+    level: 'Certificate',
+    durationYears: 1
   }
 ];
 
@@ -385,6 +449,16 @@ export const INITIAL_USERS: User[] = [
     updatedAt: '2026-08-15T00:00:00Z'
   },
   // Tenant Admins for Industry Workspaces
+  {
+    id: 'user_breakthrough_admin',
+    tenantId: 'tenant_breakthrough_college',
+    email: 'admin@breakthrough.ac.ke',
+    name: 'Breakthrough College Principal',
+    role: 'TENANT_ADMIN',
+    permissions: ['*'],
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-15T00:00:00Z'
+  },
   {
     id: 'user_dreamline_admin',
     tenantId: 'tenant_dreamline_wholesale',
@@ -506,6 +580,68 @@ export const DEFAULT_PLATFORM_PUBLIC_WEBSITE_CONFIG: PlatformPublicWebsiteConfig
         { label: 'Offline Resilience', val: '100% Ready' },
         { label: 'Shift Balancing', val: 'Automated' }
       ]
+    }
+  ],
+  mediaSlides: [
+    {
+      id: 'media_1',
+      title: 'Davetech ERP Dashboard',
+      description: 'Your organization at a glance — unified KPIs, real-time activity feeds, cash balances, and operational alerts across all departments.',
+      badge: 'EXECUTIVE OVERVIEW',
+      imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore Dashboard',
+      buttonLink: '#overview',
+      order: 1
+    },
+    {
+      id: 'media_2',
+      title: 'Education Management',
+      description: 'Manage students, staff, courses, departments, classes and fees — automated fee reconciliation, transcripts, timetables, and admissions.',
+      badge: 'HIGHER ED & SCHOOLS',
+      imageUrl: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore School ERP',
+      buttonLink: '#education-showcase',
+      order: 2
+    },
+    {
+      id: 'media_3',
+      title: 'Retail & POS',
+      description: 'Connect sales, inventory and customers — high-speed touch counter checkouts, thermal receipt printing, barcode scanning, and multi-store transfers.',
+      badge: 'POINT OF SALE',
+      imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67e557b445?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore POS System',
+      buttonLink: '#retail-showcase',
+      order: 3
+    },
+    {
+      id: 'media_4',
+      title: 'Accounting & Finance',
+      description: 'Track financial activity and business performance — multi-currency double-entry general ledger, automated P&L, balance sheets, and tax compliance.',
+      badge: 'FINANCIAL CONTROL',
+      imageUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore Accounting',
+      buttonLink: '#finance-showcase',
+      order: 4
+    },
+    {
+      id: 'media_5',
+      title: 'Inventory Management',
+      description: 'Manage stock, purchasing and suppliers — batch tracking, automated reorder triggers, purchase requisitions, and multi-warehouse valuation.',
+      badge: 'SUPPLY CHAIN',
+      imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore Inventory',
+      buttonLink: '#modules',
+      order: 5
+    },
+    {
+      id: 'media_6',
+      title: 'Reports & Analytics',
+      description: 'Turn operational data into useful insights — automated financial statements, sales trend analysis, student demographics, and audit logs.',
+      badge: 'BUSINESS INTELLIGENCE',
+      imageUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&q=80',
+      buttonText: 'Explore Analytics',
+      buttonLink: '#reports-analytics',
+      order: 6
     }
   ],
   autoSlideInterval: 6,
@@ -655,6 +791,8 @@ class DatabaseStore {
     platformName: 'DAVETECH',
     tagline: 'Davetech Solutions',
     logoUrl: '/davetech-logo.svg',
+    publicWebsiteLogoUrl: '/davetech-logo.svg',
+    publicWebsiteMedia: DEFAULT_PLATFORM_PUBLIC_WEBSITE_CONFIG.mediaSlides,
     primaryColor: '#1D53D9',
     secondaryColor: '#F49C10',
     supportEmail: 'admin@davetech.co.ke',
@@ -737,8 +875,22 @@ class DatabaseStore {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(raw);
-        if (Array.isArray(data.tenants) && data.tenants.length > 0) this.tenants = data.tenants;
-        if (Array.isArray(data.users) && data.users.length > 0) this.users = data.users;
+        if (Array.isArray(data.tenants) && data.tenants.length > 0) {
+          this.tenants = data.tenants;
+          for (const it of INITIAL_TENANTS) {
+            if (!this.tenants.some(t => t.id === it.id || t.slug === it.slug || t.subdomain === it.subdomain)) {
+              this.tenants.push(it);
+            }
+          }
+        }
+        if (Array.isArray(data.users) && data.users.length > 0) {
+          this.users = data.users;
+          for (const iu of INITIAL_USERS) {
+            if (!this.users.some(u => u.id === iu.id || u.email.toLowerCase() === iu.email.toLowerCase())) {
+              this.users.push(iu);
+            }
+          }
+        }
         if (Array.isArray(data.campuses)) this.campuses = data.campuses;
         if (Array.isArray(data.academicYears)) this.academicYears = data.academicYears;
         if (Array.isArray(data.terms)) this.terms = data.terms;
@@ -809,10 +961,12 @@ class DatabaseStore {
       const dbTenants = await loadCollectionFromFirestore<Tenant>('tenants');
       if (Array.isArray(dbTenants) && dbTenants.length > 0) {
         this.tenants = dbTenants;
-        // Ensure baseline Apex Institute exists in Firestore if missing from initial provision
-        if (!this.tenants.some(t => t.id === 'tenant_apex_institute' || t.slug === 'apex-institute' || t.slug === 'apex' || t.subdomain === 'apex' || t.subdomain === 'apex-institute')) {
-          this.tenants.unshift(DEFAULT_INITIAL_TENANT);
-          await saveDocToFirestore('tenants', DEFAULT_INITIAL_TENANT.id, DEFAULT_INITIAL_TENANT).catch(() => {});
+        // Ensure all default initial tenants exist
+        for (const it of INITIAL_TENANTS) {
+          if (!this.tenants.some(t => t.id === it.id || t.slug === it.slug || t.subdomain === it.subdomain)) {
+            this.tenants.push(it);
+            saveDocToFirestore('tenants', it.id, it).catch(() => {});
+          }
         }
       } else {
         this.tenants = [...INITIAL_TENANTS];
@@ -1101,9 +1255,43 @@ class DatabaseStore {
 
   public getTenant(tenantId: string): Tenant | undefined {
     if (!tenantId) return undefined;
-    const direct = this.tenants.find(t => t.id === tenantId);
+    const rawKey = tenantId.trim().toLowerCase();
+    
+    // 1. Direct ID match
+    const direct = this.tenants.find(t => t.id === tenantId || t.id.toLowerCase() === rawKey);
     if (direct) return direct;
-    return this.getTenantBySlugOrId(tenantId);
+
+    // 2. Slug, Subdomain, or Custom Domain match
+    const byDomain = this.getTenantBySlugOrId(tenantId);
+    if (byDomain) return byDomain;
+
+    // 3. Known ID aliases & fuzzy normalization for pre-configured tenants
+    if (rawKey.includes('dreamline')) {
+      const dreamline = this.tenants.find(t => t.id.includes('dreamline') || t.slug?.includes('dreamline') || t.subdomain?.includes('dreamline') || t.name.toLowerCase().includes('dreamline'));
+      if (dreamline) return dreamline;
+    }
+    if (rawKey.includes('breakthrough') || rawKey.includes('bitc')) {
+      const bt = this.tenants.find(t => t.id.includes('breakthrough') || t.id.includes('bitc') || t.slug?.includes('breakthrough') || t.subdomain?.includes('breakthrough') || t.name.toLowerCase().includes('breakthrough'));
+      if (bt) return bt;
+    }
+    if (rawKey.includes('sacco') || rawKey.includes('blessed')) {
+      const sacco = this.tenants.find(t => t.id.includes('sacco') || t.id.includes('blessed') || t.slug?.includes('sacco') || t.subdomain?.includes('blessed') || t.name.toLowerCase().includes('blessed'));
+      if (sacco) return sacco;
+    }
+    if (rawKey.includes('cathedral') || rawKey.includes('grace')) {
+      const church = this.tenants.find(t => t.id.includes('cathedral') || t.id.includes('grace') || t.slug?.includes('grace') || t.name.toLowerCase().includes('grace'));
+      if (church) return church;
+    }
+    if (rawKey.includes('jude') || rawKey.includes('hospital')) {
+      const hosp = this.tenants.find(t => t.id.includes('jude') || t.id.includes('hospital') || t.slug?.includes('jude') || t.name.toLowerCase().includes('jude'));
+      if (hosp) return hosp;
+    }
+    if (rawKey.includes('apex')) {
+      const apex = this.tenants.find(t => t.id.includes('apex') || t.slug?.includes('apex') || t.name.toLowerCase().includes('apex'));
+      if (apex) return apex;
+    }
+
+    return undefined;
   }
 
   public getTenantByDomain(hostnameOrSlug: string): Tenant | undefined {
@@ -1752,7 +1940,14 @@ class DatabaseStore {
 
   public getTenantUsers(tenantId: string): User[] {
     // STRICT TENANT ISOLATION
-    return this.users.filter(u => u.tenantId === tenantId);
+    const tenant = this.getTenant(tenantId);
+    const validIds = new Set<string>([tenantId]);
+    if (tenant) {
+      validIds.add(tenant.id);
+      if (tenant.slug) validIds.add(tenant.slug);
+      if (tenant.subdomain) validIds.add(tenant.subdomain);
+    }
+    return this.users.filter(u => validIds.has(u.tenantId) || (tenant && u.tenantId === tenant.id));
   }
 
   public updateTenantUser(
@@ -2769,6 +2964,33 @@ class DatabaseStore {
     );
 
     return true;
+  }
+
+  public deleteAllStudents(tenantId: string, deletedBy: User): { deletedCount: number } {
+    const toDelete = this.students.filter(s => s.tenantId === tenantId);
+    const count = toDelete.length;
+    if (count === 0) {
+      return { deletedCount: 0 };
+    }
+
+    this.students = this.students.filter(s => s.tenantId !== tenantId);
+
+    toDelete.forEach(s => {
+      deleteDocFromFirestore('students', s.id).catch(() => {});
+    });
+
+    this.logAction(
+      tenantId,
+      deletedBy.id,
+      deletedBy.name,
+      deletedBy.role,
+      'ALL_STUDENTS_DELETED',
+      'Student',
+      `all_${tenantId}`,
+      `Deleted all ${count} student records for institution`
+    );
+
+    return { deletedCount: count };
   }
 
   public getStaff(tenantId: string): LecturerStaff[] {
