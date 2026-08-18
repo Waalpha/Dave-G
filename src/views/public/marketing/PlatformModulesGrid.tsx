@@ -1,211 +1,189 @@
 import React from 'react';
 import { 
-  CreditCard, 
+  Calculator, 
+  ShoppingCart, 
   ShoppingBag, 
   Package, 
-  TrendingUp, 
-  ShoppingCart, 
+  Store, 
   Users, 
-  Building2, 
+  CreditCard, 
+  UserCheck, 
   Briefcase, 
-  GraduationCap, 
-  HeartPulse, 
-  UtensilsCrossed, 
-  Coins, 
-  Church, 
-  BarChart3,
-  ArrowRight,
-  Sparkles
+  Receipt, 
+  BarChart3, 
+  ShieldCheck,
+  ArrowRight
 } from 'lucide-react';
 
 interface PlatformModulesGridProps {
-  onSelectModule: (moduleKey: string) => void;
+  onSelectModule?: (moduleId: string) => void;
 }
 
 export const PlatformModulesGrid: React.FC<PlatformModulesGridProps> = ({ onSelectModule }) => {
   const modules = [
     {
       id: 'finance',
-      name: 'Accounting & Finance',
-      description: 'General ledger, charts of accounts, financial statements and automated tax workflows.',
-      icon: CreditCard,
+      name: 'Finance & Accounting',
+      desc: 'Chart of accounts, general ledger, journal entries, balance sheets, and tax compliance.',
+      icon: Calculator,
       color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      borderColor: 'hover:border-blue-300'
-    },
-    {
-      id: 'pos',
-      name: 'Point of Sale',
-      description: 'High-speed counter checkout, receipt printing, cash drawer reconciliation and barcode sync.',
-      icon: ShoppingBag,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
-      borderColor: 'hover:border-emerald-300'
-    },
-    {
-      id: 'inventory',
-      name: 'Inventory',
-      description: 'Real-time multi-warehouse stock levels, SKU tracking, reorder triggers and valuation.',
-      icon: Package,
-      color: 'text-amber-600',
-      bg: 'bg-amber-50',
-      borderColor: 'hover:border-amber-300'
+      bg: 'bg-blue-50'
     },
     {
       id: 'sales',
       name: 'Sales',
-      description: 'Quotations, sales orders, automated invoicing, customer credit and receivables.',
-      icon: TrendingUp,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-      borderColor: 'hover:border-indigo-300'
-    },
-    {
-      id: 'purchasing',
-      name: 'Purchasing',
-      description: 'Vendor purchase orders, goods received notes, approval workflows and supplier bills.',
+      desc: 'Quotations, proforma invoices, sales orders, automated delivery notes, and receipting.',
       icon: ShoppingCart,
       color: 'text-cyan-600',
-      bg: 'bg-cyan-50',
-      borderColor: 'hover:border-cyan-300'
+      bg: 'bg-cyan-50'
     },
     {
-      id: 'customers',
-      name: 'Customers',
-      description: 'Unified customer profiles, interaction histories, balances, loyalty and CRM pipeline.',
-      icon: Users,
-      color: 'text-teal-600',
-      bg: 'bg-teal-50',
-      borderColor: 'hover:border-teal-300'
+      id: 'purchases',
+      name: 'Purchases',
+      desc: 'Vendor management, purchase orders, goods received notes (GRN), and bills payable.',
+      icon: ShoppingBag,
+      color: 'text-indigo-600',
+      bg: 'bg-indigo-50'
     },
     {
-      id: 'suppliers',
-      name: 'Suppliers',
-      description: 'Vendor catalogs, payment terms, performance tracking and accounts payable reconciliation.',
-      icon: Building2,
-      color: 'text-slate-600',
-      bg: 'bg-slate-50',
-      borderColor: 'hover:border-slate-300'
+      id: 'inventory',
+      name: 'Inventory',
+      desc: 'Multi-warehouse stock tracking, SKU barcodes, automated reorder thresholds, and valuations.',
+      icon: Package,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50'
+    },
+    {
+      id: 'pos',
+      name: 'POS',
+      desc: 'Touch-optimized cashier terminal, thermal receipt printing, shift reconciliation, and barcode scanning.',
+      icon: Store,
+      color: 'text-orange-600',
+      bg: 'bg-orange-50'
     },
     {
       id: 'hr',
       name: 'Human Resources',
-      description: 'Employee profiles, automated payroll calculations, statutory deductions and leave management.',
-      icon: Briefcase,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      borderColor: 'hover:border-orange-300'
+      desc: 'Staff directory, biometric attendance syncing, leave applications, and performance reviews.',
+      icon: Users,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50'
     },
     {
-      id: 'education',
-      name: 'Education',
-      description: 'Student admissions, academic departments, courses, class units, attendance and fee billing.',
-      icon: GraduationCap,
-      color: 'text-violet-600',
-      bg: 'bg-violet-50',
-      borderColor: 'hover:border-violet-300'
+      id: 'payroll',
+      name: 'Payroll',
+      desc: 'Automated salary calculations, statutory deductions (PAYE/NSSF/NHIF), and one-click payslips.',
+      icon: CreditCard,
+      color: 'text-teal-600',
+      bg: 'bg-teal-50'
     },
     {
-      id: 'healthcare',
-      name: 'Healthcare',
-      description: 'Patient electronic records, doctor appointments, outpatient queue, pharmacy and billing.',
-      icon: HeartPulse,
-      color: 'text-rose-600',
-      bg: 'bg-rose-50',
-      borderColor: 'hover:border-rose-300'
-    },
-    {
-      id: 'hospitality',
-      name: 'Hospitality',
-      description: 'Restaurant point of sale, Kitchen Order Tickets (KOT), recipe management and room billing.',
-      icon: UtensilsCrossed,
-      color: 'text-yellow-600',
-      bg: 'bg-yellow-50',
-      borderColor: 'hover:border-yellow-300'
-    },
-    {
-      id: 'sacco',
-      name: 'SACCO & Chama',
-      description: 'Member share accounts, regular contributions, loan amortization and dividend distributions.',
-      icon: Coins,
-      color: 'text-emerald-700',
-      bg: 'bg-emerald-50',
-      borderColor: 'hover:border-emerald-300'
-    },
-    {
-      id: 'church',
-      name: 'Church',
-      description: 'Congregation member management, tithes, designated giving, ministries and expense tracking.',
-      icon: Church,
+      id: 'crm',
+      name: 'CRM',
+      desc: 'Lead tracking, deal pipeline stages, communication logs, and customer relationship history.',
+      icon: UserCheck,
       color: 'text-purple-600',
-      bg: 'bg-purple-50',
-      borderColor: 'hover:border-purple-300'
+      bg: 'bg-purple-50'
+    },
+    {
+      id: 'projects',
+      name: 'Projects',
+      desc: 'Task delegation, milestone schedules, team time-tracking, and project expenditure budgets.',
+      icon: Briefcase,
+      color: 'text-sky-600',
+      bg: 'bg-sky-50'
+    },
+    {
+      id: 'expenses',
+      name: 'Expenses',
+      desc: 'Multi-level expense approval workflows, petty cash management, and receipt uploads.',
+      icon: Receipt,
+      color: 'text-rose-600',
+      bg: 'bg-rose-50'
     },
     {
       id: 'reports',
       name: 'Reports & Analytics',
-      description: 'Cross-module business intelligence, ledger audits, balance sheets and exportable summaries.',
+      desc: 'Real-time profit & loss, departmental performance scorecards, and custom CSV/PDF exports.',
       icon: BarChart3,
-      color: 'text-blue-700',
-      bg: 'bg-blue-50',
-      borderColor: 'hover:border-blue-300'
+      color: 'text-violet-600',
+      bg: 'bg-violet-50'
+    },
+    {
+      id: 'users',
+      name: 'User Management',
+      desc: 'Granular role-based access control (RBAC), multi-factor security, and complete audit trails.',
+      icon: ShieldCheck,
+      color: 'text-slate-700',
+      bg: 'bg-slate-100'
     }
   ];
 
   return (
-    <section id="modules" className="py-16 lg:py-24 bg-slate-50 border-b border-slate-200 relative">
+    <section id="modules" className="py-16 sm:py-24 bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600" />
-            <span>Modular Capability Suite</span>
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto space-y-3 mb-14 sm:mb-18">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider">
+            <span>Modular Enterprise Engine</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            One Platform. Powerful Modules.
+
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+            Powerful Modules. One Connected System.
           </h2>
-          <p className="text-base sm:text-lg text-slate-600 mt-3">
-            Activate the specific capabilities your organization requires today, with the flexibility to enable additional business modules as your needs evolve.
+
+          <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
+            Activate the exact modules your business needs today, and scale seamlessly as your operations expand.
           </p>
         </div>
 
-        {/* 14 Modules Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {/* 12 Modules Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {modules.map((mod) => {
             const Icon = mod.icon;
             return (
               <div
                 key={mod.id}
-                onClick={() => onSelectModule(mod.id)}
-                className={`cursor-pointer bg-white border border-slate-200 ${mod.borderColor} rounded-2xl p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group`}
+                onClick={() => {
+                  if (onSelectModule) onSelectModule(mod.id);
+                }}
+                className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-200 cursor-pointer group flex flex-col justify-between"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-3.5">
-                    <div className={`w-10 h-10 rounded-xl ${mod.bg} ${mod.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-5 h-5 stroke-[2]" />
-                    </div>
-                    <span className="w-6 h-6 rounded-full bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 flex items-center justify-center text-slate-400 transition-colors">
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+                <div className="space-y-3">
+                  <div className={`w-11 h-11 rounded-xl ${mod.bg} flex items-center justify-center ${mod.color} group-hover:scale-110 transition-transform`}>
+                    <Icon className="w-5 h-5" />
                   </div>
-
-                  <h3 className="text-base font-bold text-slate-900 mb-1.5 group-hover:text-blue-600 transition-colors">
-                    {mod.name}
-                  </h3>
-
-                  <p className="text-xs text-slate-600 leading-relaxed">
-                    {mod.description}
-                  </p>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                      {mod.name}
+                    </h3>
+                    <p className="text-xs text-slate-600 leading-relaxed mt-1 font-normal">
+                      {mod.desc}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-blue-600">
-                  <span>View module specs</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                <div className="pt-4 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 transition-colors">
+                  <span>Interactive Module</span>
+                  <ArrowRight className="w-3.5 h-3.5 transform group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             );
           })}
+        </div>
+
+        {/* CTA: Explore All Modules */}
+        <div className="mt-12 text-center">
+          <button
+            onClick={() => {
+              if (onSelectModule) onSelectModule('finance');
+            }}
+            className="inline-flex items-center space-x-2 px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm shadow-md hover:shadow-xl transition-all cursor-pointer"
+          >
+            <span>Explore All Modules</span>
+            <ArrowRight className="w-4 h-4 text-cyan-400" />
+          </button>
         </div>
 
       </div>

@@ -1,261 +1,171 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   GraduationCap, 
-  ShoppingBag, 
-  HeartPulse, 
-  UtensilsCrossed, 
-  Truck, 
+  Building2, 
+  Activity, 
+  Store, 
+  HeartHandshake, 
   Coins, 
-  Church, 
-  Briefcase,
   ArrowRight,
-  CheckCircle2,
-  Users,
-  CreditCard,
-  Building,
-  BarChart,
-  Calendar,
-  Layers,
-  FileSpreadsheet
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 
 interface IndustrySolutionsProps {
+  onOpenDemoModal?: (industry?: string) => void;
   onSelectIndustry?: (industryId: string) => void;
-  onOpenDemoModal?: () => void;
 }
 
-export const IndustrySolutions: React.FC<IndustrySolutionsProps> = ({ 
-  onSelectIndustry,
-  onOpenDemoModal
+export const IndustrySolutions: React.FC<IndustrySolutionsProps> = ({
+  onOpenDemoModal,
+  onSelectIndustry
 }) => {
-  const [activeTab, setActiveTab] = useState<string>('all');
-
   const industries = [
     {
       id: 'education',
       title: 'Education',
-      subtitle: 'Schools, Colleges & Universities',
-      description: 'Students, staff, courses, departments, classes, admissions and fees.',
+      subtitle: 'Colleges, Universities, TVETs, & Schools',
+      description: 'End-to-end student lifecycle from admission to graduation. Features automated fee collection, academic grading, timetable generation, exam cards, and student records.',
       icon: GraduationCap,
-      color: 'text-indigo-600',
-      badgeBg: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      borderColor: 'hover:border-indigo-300',
-      features: ['Student Admissions & Bio', 'Timetable & Class Units', 'Automated Fee Billing', 'Exam & Grade Ledger'],
-      previewLabel: 'School Workspace',
-      previewMetrics: [
-        { label: 'Enrolled Students', value: 'Active Roster' },
-        { label: 'Fee Collections', value: 'Receipt Generated' }
-      ]
+      accent: 'border-l-4 border-l-blue-600',
+      badge: 'Academic Edition',
+      color: 'text-blue-600',
+      bgIcon: 'bg-blue-50'
     },
     {
-      id: 'retail',
-      title: 'Retail',
-      subtitle: 'Supermarkets, Boutiques & Stores',
-      description: 'POS, inventory, sales, purchasing and customers.',
-      icon: ShoppingBag,
-      color: 'text-blue-600',
-      badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
-      borderColor: 'hover:border-blue-300',
-      features: ['High-Speed Counter POS', 'Barcode Scanner Sync', 'Stock Reorder Alerts', 'Customer Loyalty Ledger'],
-      previewLabel: 'Retail Outlet',
-      previewMetrics: [
-        { label: 'Cashier Terminal', value: 'Syncing Register' },
-        { label: 'Inventory Level', value: 'Multi-Location' }
-      ]
+      id: 'business',
+      title: 'Business',
+      subtitle: 'Commercial Enterprises & Service Companies',
+      description: 'Unified commercial ERP integrating client project tracking, procurement, double-entry accounting, electronic tax invoices, expense approvals, and staff payroll.',
+      icon: Building2,
+      accent: 'border-l-4 border-l-cyan-600',
+      badge: 'Enterprise Edition',
+      color: 'text-cyan-600',
+      bgIcon: 'bg-cyan-50'
     },
     {
       id: 'healthcare',
       title: 'Healthcare',
-      subtitle: 'Clinics, Medical Centers & Labs',
-      description: 'Patients, appointments, billing and operations.',
-      icon: HeartPulse,
+      subtitle: 'Hospitals, Medical Centres, & Clinics',
+      description: 'HIPAA-grade patient electronic medical records, OPD/IPD triage, doctor scheduling, automated pharmacy dispensary, lab tests tracking, and insurance claims billing.',
+      icon: Activity,
+      accent: 'border-l-4 border-l-rose-600',
+      badge: 'Clinical Edition',
       color: 'text-rose-600',
-      badgeBg: 'bg-rose-50 text-rose-700 border-rose-200',
-      borderColor: 'hover:border-rose-300',
-      features: ['Patient Electronic Records', 'Doctor Schedules', 'Pharmacy Dispensary', 'Insurance & Cash Billing'],
-      previewLabel: 'Clinic Portal',
-      previewMetrics: [
-        { label: 'Appointments', value: 'Queue Managed' },
-        { label: 'Pharmacy Rx', value: 'Dispensed' }
-      ]
+      bgIcon: 'bg-rose-50'
     },
     {
-      id: 'hospitality',
-      title: 'Hospitality',
-      subtitle: 'Restaurants, Cafés, Bars & Hotels',
-      description: 'Restaurant POS, KOT, inventory and finance.',
-      icon: UtensilsCrossed,
+      id: 'retail',
+      title: 'Retail & Wholesale',
+      subtitle: 'Supermarkets, Distributors, & POS Outlets',
+      description: 'Fast barcode counter POS, bulk wholesale pallet distribution, tiered pricing matrices, multi-warehouse stock replenishment, and automatic end-of-day cash reconciliation.',
+      icon: Store,
+      accent: 'border-l-4 border-l-amber-600',
+      badge: 'Commerce Edition',
       color: 'text-amber-600',
-      badgeBg: 'bg-amber-50 text-amber-700 border-amber-200',
-      borderColor: 'hover:border-amber-300',
-      features: ['Kitchen Order Tickets (KOT)', 'Table Status Map', 'Recipe & Ingredient Usage', 'Daily Shift Cash-Up'],
-      previewLabel: 'Restaurant Floor',
-      previewMetrics: [
-        { label: 'Table Orders', value: 'Kitchen Dispatched' },
-        { label: 'Bar Register', value: 'Active Bill' }
-      ]
+      bgIcon: 'bg-amber-50'
     },
     {
-      id: 'wholesale',
-      title: 'Wholesale & Distribution',
-      subtitle: 'Distributors, Importers & Warehouses',
-      description: 'Distribution, inventory, suppliers and sales.',
-      icon: Truck,
-      color: 'text-cyan-600',
-      badgeBg: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-      borderColor: 'hover:border-cyan-300',
-      features: ['Bulk Pricing Tiers', 'Fleet Delivery Tracking', 'Vendor Purchase Orders', 'Multi-Warehouse Transfer'],
-      previewLabel: 'Distribution Hub',
-      previewMetrics: [
-        { label: 'Dispatch Orders', value: 'En Route' },
-        { label: 'Pallet Stock', value: 'Audited' }
-      ]
-    },
-    {
-      id: 'sacco',
-      title: 'SACCO & Chama',
-      subtitle: 'Credit Unions & Investment Groups',
-      description: 'Members, contributions, loans and reporting.',
-      icon: Coins,
-      color: 'text-emerald-600',
-      badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-      borderColor: 'hover:border-emerald-300',
-      features: ['Member Share Capital', 'Contribution Schedules', 'Loan Amortization', 'Dividend Calculations'],
-      previewLabel: 'SACCO Ledger',
-      previewMetrics: [
-        { label: 'Member Deposits', value: 'Direct Bank Sync' },
-        { label: 'Loan Repayments', value: 'Schedule Active' }
-      ]
-    },
-    {
-      id: 'church',
-      title: 'Church & Ministry',
-      subtitle: 'Churches, Parishes & Faith Ministries',
-      description: 'Members, contributions, expenses and administration.',
-      icon: Church,
+      id: 'churches',
+      title: 'Churches',
+      subtitle: 'Ministries, Fellowships, & Faith Organizations',
+      description: 'Member directory, cell group fellowships, electronic tithes and offerings collection, pledge tracking, outreach events, and automated financial accountability statements.',
+      icon: HeartHandshake,
+      accent: 'border-l-4 border-l-purple-600',
+      badge: 'Ministry Edition',
       color: 'text-purple-600',
-      badgeBg: 'bg-purple-50 text-purple-700 border-purple-200',
-      borderColor: 'hover:border-purple-300',
-      features: ['Congregation Directory', 'Tithe & Offering Ledger', 'Department Budgets', 'Events & Welfare Records'],
-      previewLabel: 'Ministry Portal',
-      previewMetrics: [
-        { label: 'Offering Records', value: 'Designated Fund' },
-        { label: 'Member Roster', value: 'Updated' }
-      ]
+      bgIcon: 'bg-purple-50'
     },
     {
-      id: 'business',
-      title: 'General Business & Services',
-      subtitle: 'Professional Firms, Agencies & SMEs',
-      description: 'Finance, HR, CRM, inventory and operations.',
-      icon: Briefcase,
-      color: 'text-slate-700',
-      badgeBg: 'bg-slate-100 text-slate-800 border-slate-200',
-      borderColor: 'hover:border-slate-300',
-      features: ['Accounts Payable & Receivable', 'Staff Payroll & Contracts', 'Client Pipeline CRM', 'Asset Management'],
-      previewLabel: 'Corporate Office',
-      previewMetrics: [
-        { label: 'Invoicing & P&L', value: 'Export Ready' },
-        { label: 'Payroll Run', value: 'Compliant' }
-      ]
+      id: 'chamas',
+      title: 'Chamas & Organizations',
+      subtitle: 'SACCOs, Investment Groups, & Associations',
+      description: 'Member share capital, monthly welfare savings, loan application underwriting, interest calculators, dividend distributions, and investment portfolio tracking.',
+      icon: Coins,
+      accent: 'border-l-4 border-l-emerald-600',
+      badge: 'Cooperative Edition',
+      color: 'text-emerald-600',
+      bgIcon: 'bg-emerald-50'
     }
   ];
 
   return (
-    <section id="solutions" className="py-16 lg:py-24 bg-white border-b border-slate-200 relative">
+    <section id="industries" className="py-16 sm:py-24 bg-slate-50 border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-blue-600 mb-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600" />
-            <span>Tailored Industry Solutions</span>
+        <div className="text-center max-w-3xl mx-auto space-y-3 mb-14 sm:mb-18">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-bold uppercase tracking-wider">
+            <span>Specialized Workflows</span>
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-            Solutions for the Way You Work
+
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
+            Built for the Way You Work.
           </h2>
-          <p className="text-base sm:text-lg text-slate-600 mt-3">
-            Davetech ERP adapts to the unique operational workflows of your sector while maintaining a unified accounting and administrative engine.
+
+          <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
+            Whether you operate an educational institution, hospital, retail enterprise, or cooperative, Davetech ERP delivers tailored workflows out of the box.
           </p>
         </div>
 
-        {/* 8 Industry Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* 6 High-Fi Industry Solution Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {industries.map((ind) => {
-            const Icon = ind.icon;
+            const IconComponent = ind.icon;
             return (
               <div
                 key={ind.id}
-                className={`bg-white border border-slate-200 ${ind.borderColor} rounded-2xl p-5 shadow-xs hover:shadow-lg transition-all duration-200 flex flex-col justify-between group`}
+                className={`bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between ${ind.accent}`}
               >
-                <div>
+                <div className="space-y-4">
+                  
                   {/* Top Bar: Icon & Badge */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-11 h-11 rounded-xl bg-slate-50 border border-slate-100 ${ind.color} flex items-center justify-center group-hover:scale-105 transition-transform`}>
-                      <Icon className="w-6 h-6 stroke-[2]" />
+                  <div className="flex items-center justify-between">
+                    <div className={`w-12 h-12 rounded-xl ${ind.bgIcon} flex items-center justify-center ${ind.color} shadow-2xs`}>
+                      <IconComponent className="w-6 h-6" />
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${ind.badgeBg}`}>
-                      {ind.title}
+                    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+                      {ind.badge}
                     </span>
                   </div>
 
                   {/* Title & Subtitle */}
-                  <h3 className="text-lg font-bold text-slate-900 mb-0.5">
-                    {ind.title}
-                  </h3>
-                  <div className="text-xs text-slate-400 font-medium mb-2.5">
-                    {ind.subtitle}
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                      {ind.title}
+                    </h3>
+                    <div className="text-xs font-semibold text-slate-500 mt-0.5">
+                      {ind.subtitle}
+                    </div>
                   </div>
 
                   {/* Description */}
-                  <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                  <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                     {ind.description}
                   </p>
 
-                  {/* Feature Checklist */}
-                  <div className="space-y-1.5 pt-3 border-t border-slate-100 mb-4">
-                    {ind.features.map((feat, fIdx) => (
-                      <div key={fIdx} className="flex items-center text-[11px] text-slate-700 font-medium">
-                        <CheckCircle2 className="w-3 h-3 text-blue-600 mr-1.5 shrink-0" />
-                        <span className="truncate">{feat}</span>
-                      </div>
-                    ))}
-                  </div>
                 </div>
 
-                {/* Mini Interface Preview Block */}
-                <div className="mt-2 pt-3 border-t border-slate-100 bg-slate-50/80 rounded-xl p-2.5 border border-slate-200/50">
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">
-                    <span>{ind.previewLabel}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {ind.previewMetrics.map((metric, mIdx) => (
-                      <div key={mIdx} className="bg-white rounded-lg p-1.5 border border-slate-200/80 text-left">
-                        <div className="text-[9px] text-slate-400 font-medium truncate">{metric.label}</div>
-                        <div className="text-[10px] font-bold text-slate-800 truncate">{metric.value}</div>
-                      </div>
-                    ))}
-                  </div>
+                {/* Bottom Action: Learn More */}
+                <div className="pt-6 mt-6 border-t border-slate-100 flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      if (onOpenDemoModal) onOpenDemoModal(ind.title);
+                    }}
+                    className="text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors flex items-center space-x-1.5 cursor-pointer group"
+                  >
+                    <span>Learn More</span>
+                    <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                  </button>
+
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Ready to Deploy
+                  </span>
                 </div>
 
               </div>
             );
           })}
-        </div>
-
-        {/* Bottom Callout */}
-        <div className="mt-12 text-center">
-          <p className="text-xs text-slate-500">
-            Need a specialized combination of modules for your enterprise?
-          </p>
-          <button
-            onClick={onOpenDemoModal}
-            className="mt-2 inline-flex items-center space-x-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline"
-          >
-            <span>Request an industry-specific walkthrough</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
         </div>
 
       </div>
