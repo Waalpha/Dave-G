@@ -2412,6 +2412,1033 @@ async function startServer() {
     }
   });
 
+  // HEALTHCARE & HOSPITAL ERP API ROUTES (Strictly tenant-isolated with requireModule('hospital'))
+  app.get('/api/app/hospital/summary', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const summary = dbStore.getHealthcareSummary(tenantId);
+    return res.json(summary);
+  });
+
+  // Patients
+  app.get('/api/app/hospital/patients', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const patients = dbStore.getPatients(tenantId);
+    return res.json({ patients });
+  });
+
+  app.get('/api/app/hospital/patients/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const patient = dbStore.getPatientById(tenantId, req.params.id);
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
+    return res.json({ patient });
+  });
+
+  app.post('/api/app/hospital/patients', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const patient = dbStore.addPatient(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Patient registered successfully', patient });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/patients/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const patient = dbStore.updatePatient(tenantId, req.params.id, req.body, user);
+      return res.json({ message: 'Patient updated successfully', patient });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/patients/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deletePatient(tenantId, req.params.id, user);
+    if (!success) return res.status(404).json({ error: 'Patient not found or could not be deleted' });
+    return res.json({ success: true, message: 'Patient deleted successfully' });
+  });
+
+  // Healthcare Departments & Staff & Shifts
+  app.get('/api/app/hospital/departments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const departments = dbStore.getHealthcareDepartments(tenantId);
+    return res.json({ departments });
+  });
+
+  app.post('/api/app/hospital/departments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const department = dbStore.addHealthcareDepartment(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Department created', department });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/departments/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const department = dbStore.updateHealthcareDepartment(tenantId, req.params.id, req.body, user);
+      return res.json({ message: 'Department updated', department });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/departments/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteHealthcareDepartment(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/staff', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const staff = dbStore.getHealthcareStaff(tenantId);
+    return res.json({ staff });
+  });
+
+  app.post('/api/app/hospital/staff', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const staff = dbStore.addHealthcareStaff(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Staff member registered', staff });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/staff/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const staff = dbStore.updateHealthcareStaff(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Staff member updated', staff });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/staff/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteHealthcareStaff(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/shifts', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const shifts = dbStore.getStaffShifts(tenantId);
+    return res.json({ shifts });
+  });
+
+  app.post('/api/app/hospital/shifts', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const shift = dbStore.addStaffShift(tenantId, req.body);
+      return res.status(201).json({ message: 'Shift scheduled', shift });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/shifts/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const shift = dbStore.updateStaffShift(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Shift updated', shift });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Appointments, Queue & Triage
+  app.get('/api/app/hospital/appointments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const appointments = dbStore.getAppointments(tenantId);
+    return res.json({ appointments });
+  });
+
+  app.post('/api/app/hospital/appointments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const appointment = dbStore.addAppointment(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Appointment booked', appointment });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/appointments/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const appointment = dbStore.updateAppointment(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Appointment updated', appointment });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/appointments/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteAppointment(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/queues', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const queues = dbStore.getQueues(tenantId);
+    return res.json({ queues });
+  });
+
+  app.post('/api/app/hospital/queues', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const queue = dbStore.addQueue(tenantId, req.body);
+      return res.status(201).json({ message: 'Patient queued', queue });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/queues/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const queue = dbStore.updateQueue(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Queue updated', queue });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/triages', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const triages = dbStore.getTriages(tenantId);
+    return res.json({ triages });
+  });
+
+  app.post('/api/app/hospital/triages', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const triage = dbStore.addTriage(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Vitals & triage recorded', triage });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Consultations & EMR
+  app.get('/api/app/hospital/encounters', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const encounters = dbStore.getConsultationEncounters(tenantId);
+    return res.json({ encounters });
+  });
+
+  app.post('/api/app/hospital/encounters', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const encounter = dbStore.addConsultationEncounter(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Consultation encounter recorded', encounter });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/encounters/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const encounter = dbStore.updateConsultationEncounter(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Encounter updated', encounter });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Prescriptions & Pharmacy
+  app.get('/api/app/hospital/prescriptions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const prescriptions = dbStore.getPrescriptions(tenantId);
+    return res.json({ prescriptions });
+  });
+
+  app.post('/api/app/hospital/prescriptions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const prescription = dbStore.addPrescription(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Prescription created', prescription });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/prescriptions/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const prescription = dbStore.updatePrescription(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Prescription updated', prescription });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/medicines', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const medicines = dbStore.getMedicines(tenantId);
+    return res.json({ medicines });
+  });
+
+  app.post('/api/app/hospital/medicines', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const medicine = dbStore.addMedicine(tenantId, req.body);
+      return res.status(201).json({ message: 'Medicine added to catalogue', medicine });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/medicines/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const medicine = dbStore.updateMedicine(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Medicine updated', medicine });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/medicines/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteMedicine(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/medicine-batches', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const batches = dbStore.getMedicineBatches(tenantId);
+    return res.json({ batches });
+  });
+
+  app.post('/api/app/hospital/medicine-batches', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const batch = dbStore.addMedicineBatch(tenantId, req.body);
+      return res.status(201).json({ message: 'Medicine batch stocked', batch });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/dispenses', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const dispenses = dbStore.getPharmacyDispenses(tenantId);
+    return res.json({ dispenses });
+  });
+
+  app.post('/api/app/hospital/dispenses', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const dispense = dbStore.dispensePrescription(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Prescription dispensed successfully', dispense });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Laboratory & Radiology
+  app.get('/api/app/hospital/lab-tests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const labTests = dbStore.getLabTests(tenantId);
+    return res.json({ labTests });
+  });
+
+  app.post('/api/app/hospital/lab-tests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const labTest = dbStore.addLabTest(tenantId, req.body);
+      return res.status(201).json({ message: 'Lab test added to catalogue', labTest });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/lab-tests/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const labTest = dbStore.updateLabTest(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Lab test updated', labTest });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/lab-tests/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteLabTest(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/lab-requests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const labRequests = dbStore.getLabRequests(tenantId);
+    return res.json({ labRequests });
+  });
+
+  app.post('/api/app/hospital/lab-requests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const labRequest = dbStore.addLabRequest(tenantId, req.body);
+      return res.status(201).json({ message: 'Lab test requested', labRequest });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/lab-requests/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const labRequest = dbStore.updateLabRequest(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Lab request updated', labRequest });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/radiology-services', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const services = dbStore.getRadiologyServices(tenantId);
+    return res.json({ services });
+  });
+
+  app.post('/api/app/hospital/radiology-services', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const service = dbStore.addRadiologyService(tenantId, req.body);
+      return res.status(201).json({ message: 'Radiology service added', service });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/radiology-services/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const service = dbStore.updateRadiologyService(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Radiology service updated', service });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/radiology-services/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteRadiologyService(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/radiology-requests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const requests = dbStore.getRadiologyRequests(tenantId);
+    return res.json({ requests });
+  });
+
+  app.post('/api/app/hospital/radiology-requests', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const request = dbStore.addRadiologyRequest(tenantId, req.body);
+      return res.status(201).json({ message: 'Radiology investigation requested', request });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/radiology-requests/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const request = dbStore.updateRadiologyRequest(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Radiology request updated', request });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Inpatient Wards, Beds & Admissions & Nursing
+  app.get('/api/app/hospital/wards', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const wards = dbStore.getWards(tenantId);
+    return res.json({ wards });
+  });
+
+  app.post('/api/app/hospital/wards', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const ward = dbStore.addWard(tenantId, req.body);
+      return res.status(201).json({ message: 'Ward created', ward });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/wards/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const ward = dbStore.updateWard(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Ward updated', ward });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/wards/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteWard(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/beds', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const beds = dbStore.getBeds(tenantId);
+    return res.json({ beds });
+  });
+
+  app.post('/api/app/hospital/beds', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const bed = dbStore.addBed(tenantId, req.body);
+      return res.status(201).json({ message: 'Bed registered', bed });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/beds/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const bed = dbStore.updateBed(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Bed updated', bed });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/beds/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteBed(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  app.get('/api/app/hospital/admissions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const admissions = dbStore.getInpatientAdmissions(tenantId);
+    return res.json({ admissions });
+  });
+
+  app.post('/api/app/hospital/admissions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const admission = dbStore.admitPatient(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Patient admitted successfully', admission });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/hospital/admissions/:id/discharge', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const admission = dbStore.dischargePatient(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Patient discharged successfully', admission });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/nursing-care', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const records = dbStore.getNursingCareRecords(tenantId);
+    return res.json({ records });
+  });
+
+  app.post('/api/app/hospital/nursing-care', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const record = dbStore.addNursingCareRecord(tenantId, req.body);
+      return res.status(201).json({ message: 'Nursing care record logged', record });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/med-administrations', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const records = dbStore.getMedicationAdministrations(tenantId);
+    return res.json({ records });
+  });
+
+  app.post('/api/app/hospital/med-administrations', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const record = dbStore.addMedicationAdministration(tenantId, req.body);
+      return res.status(201).json({ message: 'Medication administration recorded', record });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Theatre & Surgery
+  app.get('/api/app/hospital/theatres', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const rooms = dbStore.getTheatreRooms(tenantId);
+    return res.json({ rooms });
+  });
+
+  app.post('/api/app/hospital/theatres', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const room = dbStore.addTheatreRoom(tenantId, req.body);
+      return res.status(201).json({ message: 'Theatre room registered', room });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/theatres/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const room = dbStore.updateTheatreRoom(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Theatre room updated', room });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/surgeries', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const surgeries = dbStore.getTheatreSurgeries(tenantId);
+    return res.json({ surgeries });
+  });
+
+  app.post('/api/app/hospital/surgeries', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const surgery = dbStore.addTheatreSurgery(tenantId, req.body);
+      return res.status(201).json({ message: 'Surgery scheduled', surgery });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/surgeries/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const surgery = dbStore.updateTheatreSurgery(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Surgery record updated', surgery });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Medical Billing, Receipts & Insurance
+  app.get('/api/app/hospital/invoices', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const invoices = dbStore.getMedicalInvoices(tenantId);
+    return res.json({ invoices });
+  });
+
+  app.post('/api/app/hospital/invoices', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const invoice = dbStore.addMedicalInvoice(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Invoice generated', invoice });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/invoices/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const invoice = dbStore.updateMedicalInvoice(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Invoice updated', invoice });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/payments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const payments = dbStore.getMedicalPayments(tenantId);
+    return res.json({ payments });
+  });
+
+  app.post('/api/app/hospital/payments', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const payment = dbStore.recordMedicalPayment(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Payment recorded and receipt generated', payment });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/insurance-providers', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const providers = dbStore.getInsuranceProviders(tenantId);
+    return res.json({ providers });
+  });
+
+  app.post('/api/app/hospital/insurance-providers', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const provider = dbStore.addInsuranceProvider(tenantId, req.body);
+      return res.status(201).json({ message: 'Insurance provider added', provider });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/insurance-providers/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const provider = dbStore.updateInsuranceProvider(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Insurance provider updated', provider });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/insurance-claims', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const claims = dbStore.getInsuranceClaims(tenantId);
+    return res.json({ claims });
+  });
+
+  app.post('/api/app/hospital/insurance-claims', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const claim = dbStore.addInsuranceClaim(tenantId, req.body);
+      return res.status(201).json({ message: 'Insurance claim submitted', claim });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/insurance-claims/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const claim = dbStore.updateInsuranceClaim(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Insurance claim updated', claim });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Healthcare Suppliers & Inventory
+  app.get('/api/app/hospital/suppliers', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const suppliers = dbStore.getHealthcareSuppliers(tenantId);
+    return res.json({ suppliers });
+  });
+
+  app.post('/api/app/hospital/suppliers', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const supplier = dbStore.addHealthcareSupplier(tenantId, req.body);
+      return res.status(201).json({ message: 'Supplier registered', supplier });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/suppliers/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const supplier = dbStore.updateHealthcareSupplier(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Supplier updated', supplier });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/inventory', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const inventory = dbStore.getHealthcareInventory(tenantId);
+    return res.json({ inventory });
+  });
+
+  app.post('/api/app/hospital/inventory', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const item = dbStore.addHealthcareInventory(tenantId, req.body);
+      return res.status(201).json({ message: 'Inventory item added', item });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/inventory/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const item = dbStore.updateHealthcareInventory(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Inventory item updated', item });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hospital/inventory/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const success = dbStore.deleteHealthcareInventory(tenantId, req.params.id);
+    return res.json({ success });
+  });
+
+  // Ambulance Fleet & Trips
+  app.get('/api/app/hospital/ambulances', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const ambulances = dbStore.getAmbulances(tenantId);
+    return res.json({ ambulances });
+  });
+
+  app.post('/api/app/hospital/ambulances', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const ambulance = dbStore.addAmbulance(tenantId, req.body);
+      return res.status(201).json({ message: 'Ambulance registered', ambulance });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/ambulances/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const ambulance = dbStore.updateAmbulance(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Ambulance updated', ambulance });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/ambulance-trips', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const trips = dbStore.getAmbulanceTrips(tenantId);
+    return res.json({ trips });
+  });
+
+  app.post('/api/app/hospital/ambulance-trips', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const trip = dbStore.addAmbulanceTrip(tenantId, req.body);
+      return res.status(201).json({ message: 'Ambulance trip dispatched', trip });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/ambulance-trips/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const trip = dbStore.updateAmbulanceTrip(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Ambulance trip updated', trip });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Blood Bank
+  app.get('/api/app/hospital/blood-donors', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const donors = dbStore.getBloodDonors(tenantId);
+    return res.json({ donors });
+  });
+
+  app.post('/api/app/hospital/blood-donors', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const donor = dbStore.addBloodDonor(tenantId, req.body);
+      return res.status(201).json({ message: 'Blood donor registered', donor });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/blood-units', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const units = dbStore.getBloodUnits(tenantId);
+    return res.json({ units });
+  });
+
+  app.post('/api/app/hospital/blood-units', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const unit = dbStore.addBloodUnit(tenantId, req.body);
+      return res.status(201).json({ message: 'Blood unit banked', unit });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/blood-units/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const unit = dbStore.updateBloodUnit(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Blood unit updated', unit });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/hospital/blood-transfusions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const transfusions = dbStore.getBloodTransfusions(tenantId);
+    return res.json({ transfusions });
+  });
+
+  app.post('/api/app/hospital/blood-transfusions', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const transfusion = dbStore.recordBloodTransfusion(tenantId, req.body);
+      return res.status(201).json({ message: 'Blood transfusion recorded', transfusion });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Mortuary Management
+  app.get('/api/app/hospital/mortuary', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const records = dbStore.getMortuaryRecords(tenantId);
+    return res.json({ records });
+  });
+
+  app.post('/api/app/hospital/mortuary', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const record = dbStore.addMortuaryRecord(tenantId, req.body);
+      return res.status(201).json({ message: 'Mortuary record created', record });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hospital/mortuary/:id', requireAuth, requireModule('hospital'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const record = dbStore.updateMortuaryRecord(tenantId, req.params.id, req.body);
+      return res.json({ message: 'Mortuary record updated', record });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   app.get('/api/app/hospital/status', requireAuth, requireModule('hospital'), (req, res) => {
     const tenant = (req as any).tenant;
     return res.json({ message: `Hospital Healthcare module active for ${tenant.name}`, status: 'OK' });

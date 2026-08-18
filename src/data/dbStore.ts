@@ -11,7 +11,16 @@ import {
   ChamaMember, ChamaContribution, ChamaLoan, ChamaRepayment, ChamaInvestment,
   PosProduct, PosSaleOrder, RestaurantTable, RestaurantMenuItem,
   InventoryMovement, AccountingLedgerEntry, EmployeeRecord, CrmLeadCustomer,
-  ChurchMemberRecord, ChurchGivingRecord
+  ChurchMemberRecord, ChurchGivingRecord,
+  PatientRecord, HealthcareDepartment, HealthcareStaffRecord, AppointmentRecord,
+  QueueRecord, TriageRecord, ConsultationEncounter, PrescriptionRecord, PrescriptionItem,
+  MedicineCatalogueItem, MedicineBatch, PharmacyDispenseRecord, LabTestCatalogueItem,
+  LabRequestRecord, RadiologyServiceItem, RadiologyRequestRecord, WardRecord, BedRecord,
+  InpatientAdmissionRecord, NursingCareRecord, MedicationAdministrationRecord,
+  TheatreRoomRecord, TheatreSurgeryRecord, MedicalBillingInvoice, MedicalPaymentRecord,
+  InsuranceProviderRecord, InsuranceClaimRecord, HealthcareSupplier, HealthcareInventoryItem,
+  AmbulanceRecord, AmbulanceTripRecord, BloodDonorRecord, BloodUnitRecord,
+  BloodTransfusionRecord, MortuaryRecord, StaffShiftRecord
 } from '../types';
 
 export function hashPassword(password: string, userId: string = 'global_salt'): string {
@@ -347,6 +356,42 @@ class DatabaseStore {
   private crmLeads: CrmLeadCustomer[] = [];
   private churchMembers: ChurchMemberRecord[] = [];
   private churchGivings: ChurchGivingRecord[] = [];
+  // Healthcare & Hospital Collections
+  private patients: PatientRecord[] = [];
+  private healthcareDepartments: HealthcareDepartment[] = [];
+  private healthcareStaff: HealthcareStaffRecord[] = [];
+  private staffShifts: StaffShiftRecord[] = [];
+  private appointments: AppointmentRecord[] = [];
+  private patientQueues: QueueRecord[] = [];
+  private triages: TriageRecord[] = [];
+  private consultationEncounters: ConsultationEncounter[] = [];
+  private prescriptions: PrescriptionRecord[] = [];
+  private medicines: MedicineCatalogueItem[] = [];
+  private medicineBatches: MedicineBatch[] = [];
+  private pharmacyDispenses: PharmacyDispenseRecord[] = [];
+  private labTests: LabTestCatalogueItem[] = [];
+  private labRequests: LabRequestRecord[] = [];
+  private radiologyServices: RadiologyServiceItem[] = [];
+  private radiologyRequests: RadiologyRequestRecord[] = [];
+  private wards: WardRecord[] = [];
+  private beds: BedRecord[] = [];
+  private inpatientAdmissions: InpatientAdmissionRecord[] = [];
+  private nursingCareRecords: NursingCareRecord[] = [];
+  private medicationAdministrations: MedicationAdministrationRecord[] = [];
+  private theatreRooms: TheatreRoomRecord[] = [];
+  private theatreSurgeries: TheatreSurgeryRecord[] = [];
+  private medicalInvoices: MedicalBillingInvoice[] = [];
+  private medicalPayments: MedicalPaymentRecord[] = [];
+  private insuranceProviders: InsuranceProviderRecord[] = [];
+  private insuranceClaims: InsuranceClaimRecord[] = [];
+  private healthcareSuppliers: HealthcareSupplier[] = [];
+  private healthcareInventory: HealthcareInventoryItem[] = [];
+  private ambulances: AmbulanceRecord[] = [];
+  private ambulanceTrips: AmbulanceTripRecord[] = [];
+  private bloodDonors: BloodDonorRecord[] = [];
+  private bloodUnits: BloodUnitRecord[] = [];
+  private bloodTransfusions: BloodTransfusionRecord[] = [];
+  private mortuaryRecords: MortuaryRecord[] = [];
   private platformSettings: PlatformSettings = {
     platformName: 'DAVETECH',
     tagline: 'Davetech Solutions',
@@ -421,7 +466,42 @@ class DatabaseStore {
         employees: this.employees,
         crmLeads: this.crmLeads,
         churchMembers: this.churchMembers,
-        churchGivings: this.churchGivings
+        churchGivings: this.churchGivings,
+        patients: this.patients,
+        healthcareDepartments: this.healthcareDepartments,
+        healthcareStaff: this.healthcareStaff,
+        staffShifts: this.staffShifts,
+        appointments: this.appointments,
+        patientQueues: this.patientQueues,
+        triages: this.triages,
+        consultationEncounters: this.consultationEncounters,
+        prescriptions: this.prescriptions,
+        medicines: this.medicines,
+        medicineBatches: this.medicineBatches,
+        pharmacyDispenses: this.pharmacyDispenses,
+        labTests: this.labTests,
+        labRequests: this.labRequests,
+        radiologyServices: this.radiologyServices,
+        radiologyRequests: this.radiologyRequests,
+        wards: this.wards,
+        beds: this.beds,
+        inpatientAdmissions: this.inpatientAdmissions,
+        nursingCareRecords: this.nursingCareRecords,
+        medicationAdministrations: this.medicationAdministrations,
+        theatreRooms: this.theatreRooms,
+        theatreSurgeries: this.theatreSurgeries,
+        medicalInvoices: this.medicalInvoices,
+        medicalPayments: this.medicalPayments,
+        insuranceProviders: this.insuranceProviders,
+        insuranceClaims: this.insuranceClaims,
+        healthcareSuppliers: this.healthcareSuppliers,
+        healthcareInventory: this.healthcareInventory,
+        ambulances: this.ambulances,
+        ambulanceTrips: this.ambulanceTrips,
+        bloodDonors: this.bloodDonors,
+        bloodUnits: this.bloodUnits,
+        bloodTransfusions: this.bloodTransfusions,
+        mortuaryRecords: this.mortuaryRecords
       };
       fs.writeFileSync(this.getDiskBackupPath(), JSON.stringify(data, null, 2), 'utf8');
     } catch (err) {
@@ -491,6 +571,41 @@ class DatabaseStore {
         if (Array.isArray(data.crmLeads)) this.crmLeads = data.crmLeads;
         if (Array.isArray(data.churchMembers)) this.churchMembers = data.churchMembers;
         if (Array.isArray(data.churchGivings)) this.churchGivings = data.churchGivings;
+        if (Array.isArray(data.patients)) this.patients = data.patients;
+        if (Array.isArray(data.healthcareDepartments)) this.healthcareDepartments = data.healthcareDepartments;
+        if (Array.isArray(data.healthcareStaff)) this.healthcareStaff = data.healthcareStaff;
+        if (Array.isArray(data.staffShifts)) this.staffShifts = data.staffShifts;
+        if (Array.isArray(data.appointments)) this.appointments = data.appointments;
+        if (Array.isArray(data.patientQueues)) this.patientQueues = data.patientQueues;
+        if (Array.isArray(data.triages)) this.triages = data.triages;
+        if (Array.isArray(data.consultationEncounters)) this.consultationEncounters = data.consultationEncounters;
+        if (Array.isArray(data.prescriptions)) this.prescriptions = data.prescriptions;
+        if (Array.isArray(data.medicines)) this.medicines = data.medicines;
+        if (Array.isArray(data.medicineBatches)) this.medicineBatches = data.medicineBatches;
+        if (Array.isArray(data.pharmacyDispenses)) this.pharmacyDispenses = data.pharmacyDispenses;
+        if (Array.isArray(data.labTests)) this.labTests = data.labTests;
+        if (Array.isArray(data.labRequests)) this.labRequests = data.labRequests;
+        if (Array.isArray(data.radiologyServices)) this.radiologyServices = data.radiologyServices;
+        if (Array.isArray(data.radiologyRequests)) this.radiologyRequests = data.radiologyRequests;
+        if (Array.isArray(data.wards)) this.wards = data.wards;
+        if (Array.isArray(data.beds)) this.beds = data.beds;
+        if (Array.isArray(data.inpatientAdmissions)) this.inpatientAdmissions = data.inpatientAdmissions;
+        if (Array.isArray(data.nursingCareRecords)) this.nursingCareRecords = data.nursingCareRecords;
+        if (Array.isArray(data.medicationAdministrations)) this.medicationAdministrations = data.medicationAdministrations;
+        if (Array.isArray(data.theatreRooms)) this.theatreRooms = data.theatreRooms;
+        if (Array.isArray(data.theatreSurgeries)) this.theatreSurgeries = data.theatreSurgeries;
+        if (Array.isArray(data.medicalInvoices)) this.medicalInvoices = data.medicalInvoices;
+        if (Array.isArray(data.medicalPayments)) this.medicalPayments = data.medicalPayments;
+        if (Array.isArray(data.insuranceProviders)) this.insuranceProviders = data.insuranceProviders;
+        if (Array.isArray(data.insuranceClaims)) this.insuranceClaims = data.insuranceClaims;
+        if (Array.isArray(data.healthcareSuppliers)) this.healthcareSuppliers = data.healthcareSuppliers;
+        if (Array.isArray(data.healthcareInventory)) this.healthcareInventory = data.healthcareInventory;
+        if (Array.isArray(data.ambulances)) this.ambulances = data.ambulances;
+        if (Array.isArray(data.ambulanceTrips)) this.ambulanceTrips = data.ambulanceTrips;
+        if (Array.isArray(data.bloodDonors)) this.bloodDonors = data.bloodDonors;
+        if (Array.isArray(data.bloodUnits)) this.bloodUnits = data.bloodUnits;
+        if (Array.isArray(data.bloodTransfusions)) this.bloodTransfusions = data.bloodTransfusions;
+        if (Array.isArray(data.mortuaryRecords)) this.mortuaryRecords = data.mortuaryRecords;
         console.log('[DatabaseStore] Successfully loaded cache from disk');
       }
     } catch (err) {
@@ -658,6 +773,111 @@ class DatabaseStore {
 
       const dbChurchGivings = await loadCollectionFromFirestore<ChurchGivingRecord>('churchGivings');
       this.churchGivings = Array.isArray(dbChurchGivings) ? dbChurchGivings : [];
+
+      const dbPatients = await loadCollectionFromFirestore<PatientRecord>('healthcarePatients');
+      this.patients = Array.isArray(dbPatients) ? dbPatients : [];
+
+      const dbHcDepts = await loadCollectionFromFirestore<HealthcareDepartment>('healthcareDepartments');
+      this.healthcareDepartments = Array.isArray(dbHcDepts) ? dbHcDepts : [];
+
+      const dbHcStaff = await loadCollectionFromFirestore<HealthcareStaffRecord>('healthcareStaff');
+      this.healthcareStaff = Array.isArray(dbHcStaff) ? dbHcStaff : [];
+
+      const dbShifts = await loadCollectionFromFirestore<StaffShiftRecord>('healthcareStaffShifts');
+      this.staffShifts = Array.isArray(dbShifts) ? dbShifts : [];
+
+      const dbAppts = await loadCollectionFromFirestore<AppointmentRecord>('healthcareAppointments');
+      this.appointments = Array.isArray(dbAppts) ? dbAppts : [];
+
+      const dbQueues = await loadCollectionFromFirestore<QueueRecord>('healthcareQueues');
+      this.patientQueues = Array.isArray(dbQueues) ? dbQueues : [];
+
+      const dbTriages = await loadCollectionFromFirestore<TriageRecord>('healthcareTriages');
+      this.triages = Array.isArray(dbTriages) ? dbTriages : [];
+
+      const dbEncounters = await loadCollectionFromFirestore<ConsultationEncounter>('healthcareEncounters');
+      this.consultationEncounters = Array.isArray(dbEncounters) ? dbEncounters : [];
+
+      const dbPrescriptions = await loadCollectionFromFirestore<PrescriptionRecord>('healthcarePrescriptions');
+      this.prescriptions = Array.isArray(dbPrescriptions) ? dbPrescriptions : [];
+
+      const dbMedicines = await loadCollectionFromFirestore<MedicineCatalogueItem>('healthcareMedicines');
+      this.medicines = Array.isArray(dbMedicines) ? dbMedicines : [];
+
+      const dbBatches = await loadCollectionFromFirestore<MedicineBatch>('healthcareMedicineBatches');
+      this.medicineBatches = Array.isArray(dbBatches) ? dbBatches : [];
+
+      const dbDispenses = await loadCollectionFromFirestore<PharmacyDispenseRecord>('healthcarePharmacyDispenses');
+      this.pharmacyDispenses = Array.isArray(dbDispenses) ? dbDispenses : [];
+
+      const dbLabTests = await loadCollectionFromFirestore<LabTestCatalogueItem>('healthcareLabTests');
+      this.labTests = Array.isArray(dbLabTests) ? dbLabTests : [];
+
+      const dbLabReqs = await loadCollectionFromFirestore<LabRequestRecord>('healthcareLabRequests');
+      this.labRequests = Array.isArray(dbLabReqs) ? dbLabReqs : [];
+
+      const dbRadServices = await loadCollectionFromFirestore<RadiologyServiceItem>('healthcareRadiologyServices');
+      this.radiologyServices = Array.isArray(dbRadServices) ? dbRadServices : [];
+
+      const dbRadReqs = await loadCollectionFromFirestore<RadiologyRequestRecord>('healthcareRadiologyRequests');
+      this.radiologyRequests = Array.isArray(dbRadReqs) ? dbRadReqs : [];
+
+      const dbWards = await loadCollectionFromFirestore<WardRecord>('healthcareWards');
+      this.wards = Array.isArray(dbWards) ? dbWards : [];
+
+      const dbBeds = await loadCollectionFromFirestore<BedRecord>('healthcareBeds');
+      this.beds = Array.isArray(dbBeds) ? dbBeds : [];
+
+      const dbAdmissions = await loadCollectionFromFirestore<InpatientAdmissionRecord>('healthcareAdmissions');
+      this.inpatientAdmissions = Array.isArray(dbAdmissions) ? dbAdmissions : [];
+
+      const dbNursing = await loadCollectionFromFirestore<NursingCareRecord>('healthcareNursingCare');
+      this.nursingCareRecords = Array.isArray(dbNursing) ? dbNursing : [];
+
+      const dbMedAdmins = await loadCollectionFromFirestore<MedicationAdministrationRecord>('healthcareMedAdministrations');
+      this.medicationAdministrations = Array.isArray(dbMedAdmins) ? dbMedAdmins : [];
+
+      const dbTheatres = await loadCollectionFromFirestore<TheatreRoomRecord>('healthcareTheatreRooms');
+      this.theatreRooms = Array.isArray(dbTheatres) ? dbTheatres : [];
+
+      const dbSurgeries = await loadCollectionFromFirestore<TheatreSurgeryRecord>('healthcareTheatreSurgeries');
+      this.theatreSurgeries = Array.isArray(dbSurgeries) ? dbSurgeries : [];
+
+      const dbMedInvoices = await loadCollectionFromFirestore<MedicalBillingInvoice>('healthcareInvoices');
+      this.medicalInvoices = Array.isArray(dbMedInvoices) ? dbMedInvoices : [];
+
+      const dbMedPayments = await loadCollectionFromFirestore<MedicalPaymentRecord>('healthcarePayments');
+      this.medicalPayments = Array.isArray(dbMedPayments) ? dbMedPayments : [];
+
+      const dbInsurance = await loadCollectionFromFirestore<InsuranceProviderRecord>('healthcareInsuranceProviders');
+      this.insuranceProviders = Array.isArray(dbInsurance) ? dbInsurance : [];
+
+      const dbClaims = await loadCollectionFromFirestore<InsuranceClaimRecord>('healthcareInsuranceClaims');
+      this.insuranceClaims = Array.isArray(dbClaims) ? dbClaims : [];
+
+      const dbHcSuppliers = await loadCollectionFromFirestore<HealthcareSupplier>('healthcareSuppliers');
+      this.healthcareSuppliers = Array.isArray(dbHcSuppliers) ? dbHcSuppliers : [];
+
+      const dbHcInventory = await loadCollectionFromFirestore<HealthcareInventoryItem>('healthcareInventory');
+      this.healthcareInventory = Array.isArray(dbHcInventory) ? dbHcInventory : [];
+
+      const dbAmbulances = await loadCollectionFromFirestore<AmbulanceRecord>('healthcareAmbulances');
+      this.ambulances = Array.isArray(dbAmbulances) ? dbAmbulances : [];
+
+      const dbAmbTrips = await loadCollectionFromFirestore<AmbulanceTripRecord>('healthcareAmbulanceTrips');
+      this.ambulanceTrips = Array.isArray(dbAmbTrips) ? dbAmbTrips : [];
+
+      const dbDonors = await loadCollectionFromFirestore<BloodDonorRecord>('healthcareBloodDonors');
+      this.bloodDonors = Array.isArray(dbDonors) ? dbDonors : [];
+
+      const dbBloodUnits = await loadCollectionFromFirestore<BloodUnitRecord>('healthcareBloodUnits');
+      this.bloodUnits = Array.isArray(dbBloodUnits) ? dbBloodUnits : [];
+
+      const dbTransfusions = await loadCollectionFromFirestore<BloodTransfusionRecord>('healthcareBloodTransfusions');
+      this.bloodTransfusions = Array.isArray(dbTransfusions) ? dbTransfusions : [];
+
+      const dbMortuary = await loadCollectionFromFirestore<MortuaryRecord>('healthcareMortuary');
+      this.mortuaryRecords = Array.isArray(dbMortuary) ? dbMortuary : [];
 
       const dbNotifications = await loadCollectionFromFirestore<PlatformNotification>('notifications');
       this.notifications = Array.isArray(dbNotifications) && dbNotifications.length > 0 ? dbNotifications : [...INITIAL_NOTIFICATIONS];
@@ -3627,6 +3847,1212 @@ class DatabaseStore {
     saveDocToFirestore('churchGivings', giving.id, giving).catch(() => {});
     this.logAction(tenantId, actorId, actorName, actorRole, 'CHURCH_GIVING_RECORDED', 'ChurchGivingRecord', `Recorded ${giving.category} of KES ${giving.amount} from ${giving.giverName}`, giving.id);
     return giving;
+  }
+
+  // =========================================================================
+  // HEALTHCARE & HOSPITAL ERP BUSINESS LOGIC AND DATABASE METHODS
+  // =========================================================================
+
+  // 1. PATIENTS
+  public getPatients(tenantId: string): PatientRecord[] {
+    return this.patients.filter(p => p.tenantId === tenantId);
+  }
+
+  public getPatientById(tenantId: string, id: string): PatientRecord | undefined {
+    return this.patients.find(p => p.tenantId === tenantId && (p.id === id || p.patientNumber === id));
+  }
+
+  public addPatient(tenantId: string, data: Omit<PatientRecord, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>, createdBy?: User): PatientRecord {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Medical Records Officer';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const currentYear = new Date().getFullYear();
+    const count = this.patients.filter(p => p.tenantId === tenantId).length + 1;
+    const patientNumber = data.patientNumber || `PAT-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const newPatient: PatientRecord = {
+      ...data,
+      id: `pat_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      patientNumber,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.patients.unshift(newPatient);
+    this.persistDoc('healthcarePatients', newPatient.id, newPatient);
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PATIENT_REGISTERED', 'PatientRecord', `Registered patient "${newPatient.firstName} ${newPatient.lastName}" (${newPatient.patientNumber})`, newPatient.id);
+    return newPatient;
+  }
+
+  public updatePatient(tenantId: string, id: string, data: Partial<PatientRecord>, updatedBy?: User): PatientRecord {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Medical Records Officer';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.patients.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) throw new Error('Patient not found');
+
+    const updated = {
+      ...this.patients[idx],
+      ...data,
+      updatedAt: new Date().toISOString()
+    };
+
+    this.patients[idx] = updated;
+    this.persistDoc('healthcarePatients', updated.id, updated);
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PATIENT_UPDATED', 'PatientRecord', `Updated patient record for "${updated.firstName} ${updated.lastName}" (${updated.patientNumber})`, updated.id);
+    return updated;
+  }
+
+  public deletePatient(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'System Admin';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.patients.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) return false;
+
+    const removed = this.patients.splice(idx, 1)[0];
+    this.removeDoc('healthcarePatients', removed.id);
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PATIENT_DELETED', 'PatientRecord', `Deleted patient record "${removed.firstName} ${removed.lastName}" (${removed.patientNumber})`, removed.id);
+    return true;
+  }
+
+  // 2. HEALTHCARE DEPARTMENTS & STAFF
+  public getHealthcareDepartments(tenantId: string): HealthcareDepartment[] {
+    return this.healthcareDepartments.filter(d => d.tenantId === tenantId);
+  }
+
+  public addHealthcareDepartment(tenantId: string, data: Omit<HealthcareDepartment, 'id' | 'tenantId'>, createdBy?: User): HealthcareDepartment {
+    const dept: HealthcareDepartment = {
+      ...data,
+      id: `hdept_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.healthcareDepartments.unshift(dept);
+    this.persistDoc('healthcareDepartments', dept.id, dept);
+    return dept;
+  }
+
+  public updateHealthcareDepartment(tenantId: string, id: string, data: Partial<HealthcareDepartment>, updatedBy?: User): HealthcareDepartment {
+    const idx = this.healthcareDepartments.findIndex(d => d.tenantId === tenantId && d.id === id);
+    if (idx === -1) throw new Error('Department not found');
+    const updated = { ...this.healthcareDepartments[idx], ...data };
+    this.healthcareDepartments[idx] = updated;
+    this.persistDoc('healthcareDepartments', updated.id, updated);
+    return updated;
+  }
+
+  public deleteHealthcareDepartment(tenantId: string, id: string): boolean {
+    const idx = this.healthcareDepartments.findIndex(d => d.tenantId === tenantId && d.id === id);
+    if (idx === -1) return false;
+    const removed = this.healthcareDepartments.splice(idx, 1)[0];
+    this.removeDoc('healthcareDepartments', removed.id);
+    return true;
+  }
+
+  public getHealthcareStaff(tenantId: string): HealthcareStaffRecord[] {
+    return this.healthcareStaff.filter(s => s.tenantId === tenantId);
+  }
+
+  public addHealthcareStaff(tenantId: string, data: Omit<HealthcareStaffRecord, 'id' | 'tenantId'>, createdBy?: User): HealthcareStaffRecord {
+    const staff: HealthcareStaffRecord = {
+      ...data,
+      id: `hstaff_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.healthcareStaff.unshift(staff);
+    this.persistDoc('healthcareStaff', staff.id, staff);
+    return staff;
+  }
+
+  public updateHealthcareStaff(tenantId: string, id: string, data: Partial<HealthcareStaffRecord>): HealthcareStaffRecord {
+    const idx = this.healthcareStaff.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) throw new Error('Healthcare staff member not found');
+    const updated = { ...this.healthcareStaff[idx], ...data };
+    this.healthcareStaff[idx] = updated;
+    this.persistDoc('healthcareStaff', updated.id, updated);
+    return updated;
+  }
+
+  public deleteHealthcareStaff(tenantId: string, id: string): boolean {
+    const idx = this.healthcareStaff.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) return false;
+    const removed = this.healthcareStaff.splice(idx, 1)[0];
+    this.removeDoc('healthcareStaff', removed.id);
+    return true;
+  }
+
+  public getStaffShifts(tenantId: string): StaffShiftRecord[] {
+    return this.staffShifts.filter(s => s.tenantId === tenantId);
+  }
+
+  public addStaffShift(tenantId: string, data: Omit<StaffShiftRecord, 'id' | 'tenantId'>): StaffShiftRecord {
+    const shift: StaffShiftRecord = {
+      ...data,
+      id: `shift_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'SCHEDULED'
+    };
+    this.staffShifts.unshift(shift);
+    this.persistDoc('healthcareStaffShifts', shift.id, shift);
+    return shift;
+  }
+
+  public updateStaffShift(tenantId: string, id: string, data: Partial<StaffShiftRecord>): StaffShiftRecord {
+    const idx = this.staffShifts.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) throw new Error('Shift record not found');
+    const updated = { ...this.staffShifts[idx], ...data };
+    this.staffShifts[idx] = updated;
+    this.persistDoc('healthcareStaffShifts', updated.id, updated);
+    return updated;
+  }
+
+  // 3. APPOINTMENTS, RECEPTION QUEUE & TRIAGE
+  public getAppointments(tenantId: string): AppointmentRecord[] {
+    return this.appointments.filter(a => a.tenantId === tenantId);
+  }
+
+  public addAppointment(tenantId: string, data: Omit<AppointmentRecord, 'id' | 'tenantId' | 'createdAt'>, createdBy?: User): AppointmentRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.appointments.filter(a => a.tenantId === tenantId).length + 1;
+    const appointmentNumber = data.appointmentNumber || `APT-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const appt: AppointmentRecord = {
+      ...data,
+      id: `appt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      appointmentNumber,
+      status: data.status || 'SCHEDULED',
+      createdAt: new Date().toISOString()
+    };
+    this.appointments.unshift(appt);
+    this.persistDoc('healthcareAppointments', appt.id, appt);
+    return appt;
+  }
+
+  public updateAppointment(tenantId: string, id: string, data: Partial<AppointmentRecord>): AppointmentRecord {
+    const idx = this.appointments.findIndex(a => a.tenantId === tenantId && a.id === id);
+    if (idx === -1) throw new Error('Appointment not found');
+    const updated = { ...this.appointments[idx], ...data };
+    this.appointments[idx] = updated;
+    this.persistDoc('healthcareAppointments', updated.id, updated);
+    return updated;
+  }
+
+  public deleteAppointment(tenantId: string, id: string): boolean {
+    const idx = this.appointments.findIndex(a => a.tenantId === tenantId && a.id === id);
+    if (idx === -1) return false;
+    const removed = this.appointments.splice(idx, 1)[0];
+    this.removeDoc('healthcareAppointments', removed.id);
+    return true;
+  }
+
+  public getQueues(tenantId: string): QueueRecord[] {
+    return this.patientQueues.filter(q => q.tenantId === tenantId);
+  }
+
+  public addQueue(tenantId: string, data: Omit<QueueRecord, 'id' | 'tenantId'>): QueueRecord {
+    const count = this.patientQueues.filter(q => q.tenantId === tenantId).length + 1;
+    const queueNumber = data.queueNumber || `Q-${String(count).padStart(3, '0')}`;
+    const queue: QueueRecord = {
+      ...data,
+      id: `q_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      queueNumber,
+      priority: data.priority || 'NORMAL',
+      status: data.status || 'WAITING',
+      checkInTime: data.checkInTime || new Date().toISOString()
+    };
+    this.patientQueues.unshift(queue);
+    this.persistDoc('healthcareQueues', queue.id, queue);
+    return queue;
+  }
+
+  public updateQueue(tenantId: string, id: string, data: Partial<QueueRecord>): QueueRecord {
+    const idx = this.patientQueues.findIndex(q => q.tenantId === tenantId && q.id === id);
+    if (idx === -1) throw new Error('Queue item not found');
+    const updated = { ...this.patientQueues[idx], ...data };
+    this.patientQueues[idx] = updated;
+    this.persistDoc('healthcareQueues', updated.id, updated);
+    return updated;
+  }
+
+  public getTriages(tenantId: string): TriageRecord[] {
+    return this.triages.filter(t => t.tenantId === tenantId);
+  }
+
+  public addTriage(tenantId: string, data: Omit<TriageRecord, 'id' | 'tenantId' | 'bmi'> & { bmi?: number }, createdBy?: User): TriageRecord {
+    let bmi = data.bmi;
+    if (!bmi && data.weightKg && data.heightCm) {
+      const heightMeters = data.heightCm / 100;
+      bmi = Number((data.weightKg / (heightMeters * heightMeters)).toFixed(1));
+    }
+
+    const triage: TriageRecord = {
+      ...data,
+      id: `trg_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      bmi: bmi || 22.0,
+      priority: data.priority || 'NORMAL',
+      recordedAt: data.recordedAt || new Date().toISOString()
+    };
+    this.triages.unshift(triage);
+    this.persistDoc('healthcareTriages', triage.id, triage);
+
+    // If queueId provided, update queue status to WAITING_FOR_DOCTOR
+    if (data.queueId) {
+      const q = this.patientQueues.find(q => q.tenantId === tenantId && q.id === data.queueId);
+      if (q) {
+        q.status = 'WAITING_FOR_DOCTOR';
+        q.priority = triage.priority;
+        this.persistDoc('healthcareQueues', q.id, q);
+      }
+    }
+
+    return triage;
+  }
+
+  // 4. CONSULTATION / EMR ENCOUNTERS
+  public getConsultationEncounters(tenantId: string): ConsultationEncounter[] {
+    return this.consultationEncounters.filter(e => e.tenantId === tenantId);
+  }
+
+  public addConsultationEncounter(tenantId: string, data: Omit<ConsultationEncounter, 'id' | 'tenantId' | 'createdAt'>, createdBy?: User): ConsultationEncounter {
+    const currentYear = new Date().getFullYear();
+    const count = this.consultationEncounters.filter(e => e.tenantId === tenantId).length + 1;
+    const encounterNumber = data.encounterNumber || `ENC-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const enc: ConsultationEncounter = {
+      ...data,
+      id: `enc_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      encounterNumber,
+      status: data.status || 'COMPLETED',
+      createdAt: new Date().toISOString()
+    };
+    this.consultationEncounters.unshift(enc);
+    this.persistDoc('healthcareEncounters', enc.id, enc);
+    return enc;
+  }
+
+  public updateConsultationEncounter(tenantId: string, id: string, data: Partial<ConsultationEncounter>): ConsultationEncounter {
+    const idx = this.consultationEncounters.findIndex(e => e.tenantId === tenantId && e.id === id);
+    if (idx === -1) throw new Error('Consultation encounter not found');
+    const updated = { ...this.consultationEncounters[idx], ...data };
+    this.consultationEncounters[idx] = updated;
+    this.persistDoc('healthcareEncounters', updated.id, updated);
+    return updated;
+  }
+
+  // 5. PRESCRIPTIONS & PHARMACY
+  public getPrescriptions(tenantId: string): PrescriptionRecord[] {
+    return this.prescriptions.filter(p => p.tenantId === tenantId);
+  }
+
+  public addPrescription(tenantId: string, data: Omit<PrescriptionRecord, 'id' | 'tenantId'>, createdBy?: User): PrescriptionRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.prescriptions.filter(p => p.tenantId === tenantId).length + 1;
+    const prescriptionNumber = data.prescriptionNumber || `RX-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const rx: PrescriptionRecord = {
+      ...data,
+      id: `rx_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      prescriptionNumber,
+      status: data.status || 'PENDING',
+      datePrescribed: data.datePrescribed || new Date().toISOString()
+    };
+    this.prescriptions.unshift(rx);
+    this.persistDoc('healthcarePrescriptions', rx.id, rx);
+    return rx;
+  }
+
+  public updatePrescription(tenantId: string, id: string, data: Partial<PrescriptionRecord>): PrescriptionRecord {
+    const idx = this.prescriptions.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) throw new Error('Prescription not found');
+    const updated = { ...this.prescriptions[idx], ...data };
+    this.prescriptions[idx] = updated;
+    this.persistDoc('healthcarePrescriptions', updated.id, updated);
+    return updated;
+  }
+
+  public getMedicines(tenantId: string): MedicineCatalogueItem[] {
+    return this.medicines.filter(m => m.tenantId === tenantId);
+  }
+
+  public addMedicine(tenantId: string, data: Omit<MedicineCatalogueItem, 'id' | 'tenantId'>): MedicineCatalogueItem {
+    const med: MedicineCatalogueItem = {
+      ...data,
+      id: `med_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.medicines.unshift(med);
+    this.persistDoc('healthcareMedicines', med.id, med);
+    return med;
+  }
+
+  public updateMedicine(tenantId: string, id: string, data: Partial<MedicineCatalogueItem>): MedicineCatalogueItem {
+    const idx = this.medicines.findIndex(m => m.tenantId === tenantId && m.id === id);
+    if (idx === -1) throw new Error('Medicine not found');
+    const updated = { ...this.medicines[idx], ...data };
+    this.medicines[idx] = updated;
+    this.persistDoc('healthcareMedicines', updated.id, updated);
+    return updated;
+  }
+
+  public deleteMedicine(tenantId: string, id: string): boolean {
+    const idx = this.medicines.findIndex(m => m.tenantId === tenantId && m.id === id);
+    if (idx === -1) return false;
+    const removed = this.medicines.splice(idx, 1)[0];
+    this.removeDoc('healthcareMedicines', removed.id);
+    return true;
+  }
+
+  public getMedicineBatches(tenantId: string): MedicineBatch[] {
+    return this.medicineBatches.filter(b => b.tenantId === tenantId);
+  }
+
+  public addMedicineBatch(tenantId: string, data: Omit<MedicineBatch, 'id' | 'tenantId'>): MedicineBatch {
+    const batch: MedicineBatch = {
+      ...data,
+      id: `mbatch_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId
+    };
+    this.medicineBatches.unshift(batch);
+    this.persistDoc('healthcareMedicineBatches', batch.id, batch);
+
+    // Update medicine stockOnHand
+    const med = this.medicines.find(m => m.tenantId === tenantId && m.id === data.medicineId);
+    if (med) {
+      med.stockOnHand = (med.stockOnHand || 0) + data.quantityInitial;
+      this.persistDoc('healthcareMedicines', med.id, med);
+    }
+
+    return batch;
+  }
+
+  public getPharmacyDispenses(tenantId: string): PharmacyDispenseRecord[] {
+    return this.pharmacyDispenses.filter(d => d.tenantId === tenantId);
+  }
+
+  public dispensePrescription(tenantId: string, data: Omit<PharmacyDispenseRecord, 'id' | 'tenantId'>, createdBy?: User): PharmacyDispenseRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.pharmacyDispenses.filter(d => d.tenantId === tenantId).length + 1;
+    const dispenseNumber = data.dispenseNumber || `DSP-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const disp: PharmacyDispenseRecord = {
+      ...data,
+      id: `disp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      dispenseNumber,
+      dispensedAt: data.dispensedAt || new Date().toISOString()
+    };
+
+    // Deduct stock for each dispensed item
+    data.items.forEach(item => {
+      const med = this.medicines.find(m => m.tenantId === tenantId && m.id === item.medicineId);
+      if (med) {
+        med.stockOnHand = Math.max(0, (med.stockOnHand || 0) - item.quantity);
+        this.persistDoc('healthcareMedicines', med.id, med);
+      }
+      if (item.batchNumber) {
+        const batch = this.medicineBatches.find(b => b.tenantId === tenantId && b.medicineId === item.medicineId && b.batchNumber === item.batchNumber);
+        if (batch) {
+          batch.quantityRemaining = Math.max(0, (batch.quantityRemaining || 0) - item.quantity);
+          this.persistDoc('healthcareMedicineBatches', batch.id, batch);
+        }
+      }
+    });
+
+    // Mark prescription as DISPENSED if prescriptionId is provided
+    if (data.prescriptionId) {
+      const rx = this.prescriptions.find(p => p.tenantId === tenantId && p.id === data.prescriptionId);
+      if (rx) {
+        rx.status = 'DISPENSED';
+        rx.dispensedAt = new Date().toISOString();
+        rx.dispensedBy = data.dispensedBy;
+        this.persistDoc('healthcarePrescriptions', rx.id, rx);
+      }
+    }
+
+    this.pharmacyDispenses.unshift(disp);
+    this.persistDoc('healthcarePharmacyDispenses', disp.id, disp);
+    return disp;
+  }
+
+  // 6. LABORATORY & RADIOLOGY
+  public getLabTests(tenantId: string): LabTestCatalogueItem[] {
+    return this.labTests.filter(t => t.tenantId === tenantId);
+  }
+
+  public addLabTest(tenantId: string, data: Omit<LabTestCatalogueItem, 'id' | 'tenantId'>): LabTestCatalogueItem {
+    const test: LabTestCatalogueItem = {
+      ...data,
+      id: `labtest_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      isAvailable: data.isAvailable ?? true
+    };
+    this.labTests.unshift(test);
+    this.persistDoc('healthcareLabTests', test.id, test);
+    return test;
+  }
+
+  public updateLabTest(tenantId: string, id: string, data: Partial<LabTestCatalogueItem>): LabTestCatalogueItem {
+    const idx = this.labTests.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) throw new Error('Lab test not found');
+    const updated = { ...this.labTests[idx], ...data };
+    this.labTests[idx] = updated;
+    this.persistDoc('healthcareLabTests', updated.id, updated);
+    return updated;
+  }
+
+  public deleteLabTest(tenantId: string, id: string): boolean {
+    const idx = this.labTests.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) return false;
+    const removed = this.labTests.splice(idx, 1)[0];
+    this.removeDoc('healthcareLabTests', removed.id);
+    return true;
+  }
+
+  public getLabRequests(tenantId: string): LabRequestRecord[] {
+    return this.labRequests.filter(r => r.tenantId === tenantId);
+  }
+
+  public addLabRequest(tenantId: string, data: Omit<LabRequestRecord, 'id' | 'tenantId'>): LabRequestRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.labRequests.filter(r => r.tenantId === tenantId).length + 1;
+    const requestNumber = data.requestNumber || `LAB-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const req: LabRequestRecord = {
+      ...data,
+      id: `labreq_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      requestNumber,
+      status: data.status || 'REQUESTED',
+      requestedAt: data.requestedAt || new Date().toISOString()
+    };
+    this.labRequests.unshift(req);
+    this.persistDoc('healthcareLabRequests', req.id, req);
+    return req;
+  }
+
+  public updateLabRequest(tenantId: string, id: string, data: Partial<LabRequestRecord>): LabRequestRecord {
+    const idx = this.labRequests.findIndex(r => r.tenantId === tenantId && r.id === id);
+    if (idx === -1) throw new Error('Lab request not found');
+    const updated = { ...this.labRequests[idx], ...data };
+    this.labRequests[idx] = updated;
+    this.persistDoc('healthcareLabRequests', updated.id, updated);
+    return updated;
+  }
+
+  public getRadiologyServices(tenantId: string): RadiologyServiceItem[] {
+    return this.radiologyServices.filter(r => r.tenantId === tenantId);
+  }
+
+  public addRadiologyService(tenantId: string, data: Omit<RadiologyServiceItem, 'id' | 'tenantId'>): RadiologyServiceItem {
+    const srv: RadiologyServiceItem = {
+      ...data,
+      id: `radsrv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      isAvailable: data.isAvailable ?? true
+    };
+    this.radiologyServices.unshift(srv);
+    this.persistDoc('healthcareRadiologyServices', srv.id, srv);
+    return srv;
+  }
+
+  public updateRadiologyService(tenantId: string, id: string, data: Partial<RadiologyServiceItem>): RadiologyServiceItem {
+    const idx = this.radiologyServices.findIndex(r => r.tenantId === tenantId && r.id === id);
+    if (idx === -1) throw new Error('Radiology service not found');
+    const updated = { ...this.radiologyServices[idx], ...data };
+    this.radiologyServices[idx] = updated;
+    this.persistDoc('healthcareRadiologyServices', updated.id, updated);
+    return updated;
+  }
+
+  public deleteRadiologyService(tenantId: string, id: string): boolean {
+    const idx = this.radiologyServices.findIndex(r => r.tenantId === tenantId && r.id === id);
+    if (idx === -1) return false;
+    const removed = this.radiologyServices.splice(idx, 1)[0];
+    this.removeDoc('healthcareRadiologyServices', removed.id);
+    return true;
+  }
+
+  public getRadiologyRequests(tenantId: string): RadiologyRequestRecord[] {
+    return this.radiologyRequests.filter(r => r.tenantId === tenantId);
+  }
+
+  public addRadiologyRequest(tenantId: string, data: Omit<RadiologyRequestRecord, 'id' | 'tenantId'>): RadiologyRequestRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.radiologyRequests.filter(r => r.tenantId === tenantId).length + 1;
+    const requestNumber = data.requestNumber || `RAD-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const req: RadiologyRequestRecord = {
+      ...data,
+      id: `radreq_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      requestNumber,
+      status: data.status || 'REQUESTED',
+      requestedAt: data.requestedAt || new Date().toISOString()
+    };
+    this.radiologyRequests.unshift(req);
+    this.persistDoc('healthcareRadiologyRequests', req.id, req);
+    return req;
+  }
+
+  public updateRadiologyRequest(tenantId: string, id: string, data: Partial<RadiologyRequestRecord>): RadiologyRequestRecord {
+    const idx = this.radiologyRequests.findIndex(r => r.tenantId === tenantId && r.id === id);
+    if (idx === -1) throw new Error('Radiology request not found');
+    const updated = { ...this.radiologyRequests[idx], ...data };
+    this.radiologyRequests[idx] = updated;
+    this.persistDoc('healthcareRadiologyRequests', updated.id, updated);
+    return updated;
+  }
+
+  // 7. INPATIENT WARDS, BEDS, ADMISSIONS & NURSING
+  public getWards(tenantId: string): WardRecord[] {
+    return this.wards.filter(w => w.tenantId === tenantId);
+  }
+
+  public addWard(tenantId: string, data: Omit<WardRecord, 'id' | 'tenantId'>): WardRecord {
+    const ward: WardRecord = {
+      ...data,
+      id: `ward_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.wards.unshift(ward);
+    this.persistDoc('healthcareWards', ward.id, ward);
+    return ward;
+  }
+
+  public updateWard(tenantId: string, id: string, data: Partial<WardRecord>): WardRecord {
+    const idx = this.wards.findIndex(w => w.tenantId === tenantId && w.id === id);
+    if (idx === -1) throw new Error('Ward not found');
+    const updated = { ...this.wards[idx], ...data };
+    this.wards[idx] = updated;
+    this.persistDoc('healthcareWards', updated.id, updated);
+    return updated;
+  }
+
+  public deleteWard(tenantId: string, id: string): boolean {
+    const idx = this.wards.findIndex(w => w.tenantId === tenantId && w.id === id);
+    if (idx === -1) return false;
+    const removed = this.wards.splice(idx, 1)[0];
+    this.removeDoc('healthcareWards', removed.id);
+    return true;
+  }
+
+  public getBeds(tenantId: string): BedRecord[] {
+    return this.beds.filter(b => b.tenantId === tenantId);
+  }
+
+  public addBed(tenantId: string, data: Omit<BedRecord, 'id' | 'tenantId'>): BedRecord {
+    const bed: BedRecord = {
+      ...data,
+      id: `bed_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'AVAILABLE'
+    };
+    this.beds.unshift(bed);
+    this.persistDoc('healthcareBeds', bed.id, bed);
+    return bed;
+  }
+
+  public updateBed(tenantId: string, id: string, data: Partial<BedRecord>): BedRecord {
+    const idx = this.beds.findIndex(b => b.tenantId === tenantId && b.id === id);
+    if (idx === -1) throw new Error('Bed not found');
+    const updated = { ...this.beds[idx], ...data };
+    this.beds[idx] = updated;
+    this.persistDoc('healthcareBeds', updated.id, updated);
+    return updated;
+  }
+
+  public deleteBed(tenantId: string, id: string): boolean {
+    const idx = this.beds.findIndex(b => b.tenantId === tenantId && b.id === id);
+    if (idx === -1) return false;
+    const removed = this.beds.splice(idx, 1)[0];
+    this.removeDoc('healthcareBeds', removed.id);
+    return true;
+  }
+
+  public getInpatientAdmissions(tenantId: string): InpatientAdmissionRecord[] {
+    return this.inpatientAdmissions.filter(a => a.tenantId === tenantId);
+  }
+
+  public admitPatient(tenantId: string, data: Omit<InpatientAdmissionRecord, 'id' | 'tenantId' | 'createdAt'>, createdBy?: User): InpatientAdmissionRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.inpatientAdmissions.filter(a => a.tenantId === tenantId).length + 1;
+    const admissionNumber = data.admissionNumber || `ADM-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const adm: InpatientAdmissionRecord = {
+      ...data,
+      id: `adm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      admissionNumber,
+      status: 'ADMITTED',
+      createdAt: new Date().toISOString()
+    };
+
+    // Mark corresponding bed as OCCUPIED
+    const bed = this.beds.find(b => b.tenantId === tenantId && b.id === data.bedId);
+    if (bed) {
+      bed.status = 'OCCUPIED';
+      bed.currentPatientId = data.patientId;
+      bed.currentPatientName = data.patientName;
+      bed.currentPatientNumber = data.patientNumber;
+      bed.currentAdmissionId = adm.id;
+      this.persistDoc('healthcareBeds', bed.id, bed);
+    }
+
+    this.inpatientAdmissions.unshift(adm);
+    this.persistDoc('healthcareAdmissions', adm.id, adm);
+    return adm;
+  }
+
+  public dischargePatient(tenantId: string, id: string, dischargeData: { conditionAtDischarge: string; dischargeMedications: string; followUpInstructions: string; dischargeType: 'NORMAL' | 'AGAINST_MEDICAL_ADVICE' | 'TRANSFERRED' | 'DECEASED' }): InpatientAdmissionRecord {
+    const idx = this.inpatientAdmissions.findIndex(a => a.tenantId === tenantId && a.id === id);
+    if (idx === -1) throw new Error('Admission record not found');
+
+    const adm = this.inpatientAdmissions[idx];
+    adm.status = dischargeData.dischargeType === 'DECEASED' ? 'DECEASED' : (dischargeData.dischargeType === 'TRANSFERRED' ? 'TRANSFERRED' : 'DISCHARGED');
+    adm.dischargeDate = new Date().toISOString();
+    adm.dischargeSummary = dischargeData;
+
+    // Free up bed
+    const bed = this.beds.find(b => b.tenantId === tenantId && b.id === adm.bedId);
+    if (bed) {
+      bed.status = 'AVAILABLE';
+      bed.currentPatientId = undefined;
+      bed.currentPatientName = undefined;
+      bed.currentPatientNumber = undefined;
+      bed.currentAdmissionId = undefined;
+      this.persistDoc('healthcareBeds', bed.id, bed);
+    }
+
+    this.inpatientAdmissions[idx] = adm;
+    this.persistDoc('healthcareAdmissions', adm.id, adm);
+    return adm;
+  }
+
+  public getNursingCareRecords(tenantId: string): NursingCareRecord[] {
+    return this.nursingCareRecords.filter(n => n.tenantId === tenantId);
+  }
+
+  public addNursingCareRecord(tenantId: string, data: Omit<NursingCareRecord, 'id' | 'tenantId'>): NursingCareRecord {
+    const n: NursingCareRecord = {
+      ...data,
+      id: `nurs_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      recordedAt: data.recordedAt || new Date().toISOString()
+    };
+    this.nursingCareRecords.unshift(n);
+    this.persistDoc('healthcareNursingCare', n.id, n);
+    return n;
+  }
+
+  public getMedicationAdministrations(tenantId: string): MedicationAdministrationRecord[] {
+    return this.medicationAdministrations.filter(m => m.tenantId === tenantId);
+  }
+
+  public addMedicationAdministration(tenantId: string, data: Omit<MedicationAdministrationRecord, 'id' | 'tenantId'>): MedicationAdministrationRecord {
+    const m: MedicationAdministrationRecord = {
+      ...data,
+      id: `mar_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId
+    };
+    this.medicationAdministrations.unshift(m);
+    this.persistDoc('healthcareMedAdministrations', m.id, m);
+    return m;
+  }
+
+  // 8. THEATRE & SURGERY
+  public getTheatreRooms(tenantId: string): TheatreRoomRecord[] {
+    return this.theatreRooms.filter(t => t.tenantId === tenantId);
+  }
+
+  public addTheatreRoom(tenantId: string, data: Omit<TheatreRoomRecord, 'id' | 'tenantId'>): TheatreRoomRecord {
+    const t: TheatreRoomRecord = {
+      ...data,
+      id: `thrm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'AVAILABLE'
+    };
+    this.theatreRooms.unshift(t);
+    this.persistDoc('healthcareTheatreRooms', t.id, t);
+    return t;
+  }
+
+  public updateTheatreRoom(tenantId: string, id: string, data: Partial<TheatreRoomRecord>): TheatreRoomRecord {
+    const idx = this.theatreRooms.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) throw new Error('Theatre room not found');
+    const updated = { ...this.theatreRooms[idx], ...data };
+    this.theatreRooms[idx] = updated;
+    this.persistDoc('healthcareTheatreRooms', updated.id, updated);
+    return updated;
+  }
+
+  public getTheatreSurgeries(tenantId: string): TheatreSurgeryRecord[] {
+    return this.theatreSurgeries.filter(s => s.tenantId === tenantId);
+  }
+
+  public addTheatreSurgery(tenantId: string, data: Omit<TheatreSurgeryRecord, 'id' | 'tenantId'>): TheatreSurgeryRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.theatreSurgeries.filter(s => s.tenantId === tenantId).length + 1;
+    const bookingNumber = data.bookingNumber || `OR-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const surg: TheatreSurgeryRecord = {
+      ...data,
+      id: `surg_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      bookingNumber,
+      status: data.status || 'SCHEDULED',
+      recoveryStatus: data.recoveryStatus || 'PRE_OP'
+    };
+    this.theatreSurgeries.unshift(surg);
+    this.persistDoc('healthcareTheatreSurgeries', surg.id, surg);
+    return surg;
+  }
+
+  public updateTheatreSurgery(tenantId: string, id: string, data: Partial<TheatreSurgeryRecord>): TheatreSurgeryRecord {
+    const idx = this.theatreSurgeries.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) throw new Error('Surgery record not found');
+    const updated = { ...this.theatreSurgeries[idx], ...data };
+    this.theatreSurgeries[idx] = updated;
+    this.persistDoc('healthcareTheatreSurgeries', updated.id, updated);
+    return updated;
+  }
+
+  // 9. MEDICAL BILLING, PAYMENTS & INSURANCE CLAIMS
+  public getMedicalInvoices(tenantId: string): MedicalBillingInvoice[] {
+    return this.medicalInvoices.filter(i => i.tenantId === tenantId);
+  }
+
+  public addMedicalInvoice(tenantId: string, data: Omit<MedicalBillingInvoice, 'id' | 'tenantId' | 'createdAt'>, createdBy?: User): MedicalBillingInvoice {
+    const currentYear = new Date().getFullYear();
+    const count = this.medicalInvoices.filter(i => i.tenantId === tenantId).length + 1;
+    const invoiceNumber = data.invoiceNumber || `INV-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const inv: MedicalBillingInvoice = {
+      ...data,
+      id: `minv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      invoiceNumber,
+      status: data.status || 'ISSUED',
+      paidAmount: data.paidAmount || 0,
+      balanceDue: data.balanceDue !== undefined ? data.balanceDue : data.totalAmount,
+      createdAt: new Date().toISOString()
+    };
+    this.medicalInvoices.unshift(inv);
+    this.persistDoc('healthcareInvoices', inv.id, inv);
+    return inv;
+  }
+
+  public updateMedicalInvoice(tenantId: string, id: string, data: Partial<MedicalBillingInvoice>): MedicalBillingInvoice {
+    const idx = this.medicalInvoices.findIndex(i => i.tenantId === tenantId && i.id === id);
+    if (idx === -1) throw new Error('Invoice not found');
+    const updated = { ...this.medicalInvoices[idx], ...data };
+    this.medicalInvoices[idx] = updated;
+    this.persistDoc('healthcareInvoices', updated.id, updated);
+    return updated;
+  }
+
+  public getMedicalPayments(tenantId: string): MedicalPaymentRecord[] {
+    return this.medicalPayments.filter(p => p.tenantId === tenantId);
+  }
+
+  public recordMedicalPayment(tenantId: string, data: Omit<MedicalPaymentRecord, 'id' | 'tenantId'>, createdBy?: User): MedicalPaymentRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.medicalPayments.filter(p => p.tenantId === tenantId).length + 1;
+    const paymentNumber = data.paymentNumber || `RCT-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const pmt: MedicalPaymentRecord = {
+      ...data,
+      id: `mpmt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      paymentNumber,
+      receivedAt: data.receivedAt || new Date().toISOString()
+    };
+
+    // Update corresponding invoice balance
+    const inv = this.medicalInvoices.find(i => i.tenantId === tenantId && i.id === data.invoiceId);
+    if (inv) {
+      inv.paidAmount = (inv.paidAmount || 0) + data.amount;
+      inv.balanceDue = Math.max(0, inv.totalAmount - inv.paidAmount);
+      inv.status = inv.balanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID';
+      this.persistDoc('healthcareInvoices', inv.id, inv);
+    }
+
+    this.medicalPayments.unshift(pmt);
+    this.persistDoc('healthcarePayments', pmt.id, pmt);
+    return pmt;
+  }
+
+  public getInsuranceProviders(tenantId: string): InsuranceProviderRecord[] {
+    return this.insuranceProviders.filter(p => p.tenantId === tenantId);
+  }
+
+  public addInsuranceProvider(tenantId: string, data: Omit<InsuranceProviderRecord, 'id' | 'tenantId'>): InsuranceProviderRecord {
+    const prov: InsuranceProviderRecord = {
+      ...data,
+      id: `insprov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.insuranceProviders.unshift(prov);
+    this.persistDoc('healthcareInsuranceProviders', prov.id, prov);
+    return prov;
+  }
+
+  public updateInsuranceProvider(tenantId: string, id: string, data: Partial<InsuranceProviderRecord>): InsuranceProviderRecord {
+    const idx = this.insuranceProviders.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) throw new Error('Insurance provider not found');
+    const updated = { ...this.insuranceProviders[idx], ...data };
+    this.insuranceProviders[idx] = updated;
+    this.persistDoc('healthcareInsuranceProviders', updated.id, updated);
+    return updated;
+  }
+
+  public getInsuranceClaims(tenantId: string): InsuranceClaimRecord[] {
+    return this.insuranceClaims.filter(c => c.tenantId === tenantId);
+  }
+
+  public addInsuranceClaim(tenantId: string, data: Omit<InsuranceClaimRecord, 'id' | 'tenantId'>): InsuranceClaimRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.insuranceClaims.filter(c => c.tenantId === tenantId).length + 1;
+    const claimNumber = data.claimNumber || `CLM-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const claim: InsuranceClaimRecord = {
+      ...data,
+      id: `claim_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      claimNumber,
+      status: data.status || 'SUBMITTED',
+      dateSubmitted: data.dateSubmitted || new Date().toISOString()
+    };
+    this.insuranceClaims.unshift(claim);
+    this.persistDoc('healthcareInsuranceClaims', claim.id, claim);
+    return claim;
+  }
+
+  public updateInsuranceClaim(tenantId: string, id: string, data: Partial<InsuranceClaimRecord>): InsuranceClaimRecord {
+    const idx = this.insuranceClaims.findIndex(c => c.tenantId === tenantId && c.id === id);
+    if (idx === -1) throw new Error('Claim not found');
+    const updated = { ...this.insuranceClaims[idx], ...data };
+    this.insuranceClaims[idx] = updated;
+    this.persistDoc('healthcareInsuranceClaims', updated.id, updated);
+    return updated;
+  }
+
+  // 10. HEALTHCARE INVENTORY & SUPPLIERS
+  public getHealthcareSuppliers(tenantId: string): HealthcareSupplier[] {
+    return this.healthcareSuppliers.filter(s => s.tenantId === tenantId);
+  }
+
+  public addHealthcareSupplier(tenantId: string, data: Omit<HealthcareSupplier, 'id' | 'tenantId'>): HealthcareSupplier {
+    const sup: HealthcareSupplier = {
+      ...data,
+      id: `hcsupp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    this.healthcareSuppliers.unshift(sup);
+    this.persistDoc('healthcareSuppliers', sup.id, sup);
+    return sup;
+  }
+
+  public updateHealthcareSupplier(tenantId: string, id: string, data: Partial<HealthcareSupplier>): HealthcareSupplier {
+    const idx = this.healthcareSuppliers.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) throw new Error('Supplier not found');
+    const updated = { ...this.healthcareSuppliers[idx], ...data };
+    this.healthcareSuppliers[idx] = updated;
+    this.persistDoc('healthcareSuppliers', updated.id, updated);
+    return updated;
+  }
+
+  public getHealthcareInventory(tenantId: string): HealthcareInventoryItem[] {
+    return this.healthcareInventory.filter(i => i.tenantId === tenantId);
+  }
+
+  public addHealthcareInventory(tenantId: string, data: Omit<HealthcareInventoryItem, 'id' | 'tenantId'>): HealthcareInventoryItem {
+    const status = data.stockOnHand <= 0 ? 'OUT_OF_STOCK' : (data.stockOnHand <= data.reorderLevel ? 'LOW_STOCK' : 'IN_STOCK');
+    const item: HealthcareInventoryItem = {
+      ...data,
+      id: `hcinv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || status
+    };
+    this.healthcareInventory.unshift(item);
+    this.persistDoc('healthcareInventory', item.id, item);
+    return item;
+  }
+
+  public updateHealthcareInventory(tenantId: string, id: string, data: Partial<HealthcareInventoryItem>): HealthcareInventoryItem {
+    const idx = this.healthcareInventory.findIndex(i => i.tenantId === tenantId && i.id === id);
+    if (idx === -1) throw new Error('Inventory item not found');
+    const updated = { ...this.healthcareInventory[idx], ...data };
+    if (updated.stockOnHand !== undefined && updated.reorderLevel !== undefined) {
+      updated.status = updated.stockOnHand <= 0 ? 'OUT_OF_STOCK' : (updated.stockOnHand <= updated.reorderLevel ? 'LOW_STOCK' : 'IN_STOCK');
+    }
+    this.healthcareInventory[idx] = updated;
+    this.persistDoc('healthcareInventory', updated.id, updated);
+    return updated;
+  }
+
+  public deleteHealthcareInventory(tenantId: string, id: string): boolean {
+    const idx = this.healthcareInventory.findIndex(i => i.tenantId === tenantId && i.id === id);
+    if (idx === -1) return false;
+    const removed = this.healthcareInventory.splice(idx, 1)[0];
+    this.removeDoc('healthcareInventory', removed.id);
+    return true;
+  }
+
+  // 11. AMBULANCE FLEET & TRIPS
+  public getAmbulances(tenantId: string): AmbulanceRecord[] {
+    return this.ambulances.filter(a => a.tenantId === tenantId);
+  }
+
+  public addAmbulance(tenantId: string, data: Omit<AmbulanceRecord, 'id' | 'tenantId'>): AmbulanceRecord {
+    const amb: AmbulanceRecord = {
+      ...data,
+      id: `amb_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'AVAILABLE'
+    };
+    this.ambulances.unshift(amb);
+    this.persistDoc('healthcareAmbulances', amb.id, amb);
+    return amb;
+  }
+
+  public updateAmbulance(tenantId: string, id: string, data: Partial<AmbulanceRecord>): AmbulanceRecord {
+    const idx = this.ambulances.findIndex(a => a.tenantId === tenantId && a.id === id);
+    if (idx === -1) throw new Error('Ambulance not found');
+    const updated = { ...this.ambulances[idx], ...data };
+    this.ambulances[idx] = updated;
+    this.persistDoc('healthcareAmbulances', updated.id, updated);
+    return updated;
+  }
+
+  public getAmbulanceTrips(tenantId: string): AmbulanceTripRecord[] {
+    return this.ambulanceTrips.filter(t => t.tenantId === tenantId);
+  }
+
+  public addAmbulanceTrip(tenantId: string, data: Omit<AmbulanceTripRecord, 'id' | 'tenantId'>): AmbulanceTripRecord {
+    const count = this.ambulanceTrips.filter(t => t.tenantId === tenantId).length + 1;
+    const tripNumber = data.tripNumber || `TRIP-${String(count).padStart(4, '0')}`;
+
+    const trip: AmbulanceTripRecord = {
+      ...data,
+      id: `atrip_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      tripNumber,
+      tripStatus: data.tripStatus || 'DISPATCHED'
+    };
+
+    // Update ambulance status
+    const amb = this.ambulances.find(a => a.tenantId === tenantId && a.id === data.ambulanceId);
+    if (amb) {
+      amb.status = 'ON_TRIP';
+      this.persistDoc('healthcareAmbulances', amb.id, amb);
+    }
+
+    this.ambulanceTrips.unshift(trip);
+    this.persistDoc('healthcareAmbulanceTrips', trip.id, trip);
+    return trip;
+  }
+
+  public updateAmbulanceTrip(tenantId: string, id: string, data: Partial<AmbulanceTripRecord>): AmbulanceTripRecord {
+    const idx = this.ambulanceTrips.findIndex(t => t.tenantId === tenantId && t.id === id);
+    if (idx === -1) throw new Error('Trip not found');
+    const updated = { ...this.ambulanceTrips[idx], ...data };
+
+    if (updated.tripStatus === 'COMPLETED' || updated.tripStatus === 'CANCELLED') {
+      const amb = this.ambulances.find(a => a.tenantId === tenantId && a.id === updated.ambulanceId);
+      if (amb) {
+        amb.status = 'AVAILABLE';
+        this.persistDoc('healthcareAmbulances', amb.id, amb);
+      }
+    }
+
+    this.ambulanceTrips[idx] = updated;
+    this.persistDoc('healthcareAmbulanceTrips', updated.id, updated);
+    return updated;
+  }
+
+  // 12. BLOOD BANK
+  public getBloodDonors(tenantId: string): BloodDonorRecord[] {
+    return this.bloodDonors.filter(d => d.tenantId === tenantId);
+  }
+
+  public addBloodDonor(tenantId: string, data: Omit<BloodDonorRecord, 'id' | 'tenantId'>): BloodDonorRecord {
+    const count = this.bloodDonors.filter(d => d.tenantId === tenantId).length + 1;
+    const donorNumber = data.donorNumber || `DON-${String(count).padStart(4, '0')}`;
+
+    const donor: BloodDonorRecord = {
+      ...data,
+      id: `bdon_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      donorNumber,
+      status: data.status || 'ELIGIBLE'
+    };
+    this.bloodDonors.unshift(donor);
+    this.persistDoc('healthcareBloodDonors', donor.id, donor);
+    return donor;
+  }
+
+  public getBloodUnits(tenantId: string): BloodUnitRecord[] {
+    return this.bloodUnits.filter(u => u.tenantId === tenantId);
+  }
+
+  public addBloodUnit(tenantId: string, data: Omit<BloodUnitRecord, 'id' | 'tenantId'>): BloodUnitRecord {
+    const count = this.bloodUnits.filter(u => u.tenantId === tenantId).length + 1;
+    const unitNumber = data.unitNumber || `BLD-${String(count).padStart(4, '0')}`;
+
+    const unit: BloodUnitRecord = {
+      ...data,
+      id: `bunit_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      unitNumber,
+      status: data.status || 'AVAILABLE',
+      testingStatus: data.testingStatus || 'SCREENED_NEGATIVE'
+    };
+    this.bloodUnits.unshift(unit);
+    this.persistDoc('healthcareBloodUnits', unit.id, unit);
+    return unit;
+  }
+
+  public updateBloodUnit(tenantId: string, id: string, data: Partial<BloodUnitRecord>): BloodUnitRecord {
+    const idx = this.bloodUnits.findIndex(u => u.tenantId === tenantId && u.id === id);
+    if (idx === -1) throw new Error('Blood unit not found');
+    const updated = { ...this.bloodUnits[idx], ...data };
+    this.bloodUnits[idx] = updated;
+    this.persistDoc('healthcareBloodUnits', updated.id, updated);
+    return updated;
+  }
+
+  public getBloodTransfusions(tenantId: string): BloodTransfusionRecord[] {
+    return this.bloodTransfusions.filter(t => t.tenantId === tenantId);
+  }
+
+  public recordBloodTransfusion(tenantId: string, data: Omit<BloodTransfusionRecord, 'id' | 'tenantId'>): BloodTransfusionRecord {
+    const count = this.bloodTransfusions.filter(t => t.tenantId === tenantId).length + 1;
+    const transfusionNumber = data.transfusionNumber || `TXN-${String(count).padStart(4, '0')}`;
+
+    const tf: BloodTransfusionRecord = {
+      ...data,
+      id: `tf_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      transfusionNumber,
+      transfusionDate: data.transfusionDate || new Date().toISOString()
+    };
+
+    // Mark unit as TRANSFUSED
+    const unit = this.bloodUnits.find(u => u.tenantId === tenantId && u.id === data.unitId);
+    if (unit) {
+      unit.status = 'TRANSFUSED';
+      this.persistDoc('healthcareBloodUnits', unit.id, unit);
+    }
+
+    this.bloodTransfusions.unshift(tf);
+    this.persistDoc('healthcareBloodTransfusions', tf.id, tf);
+    return tf;
+  }
+
+  // 13. MORTUARY
+  public getMortuaryRecords(tenantId: string): MortuaryRecord[] {
+    return this.mortuaryRecords.filter(m => m.tenantId === tenantId);
+  }
+
+  public addMortuaryRecord(tenantId: string, data: Omit<MortuaryRecord, 'id' | 'tenantId'>): MortuaryRecord {
+    const currentYear = new Date().getFullYear();
+    const count = this.mortuaryRecords.filter(m => m.tenantId === tenantId).length + 1;
+    const mortuaryNumber = data.mortuaryNumber || `MORT-${currentYear}-${String(count).padStart(3, '0')}`;
+
+    const rec: MortuaryRecord = {
+      ...data,
+      id: `mort_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      mortuaryNumber,
+      status: data.status || 'ADMITTED'
+    };
+    this.mortuaryRecords.unshift(rec);
+    this.persistDoc('healthcareMortuary', rec.id, rec);
+    return rec;
+  }
+
+  public updateMortuaryRecord(tenantId: string, id: string, data: Partial<MortuaryRecord>): MortuaryRecord {
+    const idx = this.mortuaryRecords.findIndex(m => m.tenantId === tenantId && m.id === id);
+    if (idx === -1) throw new Error('Mortuary record not found');
+    const updated = { ...this.mortuaryRecords[idx], ...data };
+    this.mortuaryRecords[idx] = updated;
+    this.persistDoc('healthcareMortuary', updated.id, updated);
+    return updated;
+  }
+
+  // 14. HEALTHCARE SUMMARY KPI ENGINE
+  public getHealthcareSummary(tenantId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const patients = this.getPatients(tenantId);
+    const appointments = this.getAppointments(tenantId);
+    const queues = this.getQueues(tenantId);
+    const admissions = this.getInpatientAdmissions(tenantId);
+    const beds = this.getBeds(tenantId);
+    const labRequests = this.getLabRequests(tenantId);
+    const prescriptions = this.getPrescriptions(tenantId);
+    const invoices = this.getMedicalInvoices(tenantId);
+    const payments = this.getMedicalPayments(tenantId);
+    const staff = this.getHealthcareStaff(tenantId);
+
+    const todayAppointments = appointments.filter(a => a.appointmentDate === today || a.createdAt.startsWith(today));
+    const waitingQueue = queues.filter(q => q.status === 'WAITING' || q.status === 'IN_TRIAGE' || q.status === 'WAITING_FOR_DOCTOR');
+    const activeAdmissions = admissions.filter(a => a.status === 'ADMITTED');
+    const availableBeds = beds.filter(b => b.status === 'AVAILABLE');
+    const occupiedBeds = beds.filter(b => b.status === 'OCCUPIED');
+    const pendingLabTests = labRequests.filter(r => r.status === 'REQUESTED' || r.status === 'SAMPLE_COLLECTED' || r.status === 'IN_ANALYSIS');
+    const pendingPrescriptions = prescriptions.filter(p => p.status === 'PENDING' || p.status === 'PARTIALLY_DISPENSED');
+
+    const totalOutstandingBills = invoices
+      .filter(i => i.status !== 'PAID' && i.status !== 'CANCELLED')
+      .reduce((sum, i) => sum + (i.balanceDue || 0), 0);
+
+    const todayPayments = payments.filter(p => p.receivedAt.startsWith(today));
+    const todayRevenue = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const totalRevenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    const doctorsCount = staff.filter(s => s.professionalRole === 'DOCTOR' || s.professionalRole === 'SPECIALIST' || s.professionalRole === 'SURGEON').length;
+    const nursesCount = staff.filter(s => s.professionalRole === 'NURSE').length;
+
+    const totalBeds = beds.length;
+    const occupancyRate = totalBeds > 0 ? Math.round((occupiedBeds.length / totalBeds) * 100) : 0;
+
+    return {
+      totalPatients: patients.length,
+      todayAppointmentsCount: todayAppointments.length,
+      waitingQueueCount: waitingQueue.length,
+      activeAdmissionsCount: activeAdmissions.length,
+      totalBedsCount: totalBeds,
+      availableBedsCount: availableBeds.length,
+      occupiedBedsCount: occupiedBeds.length,
+      occupancyRatePercent: occupancyRate,
+      pendingLabTestsCount: pendingLabTests.length,
+      pendingPrescriptionsCount: pendingPrescriptions.length,
+      totalOutstandingBills,
+      todayRevenue,
+      totalRevenue,
+      doctorsCount,
+      nursesCount,
+      totalStaffCount: staff.length,
+      recentAppointments: appointments.slice(0, 5),
+      recentQueues: queues.slice(0, 5),
+      recentAdmissions: admissions.slice(0, 5),
+      recentInvoices: invoices.slice(0, 5),
+      recentPayments: payments.slice(0, 5)
+    };
   }
 
   // AUDIT LOG QUERIES (Filtered by Tenant or Super Admin)

@@ -4,9 +4,19 @@
 
 export type UserRole = 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_USER';
 
+export type FacilityType = 
+  | 'HOSPITAL'
+  | 'CLINIC'
+  | 'MEDICAL_CENTRE'
+  | 'HEALTH_CENTRE'
+  | 'DIAGNOSTIC_CENTRE'
+  | 'PHARMACY'
+  | 'SPECIALIZED_CLINIC';
+
 export type TenantType = 
   | 'EDUCATION'
   | 'HOSPITAL'
+  | 'HEALTHCARE'
   | 'POS'
   | 'RETAIL'
   | 'WHOLESALE'
@@ -300,6 +310,7 @@ export interface Tenant {
   customDomain?: string | null;
   type: TenantType;
   educationType?: EducationType;
+  facilityType?: FacilityType;
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   planId: string;
   websiteEnabled?: boolean;
@@ -308,6 +319,12 @@ export interface Tenant {
   contactPhone?: string;
   contactEmail?: string;
   address?: string;
+  county?: string;
+  subCounty?: string;
+  mflCode?: string;
+  kmpdcRegistration?: string;
+  operatingHours?: string;
+  emergencyHotline?: string;
   branding: TenantBranding;
   publicWebsite?: TenantPublicWebsiteConfig;
   enabledModules: ModuleId[];
@@ -944,3 +961,1141 @@ export interface ChurchGivingRecord {
   date: string;
   serviceName: string;
 }
+
+// ==========================================
+// HEALTHCARE & HOSPITAL ERP DATA MODELS
+// ==========================================
+
+export type HealthcareStaffRole =
+  | 'DOCTOR'
+  | 'SPECIALIST'
+  | 'SURGEON'
+  | 'ANAESTHETIST'
+  | 'CLINICAL_OFFICER'
+  | 'NURSE'
+  | 'PHARMACIST'
+  | 'PHARMACY_TECH'
+  | 'LAB_TECHNICIAN'
+  | 'RADIOLOGIST'
+  | 'RADIOGRAPHER'
+  | 'RECEPTIONIST'
+  | 'CASHIER'
+  | 'ACCOUNTANT'
+  | 'INVENTORY_MANAGER'
+  | 'AMBULANCE_PARAMEDIC'
+  | 'AMBULANCE_DRIVER'
+  | 'MORTUARY_ATTENDANT'
+  | 'ADMINISTRATOR'
+  | 'SUPPORT_STAFF';
+
+export type TriagePriority = 'NORMAL' | 'URGENT' | 'EMERGENCY';
+
+export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-';
+
+export interface PatientRecord {
+  id: string;
+  tenantId: string;
+  patientNumber: string; // e.g. PAT-2026-0001
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  nationalIdOrPassport?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  county?: string;
+  subCounty?: string;
+  bloodGroup?: BloodGroup;
+  allergies?: string[];
+  chronicConditions?: string[];
+  disabilityInformation?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelationship?: string;
+  nextOfKinName?: string;
+  nextOfKinPhone?: string;
+  nextOfKinRelationship?: string;
+  insuranceProviderId?: string;
+  insuranceProviderName?: string;
+  insurancePolicyNumber?: string;
+  photoUrl?: string;
+  documents?: { id: string; name: string; type: string; url: string; date: string }[];
+  status: 'ACTIVE' | 'INACTIVE' | 'DECEASED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HealthcareDepartment {
+  id: string;
+  tenantId: string;
+  name: string;
+  code: string;
+  headOfDepartment?: string;
+  location?: string;
+  phoneExtension?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  servicesCount?: number;
+}
+
+export interface HealthcareStaffRecord {
+  id: string;
+  tenantId: string;
+  employeeNumber: string;
+  fullName: string;
+  professionalRole: HealthcareStaffRole;
+  departmentId: string;
+  departmentName: string;
+  email: string;
+  phone: string;
+  nationalId: string;
+  licenseNumber?: string; // KMPDC / NCK / PPB / KMLTTB
+  qualifications?: string;
+  employmentDate: string;
+  status: 'ACTIVE' | 'ON_LEAVE' | 'INACTIVE';
+  shiftSchedule?: string;
+}
+
+export interface AppointmentRecord {
+  id: string;
+  tenantId: string;
+  appointmentNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  patientPhone: string;
+  doctorId: string;
+  doctorName: string;
+  departmentId: string;
+  departmentName: string;
+  appointmentDate: string;
+  appointmentTime: string;
+  appointmentType: 'GENERAL_CONSULTATION' | 'SPECIALIST' | 'FOLLOW_UP' | 'ANTENATAL' | 'DENTAL' | 'OPTICAL' | 'VACCINATION' | 'PROCEDURE';
+  reason: string;
+  status: 'SCHEDULED' | 'CONFIRMED' | 'CHECKED_IN' | 'IN_CONSULTATION' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+  notes?: string;
+  createdAt: string;
+}
+
+export interface QueueRecord {
+  id: string;
+  tenantId: string;
+  queueNumber: string; // e.g. Q-001
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  appointmentId?: string;
+  departmentId: string;
+  departmentName: string;
+  doctorId?: string;
+  doctorName?: string;
+  priority: TriagePriority;
+  status: 'WAITING' | 'IN_TRIAGE' | 'WAITING_FOR_DOCTOR' | 'IN_CONSULTATION' | 'WAITING_FOR_LAB' | 'WAITING_FOR_PHARMACY' | 'WAITING_FOR_PAYMENT' | 'COMPLETED' | 'CANCELLED';
+  checkInTime: string;
+  calledTime?: string;
+  completedTime?: string;
+}
+
+export interface TriageRecord {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  queueId?: string;
+  temperatureCelsius: number; // e.g. 36.8
+  pulseRateBpm: number; // e.g. 72
+  systolicBp: number; // e.g. 120
+  diastolicBp: number; // e.g. 80
+  respiratoryRate: number; // e.g. 18
+  oxygenSaturationPercent: number; // e.g. 98
+  weightKg: number;
+  heightCm: number;
+  bmi: number; // Calculated
+  painScore: number; // 0-10
+  bloodSugarMgDl?: number;
+  chiefComplaint: string;
+  triageNotes?: string;
+  priority: TriagePriority;
+  nurseId: string;
+  nurseName: string;
+  recordedAt: string;
+}
+
+export interface DiagnosisItem {
+  code?: string; // ICD-10 or custom code e.g. "J00", "A09", "E11"
+  description: string;
+  type: 'PRIMARY' | 'SECONDARY' | 'PROVISIONAL';
+}
+
+export interface ConsultationEncounter {
+  id: string;
+  tenantId: string;
+  encounterNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  patientGender: string;
+  patientAge: number;
+  doctorId: string;
+  doctorName: string;
+  departmentId: string;
+  departmentName: string;
+  encounterDate: string;
+  chiefComplaint: string;
+  historyOfPresentIllness: string;
+  physicalExamination: string;
+  systemicReview?: string;
+  diagnoses: DiagnosisItem[];
+  treatmentPlan: string;
+  proceduresDone?: string;
+  clinicalNotes?: string;
+  followUpDate?: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'ADMITTED' | 'REFERRED';
+  createdAt: string;
+}
+
+export interface PrescriptionItem {
+  id: string;
+  medicineId: string;
+  medicineName: string;
+  dosage: string; // e.g. "500mg"
+  route: 'ORAL' | 'IV' | 'IM' | 'SC' | 'TOPICAL' | 'INHALATION' | 'OPHTHALMIC' | 'OTIC' | 'RECTAL';
+  frequency: 'OD' | 'BD' | 'TDS' | 'QID' | 'PRN' | 'STAT' | 'NOCTE';
+  durationDays: number;
+  quantityPrescribed: number;
+  quantityDispensed: number;
+  instructions: string; // e.g. "After meals with plenty of water"
+  unitPrice: number;
+  totalPrice: number;
+  dispensedBatch?: string;
+}
+
+export interface PrescriptionRecord {
+  id: string;
+  tenantId: string;
+  prescriptionNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  doctorId: string;
+  doctorName: string;
+  encounterId?: string;
+  items: PrescriptionItem[];
+  notes?: string;
+  datePrescribed: string;
+  status: 'PENDING' | 'PARTIALLY_DISPENSED' | 'DISPENSED' | 'CANCELLED';
+  dispensedAt?: string;
+  dispensedBy?: string;
+}
+
+export interface MedicineCatalogueItem {
+  id: string;
+  tenantId: string;
+  name: string;
+  genericName: string;
+  brandName?: string;
+  category: 'ANTIBIOTICS' | 'ANALGESICS' | 'ANTIHYPERTENSIVES' | 'ANTIDIABETICS' | 'ANTIHISTAMINES' | 'ANTIMALARIALS' | 'IV_FLUIDS' | 'VACCINES' | 'TOPICAL' | 'GASTROINTESTINAL' | 'RESPIRATORY' | 'OTHER';
+  form: 'TABLET' | 'CAPSULE' | 'SYRUP' | 'INJECTION' | 'CREAM' | 'OINTMENT' | 'DROPS' | 'INHALER' | 'SUPPOSITORY' | 'SUSPENSION';
+  strength: string; // e.g. "500mg", "250mg/5ml"
+  unit: string; // e.g. "Tablets", "Vials", "Bottles", "Blister"
+  supplier?: string;
+  costPrice: number;
+  sellingPrice: number;
+  reorderLevel: number;
+  stockOnHand: number;
+  requiresPrescription: boolean;
+  status: 'ACTIVE' | 'DISCONTINUED';
+}
+
+export interface MedicineBatch {
+  id: string;
+  tenantId: string;
+  medicineId: string;
+  medicineName: string;
+  batchNumber: string;
+  expiryDate: string;
+  quantityInitial: number;
+  quantityRemaining: number;
+  purchaseCost: number;
+  sellingPrice: number;
+  receivedDate: string;
+  supplierName?: string;
+}
+
+export interface PharmacyDispenseRecord {
+  id: string;
+  tenantId: string;
+  dispenseNumber: string;
+  prescriptionId?: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  items: {
+    medicineId: string;
+    medicineName: string;
+    batchNumber: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  totalAmount: number;
+  paymentStatus: 'PAID' | 'BILLED_TO_INVOICE' | 'INSURANCE_CLAIM';
+  dispensedBy: string;
+  dispensedAt: string;
+}
+
+export interface LabTestCatalogueItem {
+  id: string;
+  tenantId: string;
+  testName: string;
+  testCode: string;
+  category: 'HEMATOLOGY' | 'BIOCHEMISTRY' | 'MICROBIOLOGY' | 'PARASITOLOGY' | 'IMMUNOLOGY' | 'SEROLOGY' | 'URINALYSIS' | 'HISTOLOGY' | 'MOLECULAR';
+  sampleType: 'WHOLE_BLOOD' | 'SERUM' | 'PLASMA' | 'URINE' | 'STOOL' | 'SPUTUM' | 'SWAB' | 'CSF' | 'TISSUE' | 'OTHER';
+  price: number;
+  referenceRange: string;
+  units?: string;
+  turnaroundTimeHours: number;
+  isAvailable: boolean;
+}
+
+export interface LabTestRequestItem {
+  testId: string;
+  testName: string;
+  price: number;
+  sampleType: string;
+  status: 'REQUESTED' | 'SAMPLE_COLLECTED' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED';
+  result?: string;
+  referenceRange?: string;
+  units?: string;
+  flags?: 'NORMAL' | 'ABNORMAL' | 'CRITICAL';
+  notes?: string;
+}
+
+export interface LabRequestRecord {
+  id: string;
+  tenantId: string;
+  requestNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  doctorId: string;
+  doctorName: string;
+  encounterId?: string;
+  clinicalNotes?: string;
+  tests: LabTestRequestItem[];
+  status: 'REQUESTED' | 'SAMPLE_COLLECTED' | 'IN_ANALYSIS' | 'VERIFIED' | 'RELEASED';
+  requestedAt: string;
+  sampleCollectedAt?: string;
+  sampleCollectorName?: string;
+  technicianName?: string;
+  completedAt?: string;
+  verifiedByName?: string;
+  verifiedAt?: string;
+}
+
+export interface RadiologyServiceItem {
+  id: string;
+  tenantId: string;
+  serviceName: string;
+  serviceCode: string;
+  modality: 'X_RAY' | 'ULTRASOUND' | 'CT_SCAN' | 'MRI' | 'MAMMOGRAPHY' | 'ECHOCARDIOGRAM' | 'DENTAL_XRAY' | 'OTHER';
+  bodyPart: string;
+  price: number;
+  preparationInstructions?: string;
+  isAvailable: boolean;
+}
+
+export interface RadiologyRequestRecord {
+  id: string;
+  tenantId: string;
+  requestNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  doctorId: string;
+  doctorName: string;
+  serviceId: string;
+  serviceName: string;
+  modality: string;
+  clinicalIndications: string;
+  priority: 'ROUTINE' | 'URGENT' | 'EMERGENCY';
+  scheduledDate?: string;
+  status: 'REQUESTED' | 'SCHEDULED' | 'PERFORMED' | 'REPORTED' | 'VERIFIED';
+  requestedAt: string;
+  performedAt?: string;
+  findings?: string;
+  impression?: string;
+  radiologistName?: string;
+  verifiedAt?: string;
+  reportAttachmentUrl?: string;
+}
+
+export interface WardRecord {
+  id: string;
+  tenantId: string;
+  wardName: string;
+  wardType: 'MALE_SURGICAL' | 'FEMALE_SURGICAL' | 'MALE_MEDICAL' | 'FEMALE_MEDICAL' | 'PEDIATRIC' | 'MATERNITY' | 'ICU' | 'HDU' | 'ISOLATION' | 'GENERAL' | 'VIP_PRIVATE';
+  floorWing: string;
+  dailyRate: number;
+  nurseInCharge?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface BedRecord {
+  id: string;
+  tenantId: string;
+  wardId: string;
+  wardName: string;
+  roomNumber: string;
+  bedNumber: string;
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'MAINTENANCE';
+  currentPatientId?: string;
+  currentPatientName?: string;
+  currentPatientNumber?: string;
+  currentAdmissionId?: string;
+}
+
+export interface InpatientAdmissionRecord {
+  id: string;
+  tenantId: string;
+  admissionNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  admittingDoctorId: string;
+  admittingDoctorName: string;
+  admissionDate: string;
+  dischargeDate?: string;
+  wardId: string;
+  wardName: string;
+  bedId: string;
+  bedNumber: string;
+  admissionReason: string;
+  primaryDiagnosis: string;
+  status: 'ADMITTED' | 'DISCHARGED' | 'TRANSFERRED' | 'DECEASED';
+  dischargeSummary?: {
+    conditionAtDischarge: string;
+    dischargeMedications: string;
+    followUpInstructions: string;
+    dischargeType: 'NORMAL' | 'AGAINST_MEDICAL_ADVICE' | 'TRANSFERRED' | 'DECEASED';
+  };
+  totalDays: number;
+  totalCost?: number;
+  createdAt: string;
+}
+
+export interface NursingCareRecord {
+  id: string;
+  tenantId: string;
+  admissionId: string;
+  patientId: string;
+  patientName: string;
+  wardName: string;
+  bedNumber: string;
+  shiftType: 'DAY' | 'NIGHT';
+  vitals: {
+    temperature: number;
+    pulse: number;
+    systolicBp: number;
+    diastolicBp: number;
+    respRate: number;
+    spO2: number;
+  };
+  fluidIntakeMl: number;
+  fluidOutputMl: number;
+  nursingAssessment: string;
+  carePlan: string;
+  notes: string;
+  recordedBy: string;
+  recordedAt: string;
+}
+
+export interface MedicationAdministrationRecord {
+  id: string;
+  tenantId: string;
+  admissionId: string;
+  patientId: string;
+  patientName: string;
+  medicineName: string;
+  dosage: string;
+  route: string;
+  scheduledTime: string;
+  administeredTime?: string;
+  status: 'ADMINISTERED' | 'REFUSED' | 'HELD' | 'MISSED';
+  administeredBy: string;
+  notes?: string;
+}
+
+export interface TheatreRoomRecord {
+  id: string;
+  tenantId: string;
+  roomName: string;
+  roomNumber: string;
+  theatreType: 'MAIN_OR' | 'MINOR_THEATRE' | 'OB_GYN_THEATRE' | 'OPHTHALMIC_THEATRE' | 'EMERGENCY_OR';
+  status: 'AVAILABLE' | 'IN_SURGERY' | 'CLEANING' | 'MAINTENANCE';
+}
+
+export interface TheatreSurgeryRecord {
+  id: string;
+  tenantId: string;
+  bookingNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  procedureName: string;
+  theatreRoomId: string;
+  theatreRoomName: string;
+  scheduledStart: string;
+  scheduledEnd: string;
+  actualStart?: string;
+  actualEnd?: string;
+  leadSurgeonName: string;
+  anaesthetistName: string;
+  scrubNurseName?: string;
+  circulatingNurseName?: string;
+  anaesthesiaType: 'GENERAL' | 'SPINAL' | 'EPIDURAL' | 'LOCAL' | 'SEDATION';
+  preOpDiagnosis: string;
+  postOpDiagnosis?: string;
+  procedureFindings?: string;
+  surgicalNotes?: string;
+  consumablesUsed?: { itemName: string; quantity: number; cost: number }[];
+  recoveryStatus: 'PRE_OP' | 'IN_THEATRE' | 'PACU_RECOVERY' | 'TRANSFERRED_TO_WARD' | 'DISCHARGED';
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+}
+
+export interface BillingInvoiceItem {
+  id: string;
+  category: 'CONSULTATION' | 'PHARMACY' | 'LABORATORY' | 'RADIOLOGY' | 'PROCEDURE' | 'WARD_BED' | 'THEATRE' | 'NURSING' | 'AMBULANCE' | 'OTHER';
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  coveredByInsurance?: boolean;
+}
+
+export interface MedicalBillingInvoice {
+  id: string;
+  tenantId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  paymentType: 'CASH' | 'INSURANCE' | 'CORPORATE' | 'SPLIT';
+  insuranceProviderName?: string;
+  claimNumber?: string;
+  preAuthCode?: string;
+  items: BillingInvoiceItem[];
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  balanceDue: number;
+  status: 'DRAFT' | 'ISSUED' | 'PARTIALLY_PAID' | 'PAID' | 'CLAIM_PENDING' | 'OVERDUE' | 'CANCELLED';
+  notes?: string;
+  createdAt: string;
+}
+
+export interface MedicalPaymentRecord {
+  id: string;
+  tenantId: string;
+  paymentNumber: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  amount: number;
+  paymentMethod: 'MPESA' | 'CASH' | 'BANK_TRANSFER' | 'CARD' | 'INSURANCE_CLAIM';
+  transactionReference: string;
+  mpesaPhone?: string;
+  receivedBy: string;
+  receivedAt: string;
+  notes?: string;
+}
+
+export interface InsuranceProviderRecord {
+  id: string;
+  tenantId: string;
+  providerName: string; // e.g. "SHA / NHIF", "Jubilee Health", "AAR Insurance", "Britam", "CIC Health"
+  providerCode: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  acceptedSchemes: string[];
+  portalUrl?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface InsuranceClaimRecord {
+  id: string;
+  tenantId: string;
+  claimNumber: string;
+  invoiceId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  insuranceProviderId: string;
+  insuranceProviderName: string;
+  schemeName: string;
+  memberNumber: string;
+  policyNumber: string;
+  principalMemberName: string;
+  preAuthCode?: string;
+  diagnosisCode?: string;
+  totalClaimAmount: number;
+  approvedAmount: number;
+  status: 'DRAFT' | 'SUBMITTED' | 'PRE_AUTHORIZED' | 'APPROVED' | 'REJECTED' | 'RECONCILED';
+  dateSubmitted: string;
+  dateProcessed?: string;
+  rejectionReason?: string;
+  reconciliationNotes?: string;
+}
+
+export interface HealthcareSupplier {
+  id: string;
+  tenantId: string;
+  supplierName: string;
+  contactPerson?: string;
+  email: string;
+  phone: string;
+  address?: string;
+  categoriesSupplied: string[];
+  taxPin?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface HealthcareInventoryItem {
+  id: string;
+  tenantId: string;
+  itemCode: string;
+  itemName: string;
+  category: 'MEDICAL_SUPPLIES' | 'SURGICAL_CONSUMABLES' | 'LAB_REAGENTS' | 'RADIOLOGY_FILMS' | 'EQUIPMENT' | 'OFFICE_SUPPLIES' | 'OTHER';
+  unitOfMeasure: string; // e.g. "Box of 100", "Pieces", "Rolls", "Pack"
+  stockOnHand: number;
+  reorderLevel: number;
+  unitCost: number;
+  sellingPrice: number;
+  locationRoom?: string;
+  supplierName?: string;
+  status: 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK';
+}
+
+export interface AmbulanceRecord {
+  id: string;
+  tenantId: string;
+  registrationNumber: string; // e.g. "KDA 123A"
+  callSign: string; // e.g. "MED-01"
+  vehicleModel: string;
+  equipmentLevel: 'BASIC_LIFE_SUPPORT' | 'ADVANCED_LIFE_SUPPORT' | 'PATIENT_TRANSPORT' | 'ICU_MOBILE';
+  driverName: string;
+  driverPhone: string;
+  paramedicName?: string;
+  status: 'AVAILABLE' | 'DISPATCHED' | 'ON_TRIP' | 'MAINTENANCE' | 'OFF_DUTY';
+  fuelLevel: string;
+  mileageKm: number;
+}
+
+export interface AmbulanceTripRecord {
+  id: string;
+  tenantId: string;
+  tripNumber: string;
+  ambulanceId: string;
+  registrationNumber: string;
+  patientName?: string;
+  pickupLocation: string;
+  destinationLocation: string;
+  emergencyType: string;
+  requestTime: string;
+  dispatchTime?: string;
+  arrivalSceneTime?: string;
+  arrivalHospitalTime?: string;
+  driverName: string;
+  crewMembers?: string;
+  tripStatus: 'REQUESTED' | 'DISPATCHED' | 'EN_ROUTE' | 'ON_SCENE' | 'COMPLETED' | 'CANCELLED';
+  tripCost: number;
+  paymentStatus: 'BILLED' | 'PAID' | 'FREE_SERVICE';
+}
+
+export interface BloodDonorRecord {
+  id: string;
+  tenantId: string;
+  donorNumber: string;
+  fullName: string;
+  gender: 'MALE' | 'FEMALE';
+  bloodGroup: BloodGroup;
+  phone: string;
+  email?: string;
+  dateOfBirth: string;
+  lastDonationDate?: string;
+  totalDonations: number;
+  status: 'ELIGIBLE' | 'DEFERRED' | 'PERMANENTLY_INELIGIBLE';
+}
+
+export interface BloodUnitRecord {
+  id: string;
+  tenantId: string;
+  unitNumber: string;
+  donorNumber?: string;
+  bloodGroup: BloodGroup;
+  componentType: 'WHOLE_BLOOD' | 'PACKED_RED_CELLS' | 'FRESH_FROZEN_PLASMA' | 'PLATELETS' | 'CRYOPRECIPITATE';
+  volumeMl: number;
+  collectionDate: string;
+  expiryDate: string;
+  testingStatus: 'TESTING_PENDING' | 'SCREENED_NEGATIVE' | 'SCREENED_POSITIVE' | 'DISCARDED';
+  storageLocation: string; // e.g. "Fridge 1 - Shelf B"
+  status: 'AVAILABLE' | 'RESERVED' | 'ISSUED' | 'TRANSFUSED' | 'EXPIRED' | 'DISCARDED';
+}
+
+export interface BloodTransfusionRecord {
+  id: string;
+  tenantId: string;
+  transfusionNumber: string;
+  unitId: string;
+  unitNumber: string;
+  bloodGroup: string;
+  patientId: string;
+  patientName: string;
+  patientNumber: string;
+  doctorName: string;
+  crossMatchResult: 'COMPATIBLE' | 'INCOMPATIBLE';
+  transfusionDate: string;
+  reactionsObserved: boolean;
+  reactionNotes?: string;
+  administeredBy: string;
+}
+
+export interface MortuaryRecord {
+  id: string;
+  tenantId: string;
+  mortuaryNumber: string; // e.g. "MORT-2026-001"
+  deceasedFullName: string;
+  deceasedGender: 'MALE' | 'FEMALE';
+  deceasedAge: number;
+  nationalId?: string;
+  dateOfDeath: string;
+  dateReceived: string;
+  timeReceived: string;
+  causeOfDeath?: string;
+  receivedFromFacility?: string;
+  receivingOfficer: string;
+  coldChamberNumber: string;
+  nextOfKinName: string;
+  nextOfKinPhone: string;
+  nextOfKinRelation: string;
+  releaseDate?: string;
+  releasedToName?: string;
+  releasedToId?: string;
+  burialPermitNumber?: string;
+  status: 'ADMITTED' | 'AUTOPSY_PENDING' | 'READY_FOR_RELEASE' | 'RELEASED';
+  dailyStorageRate: number;
+  totalDays: number;
+  billTotal: number;
+  billPaid: boolean;
+}
+
+export interface StaffShiftRecord {
+  id: string;
+  tenantId: string;
+  staffId: string;
+  staffName: string;
+  professionalRole: string;
+  departmentName: string;
+  shiftDate: string;
+  shiftType: 'MORNING' | 'AFTERNOON' | 'NIGHT' | 'ON_CALL';
+  startTime: string;
+  endTime: string;
+  status: 'SCHEDULED' | 'PRESENT' | 'ABSENT' | 'ON_LEAVE';
+  clockInTime?: string;
+  clockOutTime?: string;
+}
+
+// Healthcare Universal Type Definitions & Aliases for Component Views
+export type PatientStatus = 'ACTIVE' | 'INACTIVE' | 'DECEASED';
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER';
+export type TriageCategory = 'NORMAL' | 'URGENT' | 'EMERGENCY';
+
+export interface Patient {
+  id: string;
+  tenantId: string;
+  mrn: string;
+  fullName: string;
+  dateOfBirth: string;
+  age?: number;
+  gender: Gender;
+  phone: string;
+  email?: string;
+  address?: string;
+  bloodGroup?: BloodGroup;
+  allergies?: string[];
+  chronicConditions?: string[];
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  insurance?: {
+    provider: string;
+    policyNumber: string;
+    principalMember?: string;
+  };
+  status: PatientStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QueueEntry {
+  id: string;
+  tenantId: string;
+  queueNumber: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  department: string;
+  priority: TriageCategory;
+  status: 'WAITING' | 'TRIAGED' | 'IN_CONSULTATION' | 'COMPLETED' | 'CANCELLED';
+  checkInTime: string;
+  vitalsRecorded?: boolean;
+}
+
+export interface TriageAssessment {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  vitals: {
+    bloodPressure: string;
+    temperatureCelsius: number;
+    heartRateBpm: number;
+    respiratoryRateBpm: number;
+    oxygenSaturationSpo2: number;
+    weightKg: number;
+    heightCm: number;
+    bmi: number;
+    randomBloodSugarMgDl?: number;
+    painScale: number;
+  };
+  category: TriageCategory;
+  chiefComplaint: string;
+  nurseNotes?: string;
+  triagedBy: string;
+  triagedByName: string;
+  triagedAt: string;
+}
+
+export interface Prescription {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  doctorId: string;
+  doctorName: string;
+  items: {
+    id: string;
+    medicineName: string;
+    dosage: string;
+    frequency: string;
+    durationDays: number;
+    quantity: number;
+    instructions: string;
+    unitPrice: number;
+    totalPrice: number;
+    isDispensed?: boolean;
+  }[];
+  notes?: string;
+  status: 'PENDING' | 'DISPENSED' | 'CANCELLED';
+  prescribedAt: string;
+}
+
+export interface LabRequest {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  doctorId: string;
+  doctorName: string;
+  testId?: string;
+  testName?: string;
+  testCategory?: string;
+  tests?: {
+    testId: string;
+    testName: string;
+    category: string;
+    price: number;
+    status: 'REQUESTED' | 'SAMPLE_COLLECTED' | 'COMPLETED';
+    result?: string;
+    referenceRange?: string;
+    flag?: 'NORMAL' | 'ABNORMAL' | 'CRITICAL';
+    notes?: string;
+  }[];
+  result?: {
+    parameter?: string;
+    value?: string;
+    unit?: string;
+    referenceRange?: string;
+    isAbnormal?: boolean;
+    interpretation?: string;
+  };
+  technicianId?: string;
+  technicianName?: string;
+  clinicalNotes?: string;
+  status: 'REQUESTED' | 'COLLECTED' | 'PROCESSING' | 'COMPLETED';
+  requestedAt: string;
+  completedAt?: string;
+}
+
+export interface LabTestItem {
+  id: string;
+  name: string;
+  category: string;
+  sampleType?: string;
+  price: number;
+  unit?: string;
+  referenceRange: string;
+  tatHours?: number;
+}
+
+export interface RadiologyRequest {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  doctorId: string;
+  doctorName: string;
+  modality: 'X_RAY' | 'ULTRASOUND' | 'CT_SCAN' | 'MRI' | 'MAMMOGRAPHY' | 'ECHOCARDIOGRAM' | 'DENTAL_XRAY' | 'OTHER';
+  procedureName: string;
+  clinicalNotes: string;
+  urgency: 'ROUTINE' | 'URGENT' | 'EMERGENCY';
+  findings?: string;
+  impression?: string;
+  status: 'REQUESTED' | 'PERFORMED' | 'REPORTED';
+  requestedAt: string;
+}
+
+export interface InpatientWard {
+  id: string;
+  tenantId: string;
+  name: string;
+  wardType: 'GENERAL' | 'ICU' | 'HDU' | 'PEDIATRIC' | 'MATERNITY' | 'SURGICAL' | 'ISOLATION' | 'VIP';
+  gender: 'MALE' | 'FEMALE' | 'MIXED' | 'PEDIATRIC';
+  floorNumber: string;
+  dailyRate: number;
+  isActive: boolean;
+}
+
+export interface InpatientBed {
+  id: string;
+  tenantId: string;
+  wardId: string;
+  wardName: string;
+  bedNumber: string;
+  bedType: 'STANDARD' | 'ICU' | 'ELECTRIC' | 'PEDIATRIC_COT' | 'INCUBATOR';
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'CLEANING' | 'MAINTENANCE';
+  dailyRate: number;
+  currentPatientId?: string;
+  currentPatientName?: string;
+}
+
+export interface InpatientAdmission {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  wardId: string;
+  wardName: string;
+  bedId?: string;
+  bedNumber: string;
+  admittingDoctorId: string;
+  admittingDoctorName: string;
+  diagnosis: string;
+  reason: string;
+  admissionDate: string;
+  dischargeDate?: string;
+  status: 'ADMITTED' | 'DISCHARGED' | 'TRANSFERRED';
+  dischargeSummary?: string;
+}
+
+export interface MedicationAdministration {
+  id: string;
+  tenantId: string;
+  admissionId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  medicineName: string;
+  dosage: string;
+  route: 'ORAL' | 'IV' | 'IM' | 'SC' | 'TOPICAL' | 'INHALATION';
+  administeredByNurseId: string;
+  administeredByNurseName: string;
+  administeredAt: string;
+  status: 'GIVEN' | 'REFUSED' | 'OMITTED';
+  notes?: string;
+}
+
+export interface MedicineItem {
+  id: string;
+  tenantId: string;
+  name: string;
+  genericName: string;
+  category: string;
+  form: string;
+  strength: string;
+  unit: string;
+  costPrice: number;
+  sellingPrice: number;
+  stockOnHand: number;
+  reorderLevel: number;
+  status: 'ACTIVE' | 'DISCONTINUED';
+}
+
+export interface PharmacyDispense {
+  id: string;
+  tenantId: string;
+  prescriptionId?: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  items: {
+    medicineId: string;
+    medicineName: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }[];
+  totalAmount: number;
+  dispensedBy: string;
+  dispensedAt: string;
+}
+
+export interface TheatreBooking {
+  id: string;
+  tenantId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  theatreRoom: string;
+  procedureName: string;
+  procedureType: 'ELECTIVE' | 'EMERGENCY' | 'DAY_CARE';
+  scheduledStartTime: string;
+  scheduledEndTime: string;
+  leadSurgeonId: string;
+  leadSurgeonName: string;
+  anesthesiologistName?: string;
+  anesthesiaType?: string;
+  status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  operationNotes?: string;
+  postOpInstructions?: string;
+}
+
+export interface MedicalInvoiceItem {
+  id: string;
+  description: string;
+  category: 'CONSULTATION' | 'PHARMACY' | 'LABORATORY' | 'RADIOLOGY' | 'WARD_BED' | 'SURGERY' | 'PROCEDURE' | 'OTHER';
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface MedicalInvoice {
+  id: string;
+  tenantId: string;
+  invoiceNumber: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  paymentType: 'CASH' | 'INSURANCE' | 'CO_PAY';
+  insuranceProvider?: string;
+  policyNumber?: string;
+  items: MedicalInvoiceItem[];
+  subtotal: number;
+  discount: number;
+  totalAmount: number;
+  amountPaid: number;
+  balanceDue: number;
+  status: 'UNPAID' | 'PARTIALLY_PAID' | 'PAID' | 'CANCELLED';
+  createdAt: string;
+}
+
+export interface InsuranceClaim {
+  id: string;
+  tenantId: string;
+  claimNumber: string;
+  invoiceId: string;
+  patientId: string;
+  patientName: string;
+  mrn: string;
+  insuranceProvider: string;
+  policyNumber: string;
+  claimAmount: number;
+  preAuthCode?: string;
+  diagnosisCode?: string;
+  status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'SETTLED';
+  createdAt: string;
+}
+
+export interface AmbulanceVehicle {
+  id: string;
+  tenantId: string;
+  vehicleRegNumber: string;
+  model: string;
+  type: string;
+  driverName?: string;
+  paramedicName?: string;
+  status: 'AVAILABLE' | 'ON_TRIP' | 'MAINTENANCE';
+}
+
+export interface AmbulanceTrip {
+  id: string;
+  tenantId: string;
+  ambulanceId: string;
+  vehicleRegNumber: string;
+  driverName: string;
+  paramedicName: string;
+  patientName: string;
+  pickupLocation: string;
+  destinationLocation: string;
+  priority: 'CRITICAL' | 'URGENT' | 'ROUTINE';
+  chiefComplaint: string;
+  dispatchedAt: string;
+}
+
+export interface BloodInventoryUnit {
+  id: string;
+  tenantId: string;
+  unitNumber: string;
+  bloodGroup: string;
+  donorName?: string;
+  volumeMl: number;
+  collectionDate: string;
+  expiryDate: string;
+  screeningStatus: 'PASSED' | 'FAILED' | 'PENDING';
+  status: 'AVAILABLE' | 'TRANSFUSED' | 'EXPIRED' | 'DISCARDED';
+}
+
+export interface MortuaryIntake {
+  id: string;
+  tenantId: string;
+  tagNumber: string;
+  deceasedName: string;
+  dateOfDeath: string;
+  causeOfDeath: string;
+  chamberNumber: string;
+  nextOfKin?: {
+    name: string;
+    phone: string;
+    relationship: string;
+  };
+  status: 'INTAKE' | 'RELEASED';
+}
+
+

@@ -21,6 +21,7 @@ import { SaccoDashboard } from './views/tenant/chama/SaccoDashboard';
 import { PosTerminalView } from './views/tenant/pos/PosTerminalView';
 import { RestaurantBarDashboard } from './views/tenant/restaurant/RestaurantBarDashboard';
 import { ChurchDashboard } from './views/tenant/church/ChurchDashboard';
+import { HealthcareDashboard } from './views/tenant/healthcare/HealthcareDashboard';
 import { CoreEnterpriseDashboard } from './views/tenant/enterprise/CoreEnterpriseDashboard';
 import { AccessDeniedGuard } from './components/common/AccessDeniedGuard';
 import { TenantMismatchGuard } from './components/common/TenantMismatchGuard';
@@ -365,7 +366,7 @@ function MainAppContent() {
           />
         )}
         {currentRoute === '/app/hospital' && (
-          <GenericModuleView moduleId="hospital" onNavigateDashboard={() => navigateTo('/app/dashboard')} />
+          <HealthcareDashboard />
         )}
         {currentRoute === '/app/general-erp' && (
           <CoreEnterpriseDashboard defaultTab="accounting" />
