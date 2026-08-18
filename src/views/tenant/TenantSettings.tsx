@@ -15,9 +15,27 @@ import { TenantDomainManager } from './components/TenantDomainManager';
 import { compressImageFile } from '../../lib/imageUtils';
 import { DEFAULT_HERO_SLIDES } from '../../components/public/HeroSlider';
 
-export const TenantSettings: React.FC = () => {
+interface TenantSettingsProps {
+  initialTab?: 'branding' | 'domains' | 'public_website' | 'users';
+}
+
+export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'branding' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'domains' | 'public_website' | 'users'>('branding');
+  const [activeTab, setActiveTab] = useState<'branding' | 'domains' | 'public_website' | 'users'>(() => {
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash.toLowerCase();
+      if (hash.includes('domains')) return 'domains';
+      if (hash.includes('users')) return 'users';
+      if (hash.includes('website')) return 'public_website';
+    }
+    return initialTab;
+  });
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenant?.id || '');
 

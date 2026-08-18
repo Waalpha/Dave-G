@@ -8,6 +8,7 @@ import { PlatformTenants } from './views/platform/PlatformTenants';
 import { PlatformAuditLogs } from './views/platform/PlatformAuditLogs';
 import { PlatformPlans } from './views/platform/PlatformPlans';
 import { PlatformSettings } from './views/platform/PlatformSettings';
+import { PlatformDomains } from './views/platform/PlatformDomains';
 import { TenantDashboard } from './views/tenant/TenantDashboard';
 import { EducationDashboard } from './views/tenant/education/EducationDashboard';
 import { GenericModuleView } from './views/tenant/GenericModuleView';
@@ -230,6 +231,7 @@ function MainAppContent() {
         <PlatformLayout currentTab={platformTab} onSelectTab={navigatePlatformTab}>
           {platformTab === 'dashboard' && <PlatformDashboard onNavigateTab={navigatePlatformTab} />}
           {platformTab === 'tenants' && <PlatformTenants initialTab="tenants" onInspectNavigate={() => navigateTo('/app/dashboard')} />}
+          {platformTab === 'domains' && <PlatformDomains />}
           {platformTab === 'users' && <PlatformTenants initialTab="users" onInspectNavigate={() => navigateTo('/app/dashboard')} />}
           {platformTab === 'audit-logs' && <PlatformAuditLogs />}
           {platformTab === 'plans' && <PlatformPlans />}
@@ -312,7 +314,19 @@ function MainAppContent() {
               onNavigateDashboard={() => navigateTo('/app/dashboard')}
             />
           ) : (
-            <TenantSettings />
+            <TenantSettings initialTab="branding" />
+          )
+        )}
+
+        {/* Dedicated Direct Domains & Routing Path */}
+        {currentRoute === '/app/domains' && (
+          user.role === 'TENANT_USER' ? (
+            <AccessDeniedGuard
+              reason="Domain and routing configurations are restricted to Tenant Administrators."
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          ) : (
+            <TenantSettings initialTab="domains" />
           )
         )}
 

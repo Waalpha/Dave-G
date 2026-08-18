@@ -67,6 +67,7 @@ export const PlatformLayout: React.FC<PlatformLayoutProps> = ({
     { id: 'dashboard', label: 'Platform Dashboard', icon: LayoutDashboard },
     { id: 'website-cms', label: 'Public Website CMS', icon: Globe },
     { id: 'tenants', label: 'Tenants & Subscriptions', icon: Building2 },
+    { id: 'domains', label: 'Domains & DNS Routing', icon: Globe },
     { id: 'users', label: 'User Credentials & Accounts', icon: KeyRound },
     { id: 'plans', label: 'Subscription Plans', icon: CreditCard },
     { id: 'audit-logs', label: 'Global Audit Logs', icon: FileText },

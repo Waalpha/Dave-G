@@ -21,7 +21,8 @@ import {
   TheatreRoomRecord, TheatreSurgeryRecord, MedicalBillingInvoice, MedicalPaymentRecord,
   InsuranceProviderRecord, InsuranceClaimRecord, HealthcareSupplier, HealthcareInventoryItem,
   AmbulanceRecord, AmbulanceTripRecord, BloodDonorRecord, BloodUnitRecord,
-  BloodTransfusionRecord, MortuaryRecord, StaffShiftRecord
+  BloodTransfusionRecord, MortuaryRecord, StaffShiftRecord,
+  SaaSSubscriptionPlan
 } from '../types';
 
 export function hashPassword(password: string, userId: string = 'global_salt'): string {
@@ -32,6 +33,105 @@ export function hashPassword(password: string, userId: string = 'global_salt'): 
 
 import { INITIAL_TENANTS } from './initialTenants';
 export { INITIAL_TENANTS };
+
+export const INITIAL_SUBSCRIPTION_PLANS: SaaSSubscriptionPlan[] = [
+  {
+    id: 'plan_starter',
+    name: 'Starter & Emerging',
+    code: 'starter',
+    price: 15000,
+    currency: 'KES',
+    billingPeriod: 'monthly',
+    priceDisplay: 'KSh 15,000 / mo',
+    description: 'Ideal for single-campus schools, retail shops, clinics & growing chamas.',
+    tagline: 'Essential ERP foundation for growing organizations',
+    maxUsers: 10,
+    maxStorageGb: 10,
+    moduleLimit: 3,
+    includedModules: ['accounting', 'hr', 'inventory'],
+    allowCustomDomain: false,
+    allowPublicWebsite: true,
+    prioritySupport: false,
+    slaUptime: '99.5%',
+    isPopular: false,
+    isActive: true,
+    features: [
+      'Up to 3 Core Industry Modules',
+      'Up to 10 Staff/Admin Accounts',
+      'Standard Double-Entry General Ledger',
+      'Automated M-Pesa STK Push Integration',
+      'Standard Cloud Tenant Isolation',
+      'Email & Community Ticket Support'
+    ],
+    order: 1,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-15T00:00:00Z'
+  },
+  {
+    id: 'plan_professional',
+    name: 'Growth & Professional',
+    code: 'professional',
+    price: 35000,
+    currency: 'KES',
+    billingPeriod: 'monthly',
+    priceDisplay: 'KSh 35,000 / mo',
+    description: 'Perfect for established colleges, tier-2 SACCOs, hospitals & supermarket chains.',
+    tagline: 'Multi-branch operations with custom branding and priority SLA',
+    maxUsers: 50,
+    maxStorageGb: 50,
+    moduleLimit: 8,
+    includedModules: ['education', 'pos', 'hospital', 'retail', 'accounting', 'hr', 'inventory', 'crm'],
+    allowCustomDomain: true,
+    allowPublicWebsite: true,
+    prioritySupport: true,
+    slaUptime: '99.9%',
+    isPopular: true,
+    isActive: true,
+    features: [
+      'Up to 8 Integrated ERP Modules',
+      'Up to 50 Staff/Admin Accounts',
+      'Custom Domain Binding & Dedicated SSL',
+      'Multi-Campus / Multi-Branch Synchronizer',
+      'Advanced Payroll, PAYE, SHIF & NSSF',
+      'Priority Phone & Dedicated Account Manager'
+    ],
+    order: 2,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-15T00:00:00Z'
+  },
+  {
+    id: 'plan_enterprise',
+    name: 'Corporate & Enterprise',
+    code: 'enterprise',
+    price: 75000,
+    currency: 'KES',
+    billingPeriod: 'monthly',
+    priceDisplay: 'KSh 75,000 / mo',
+    description: 'For chartered universities, regulated SACCOs, healthcare networks & enterprise chains.',
+    tagline: 'Unlimited scale, full module catalog & dedicated engineering SLA',
+    maxUsers: -1,
+    maxStorageGb: 500,
+    moduleLimit: -1,
+    includedModules: [],
+    allowCustomDomain: true,
+    allowPublicWebsite: true,
+    prioritySupport: true,
+    slaUptime: '99.99%',
+    isPopular: false,
+    isActive: true,
+    features: [
+      'All 14+ Modular ERP Suites Unlocked',
+      'Unlimited Staff, Students & Member Seats',
+      'Dedicated Database Partition & Custom Domain',
+      'Full REST API, Webhooks & Real-time Feeds',
+      'Automated Disaster Recovery & Hourly Backups',
+      '24/7 Priority SLA & On-Site Deployment Support'
+    ],
+    order: 3,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-08-15T00:00:00Z'
+  }
+];
 
 export const INITIAL_POS_PRODUCTS: PosProduct[] = [];
 export const INITIAL_CAMPUSES: Campus[] = [];
@@ -394,6 +494,7 @@ class DatabaseStore {
   private bloodUnits: BloodUnitRecord[] = [];
   private bloodTransfusions: BloodTransfusionRecord[] = [];
   private mortuaryRecords: MortuaryRecord[] = [];
+  private subscriptionPlans: SaaSSubscriptionPlan[] = [...INITIAL_SUBSCRIPTION_PLANS];
   private platformSettings: PlatformSettings = {
     platformName: 'DAVETECH',
     tagline: 'Davetech Solutions',
@@ -504,7 +605,8 @@ class DatabaseStore {
         bloodDonors: this.bloodDonors,
         bloodUnits: this.bloodUnits,
         bloodTransfusions: this.bloodTransfusions,
-        mortuaryRecords: this.mortuaryRecords
+        mortuaryRecords: this.mortuaryRecords,
+        subscriptionPlans: this.subscriptionPlans
       };
       fs.writeFileSync(this.getDiskBackupPath(), JSON.stringify(data, null, 2), 'utf8');
     } catch (err) {
@@ -610,6 +712,9 @@ class DatabaseStore {
         if (Array.isArray(data.bloodUnits)) this.bloodUnits = data.bloodUnits;
         if (Array.isArray(data.bloodTransfusions)) this.bloodTransfusions = data.bloodTransfusions;
         if (Array.isArray(data.mortuaryRecords)) this.mortuaryRecords = data.mortuaryRecords;
+        if (Array.isArray(data.subscriptionPlans) && data.subscriptionPlans.length > 0) {
+          this.subscriptionPlans = data.subscriptionPlans;
+        }
         console.log('[DatabaseStore] Successfully loaded cache from disk');
       }
     } catch (err) {
@@ -5606,6 +5711,234 @@ class DatabaseStore {
     }
     // Tenant users see ONLY logs belonging to their own tenantId
     return this.auditLogs.filter(l => l.tenantId === requestingUser.tenantId);
+  }
+
+  // ==================== SAAS SUBSCRIPTION PLANS SUBSYSTEM ====================
+
+  public getSubscriptionPlans(): SaaSSubscriptionPlan[] {
+    return [...this.subscriptionPlans].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+
+  public getSubscriptionPlanById(id: string): SaaSSubscriptionPlan | undefined {
+    return this.subscriptionPlans.find(p => p.id === id || p.code === id);
+  }
+
+  public async createSubscriptionPlan(
+    data: Omit<SaaSSubscriptionPlan, 'id' | 'createdAt' | 'updatedAt'>,
+    requestingUser: User
+  ): Promise<SaaSSubscriptionPlan> {
+    if (requestingUser.role !== 'SUPER_ADMIN') {
+      throw new Error('Only Platform Super Admins can create subscription plans');
+    }
+
+    const code = (data.code || data.name.toLowerCase().replace(/[^a-z0-9]/g, '_')).trim();
+    if (this.subscriptionPlans.some(p => p.code.toLowerCase() === code.toLowerCase())) {
+      throw new Error(`A plan with code "${code}" already exists.`);
+    }
+
+    const planId = `plan_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36)}`;
+    const now = new Date().toISOString();
+
+    const newPlan: SaaSSubscriptionPlan = {
+      ...data,
+      id: planId,
+      code,
+      name: data.name.trim(),
+      price: Number(data.price) || 0,
+      currency: data.currency || 'KES',
+      billingPeriod: data.billingPeriod || 'monthly',
+      description: data.description || '',
+      tagline: data.tagline || '',
+      maxUsers: data.maxUsers !== undefined ? Number(data.maxUsers) : -1,
+      maxStorageGb: data.maxStorageGb !== undefined ? Number(data.maxStorageGb) : 10,
+      moduleLimit: data.moduleLimit !== undefined ? Number(data.moduleLimit) : -1,
+      includedModules: Array.isArray(data.includedModules) ? data.includedModules : [],
+      allowCustomDomain: !!data.allowCustomDomain,
+      allowPublicWebsite: data.allowPublicWebsite !== undefined ? !!data.allowPublicWebsite : true,
+      prioritySupport: !!data.prioritySupport,
+      slaUptime: data.slaUptime || '99.9%',
+      isPopular: !!data.isPopular,
+      isActive: data.isActive !== undefined ? !!data.isActive : true,
+      features: Array.isArray(data.features) ? data.features.filter(f => typeof f === 'string' && f.trim().length > 0) : [],
+      order: data.order !== undefined ? Number(data.order) : this.subscriptionPlans.length + 1,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.subscriptionPlans.push(newPlan);
+    await this.persistDoc('platformSubscriptionPlans', newPlan.id, newPlan);
+
+    this.logAction(
+      'platform_super_admin',
+      requestingUser.id,
+      requestingUser.name,
+      requestingUser.role,
+      'CREATE_SUBSCRIPTION_PLAN',
+      'Plan',
+      `Super Admin created SaaS subscription plan: "${newPlan.name}" (${newPlan.code}) - ${newPlan.currency} ${newPlan.price}/${newPlan.billingPeriod}`,
+      newPlan.id
+    );
+
+    return newPlan;
+  }
+
+  public async updateSubscriptionPlan(
+    id: string,
+    data: Partial<SaaSSubscriptionPlan>,
+    requestingUser: User
+  ): Promise<SaaSSubscriptionPlan> {
+    if (requestingUser.role !== 'SUPER_ADMIN') {
+      throw new Error('Only Platform Super Admins can update subscription plans');
+    }
+
+    const idx = this.subscriptionPlans.findIndex(p => p.id === id || p.code === id);
+    if (idx === -1) {
+      throw new Error(`Subscription plan with ID "${id}" not found.`);
+    }
+
+    const currentPlan = this.subscriptionPlans[idx];
+    const now = new Date().toISOString();
+
+    // Check code uniqueness if code is updated
+    if (data.code && data.code.toLowerCase() !== currentPlan.code.toLowerCase()) {
+      if (this.subscriptionPlans.some(p => p.id !== currentPlan.id && p.code.toLowerCase() === data.code!.toLowerCase())) {
+        throw new Error(`A plan with code "${data.code}" already exists.`);
+      }
+    }
+
+    const updatedPlan: SaaSSubscriptionPlan = {
+      ...currentPlan,
+      ...data,
+      name: data.name ? data.name.trim() : currentPlan.name,
+      code: data.code ? data.code.trim() : currentPlan.code,
+      price: data.price !== undefined ? Number(data.price) : currentPlan.price,
+      currency: data.currency || currentPlan.currency,
+      billingPeriod: data.billingPeriod || currentPlan.billingPeriod,
+      description: data.description !== undefined ? data.description : currentPlan.description,
+      tagline: data.tagline !== undefined ? data.tagline : currentPlan.tagline,
+      maxUsers: data.maxUsers !== undefined ? Number(data.maxUsers) : currentPlan.maxUsers,
+      maxStorageGb: data.maxStorageGb !== undefined ? Number(data.maxStorageGb) : currentPlan.maxStorageGb,
+      moduleLimit: data.moduleLimit !== undefined ? Number(data.moduleLimit) : currentPlan.moduleLimit,
+      includedModules: data.includedModules !== undefined ? data.includedModules : currentPlan.includedModules,
+      allowCustomDomain: data.allowCustomDomain !== undefined ? !!data.allowCustomDomain : currentPlan.allowCustomDomain,
+      allowPublicWebsite: data.allowPublicWebsite !== undefined ? !!data.allowPublicWebsite : currentPlan.allowPublicWebsite,
+      prioritySupport: data.prioritySupport !== undefined ? !!data.prioritySupport : currentPlan.prioritySupport,
+      slaUptime: data.slaUptime !== undefined ? data.slaUptime : currentPlan.slaUptime,
+      isPopular: data.isPopular !== undefined ? !!data.isPopular : currentPlan.isPopular,
+      isActive: data.isActive !== undefined ? !!data.isActive : currentPlan.isActive,
+      features: data.features !== undefined ? data.features.filter(f => typeof f === 'string' && f.trim().length > 0) : currentPlan.features,
+      order: data.order !== undefined ? Number(data.order) : currentPlan.order,
+      updatedAt: now
+    };
+
+    this.subscriptionPlans[idx] = updatedPlan;
+    await this.persistDoc('platformSubscriptionPlans', updatedPlan.id, updatedPlan);
+
+    this.logAction(
+      'platform_super_admin',
+      requestingUser.id,
+      requestingUser.name,
+      requestingUser.role,
+      'UPDATE_SUBSCRIPTION_PLAN',
+      'Plan',
+      `Super Admin updated subscription plan: "${updatedPlan.name}" (${updatedPlan.code}) - ${updatedPlan.currency} ${updatedPlan.price}/${updatedPlan.billingPeriod}`,
+      updatedPlan.id
+    );
+
+    return updatedPlan;
+  }
+
+  public async deleteSubscriptionPlan(
+    id: string,
+    requestingUser: User
+  ): Promise<{ success: boolean; message: string }> {
+    if (requestingUser.role !== 'SUPER_ADMIN') {
+      throw new Error('Only Platform Super Admins can delete subscription plans');
+    }
+
+    const idx = this.subscriptionPlans.findIndex(p => p.id === id || p.code === id);
+    if (idx === -1) {
+      throw new Error(`Subscription plan with ID "${id}" not found.`);
+    }
+
+    const targetPlan = this.subscriptionPlans[idx];
+
+    // Check if any tenants are actively assigned to this plan
+    const subscribedTenants = this.tenants.filter(
+      t => t.planId === targetPlan.id || t.planId === targetPlan.code
+    );
+
+    if (subscribedTenants.length > 0) {
+      throw new Error(
+        `Cannot delete plan "${targetPlan.name}". There are ${subscribedTenants.length} active tenant(s) subscribed to this plan (${subscribedTenants.map(t => t.name).slice(0, 3).join(', ')}${subscribedTenants.length > 3 ? '...' : ''}). Reassign them before deleting.`
+      );
+    }
+
+    this.subscriptionPlans.splice(idx, 1);
+    await this.removeDoc('platformSubscriptionPlans', targetPlan.id);
+
+    this.logAction(
+      'platform_super_admin',
+      requestingUser.id,
+      requestingUser.name,
+      requestingUser.role,
+      'DELETE_SUBSCRIPTION_PLAN',
+      'Plan',
+      `Super Admin deleted subscription plan: "${targetPlan.name}" (${targetPlan.code})`,
+      targetPlan.id
+    );
+
+    return {
+      success: true,
+      message: `Subscription plan "${targetPlan.name}" successfully deleted.`
+    };
+  }
+
+  public async assignTenantPlan(
+    tenantId: string,
+    planId: string,
+    requestingUser: User
+  ): Promise<{ success: boolean; tenant: Tenant; plan: SaaSSubscriptionPlan }> {
+    if (requestingUser.role !== 'SUPER_ADMIN') {
+      throw new Error('Only Platform Super Admins can reassign tenant subscription plans');
+    }
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    if (!tenant) {
+      throw new Error(`Tenant with ID "${tenantId}" not found.`);
+    }
+
+    const plan = this.subscriptionPlans.find(p => p.id === planId || p.code === planId);
+    if (!plan) {
+      throw new Error(`Subscription plan "${planId}" not found.`);
+    }
+
+    tenant.planId = plan.id;
+    
+    // If plan includes specific modules and tenant has fewer or needs sync, ensure modules are aligned
+    if (plan.includedModules && plan.includedModules.length > 0) {
+      const mergedModules = Array.from(new Set([...(tenant.enabledModules || []), ...plan.includedModules]));
+      tenant.enabledModules = mergedModules as ModuleId[];
+    }
+
+    await this.persistDoc('tenants', tenant.id, tenant);
+
+    this.logAction(
+      'platform_super_admin',
+      requestingUser.id,
+      requestingUser.name,
+      requestingUser.role,
+      'ASSIGN_TENANT_PLAN',
+      'Tenant',
+      `Super Admin assigned plan "${plan.name}" to tenant "${tenant.name}"`,
+      tenant.id
+    );
+
+    return {
+      success: true,
+      tenant,
+      plan
+    };
   }
 }
 

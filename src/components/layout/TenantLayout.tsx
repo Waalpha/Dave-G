@@ -198,6 +198,17 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                 <button
                   onClick={() => {
                     setProfileOpen(false);
+                    onNavigate('/app/domains');
+                  }}
+                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
+                >
+                  <Globe className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Domains &amp; DNS Routing</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setProfileOpen(false);
                     onNavigate('/app/settings');
                   }}
                   className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
@@ -325,17 +336,31 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                 </button>
 
                 {(user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN') && (
-                  <button
-                    onClick={() => onNavigate('/app/settings')}
-                    className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
-                      currentRoute === '/app/settings'
-                        ? 'bg-slate-900 text-white'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    <Settings className="w-4 h-4 text-slate-500" />
-                    <span>Organization Settings</span>
-                  </button>
+                  <>
+                    <button
+                      onClick={() => onNavigate('/app/domains')}
+                      className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        currentRoute === '/app/domains'
+                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Globe className={`w-4 h-4 ${currentRoute === '/app/domains' ? 'text-white' : 'text-blue-600'}`} />
+                      <span>Domains &amp; Routing</span>
+                    </button>
+
+                    <button
+                      onClick={() => onNavigate('/app/settings')}
+                      className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        currentRoute === '/app/settings'
+                          ? 'bg-slate-900 text-white'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Settings className="w-4 h-4 text-slate-500" />
+                      <span>Organization Settings</span>
+                    </button>
+                  </>
                 )}
               </div>
             </div>

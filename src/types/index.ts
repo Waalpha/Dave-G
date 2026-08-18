@@ -255,6 +255,32 @@ export interface PublicWebsiteMediaItem {
   order: number;
 }
 
+export interface SaaSSubscriptionPlan {
+  id: string;
+  name: string;
+  code: string;
+  price: number;
+  currency: string;
+  billingPeriod: 'monthly' | 'annually' | 'quarterly';
+  priceDisplay?: string;
+  description: string;
+  tagline?: string;
+  maxUsers: number; // -1 for unlimited
+  maxStorageGb?: number;
+  moduleLimit?: number; // -1 for unlimited
+  includedModules?: ModuleId[];
+  allowCustomDomain: boolean;
+  allowPublicWebsite: boolean;
+  prioritySupport: boolean;
+  slaUptime?: string;
+  isPopular?: boolean;
+  isActive: boolean;
+  features: string[];
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PlatformPricingPlanConfig {
   id: string;
   name: string;

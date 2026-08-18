@@ -825,6 +825,97 @@ async function startServer() {
     }
   });
 
+  // ==================== SAAS SUBSCRIPTION PLANS MANAGEMENT ENDPOINTS ====================
+
+  // Platform Super Admin get all plans
+  app.get('/api/platform/plans', requireAuth, requireSuperAdmin, (req, res) => {
+    const plans = dbStore.getSubscriptionPlans();
+    return res.json({ plans });
+  });
+
+  // Public get active pricing plans (for marketing website / pricing table)
+  app.get('/api/public/plans', (req, res) => {
+    const plans = dbStore.getSubscriptionPlans().filter(p => p.isActive);
+    return res.json({ plans });
+  });
+
+  // Platform Super Admin create new subscription plan
+  app.post('/api/platform/plans', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    const { name, code, price, currency, billingPeriod, description, tagline, maxUsers, maxStorageGb, moduleLimit, includedModules, allowCustomDomain, allowPublicWebsite, prioritySupport, slaUptime, isPopular, isActive, features, order } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Plan name is required' });
+    }
+
+    try {
+      const newPlan = await dbStore.createSubscriptionPlan(
+        {
+          name,
+          code: code || name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          price: Number(price) || 0,
+          currency: currency || 'KES',
+          billingPeriod: billingPeriod || 'monthly',
+          description: description || '',
+          tagline: tagline || '',
+          maxUsers: maxUsers !== undefined ? Number(maxUsers) : -1,
+          maxStorageGb: maxStorageGb !== undefined ? Number(maxStorageGb) : 10,
+          moduleLimit: moduleLimit !== undefined ? Number(moduleLimit) : -1,
+          includedModules: Array.isArray(includedModules) ? includedModules : [],
+          allowCustomDomain: !!allowCustomDomain,
+          allowPublicWebsite: allowPublicWebsite !== undefined ? !!allowPublicWebsite : true,
+          prioritySupport: !!prioritySupport,
+          slaUptime: slaUptime || '99.9%',
+          isPopular: !!isPopular,
+          isActive: isActive !== undefined ? !!isActive : true,
+          features: Array.isArray(features) ? features : [],
+          order: Number(order) || 1
+        },
+        user
+      );
+      return res.status(201).json({ success: true, plan: newPlan });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Platform Super Admin update existing subscription plan
+  app.put('/api/platform/plans/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const updatedPlan = await dbStore.updateSubscriptionPlan(req.params.id, req.body, user);
+      return res.json({ success: true, plan: updatedPlan });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Platform Super Admin delete subscription plan
+  app.delete('/api/platform/plans/:id', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const result = await dbStore.deleteSubscriptionPlan(req.params.id, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Platform Super Admin assign plan to tenant
+  app.post('/api/platform/tenants/:tenantId/plan', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    const { planId } = req.body;
+    if (!planId) {
+      return res.status(400).json({ error: 'planId is required' });
+    }
+    try {
+      const result = await dbStore.assignTenantPlan(req.params.tenantId, planId, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   // ==================== TENANT PUBLIC WEBSITE ENDPOINTS (UNAUTHENTICATED) ====================
 
   app.get('/api/public/resolve-domain', (req, res) => {
