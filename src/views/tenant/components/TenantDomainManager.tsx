@@ -563,106 +563,233 @@ export const TenantDomainManager: React.FC<TenantDomainManagerProps> = ({
 
                   {/* DNS Record Setup Instructions */}
                   {isExpanded && !isSubdomain && (
-                    <div className="mt-4 p-4 bg-slate-900 text-slate-100 rounded-xl space-y-4 font-mono text-[11px]">
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                        <div className="flex items-center space-x-2 text-slate-300 font-sans">
-                          <Server className="w-4 h-4 text-blue-400" />
-                          <span className="font-bold">Required DNS Records for {dom.domain}</span>
+                    <div className="mt-4 p-5 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 space-y-5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div className="flex items-center space-x-2.5 text-slate-200">
+                          <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            <Server className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="font-bold text-sm text-white">Required DNS Records for {dom.domain}</span>
+                            <p className="text-[11px] text-slate-400 font-sans">
+                              Add both records below in your DNS provider (e.g. Cloudflare, GoDaddy, Namecheap, Safaricom, cPanel).
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-sans">
-                          Add these records in your DNS provider (e.g. Cloudflare, GoDaddy, Namecheap, Safaricom)
-                        </span>
+                        <div className="flex items-center gap-2 font-sans">
+                          <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            isVerified
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}>
+                            {isVerified ? <CheckCircle2 className="w-3 h-3 text-emerald-400" /> : <AlertCircle className="w-3 h-3 text-amber-400" />}
+                            <span>Status: {dom.verificationStatus}</span>
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                          <thead>
-                            <tr className="border-b border-slate-800 text-slate-400 text-[10px] uppercase">
-                              <th className="pb-2 font-bold">Type</th>
-                              <th className="pb-2 font-bold">Host / Name</th>
-                              <th className="pb-2 font-bold">Points To / Value</th>
-                              <th className="pb-2 font-bold">TTL</th>
-                              <th className="pb-2 font-bold text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/60">
-                            {/* CNAME Routing Record */}
-                            <tr>
-                              <td className="py-2.5 font-bold text-blue-400">CNAME</td>
-                              <td className="py-2.5 text-slate-200">
-                                {dom.domain.startsWith('www.') ? 'www' : dom.domain.split('.')[0]}
-                              </td>
-                              <td className="py-2.5 text-emerald-400">app.{baseDomain}</td>
-                              <td className="py-2.5 text-slate-400">Automatic / 300</td>
-                              <td className="py-2.5 text-right">
+                      {/* DNS Records Cards */}
+                      <div className="space-y-4 font-sans">
+                        {/* RECORD 1: CNAME Routing */}
+                        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/40 font-mono font-black text-xs">
+                                CNAME
+                              </span>
+                              <span className="font-bold text-xs text-slate-200">Routing &amp; SSL Target</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-mono">TTL: 300 / Automatic</span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {/* Host / Name */}
+                            <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-slate-400">Host / Name</span>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopy(`app.${baseDomain}`, `cname_${dom.id}`)}
-                                  className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-sans font-bold cursor-pointer"
+                                  onClick={() => handleCopy(dom.domain.startsWith('www.') ? 'www' : (dom.domain.split('.').length > 2 ? dom.domain.split('.')[0] : '@'), `cname_host_${dom.id}`)}
+                                  className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition-colors cursor-pointer"
                                 >
-                                  {copiedKey === `cname_${dom.id}` ? (
+                                  {copiedKey === `cname_host_${dom.id}` ? (
                                     <>
                                       <Check className="w-3 h-3 text-emerald-400" />
-                                      <span>Copied!</span>
+                                      <span className="text-emerald-400">Copied Host!</span>
                                     </>
                                   ) : (
                                     <>
                                       <Copy className="w-3 h-3" />
-                                      <span>Copy Value</span>
+                                      <span>Copy Host</span>
                                     </>
                                   )}
                                 </button>
-                              </td>
-                            </tr>
+                              </div>
+                              <div className="font-mono text-xs font-bold text-blue-300 break-all select-all">
+                                {dom.domain.startsWith('www.') ? 'www' : (dom.domain.split('.').length > 2 ? dom.domain.split('.')[0] : '@')}
+                              </div>
+                              <p className="text-[10px] text-slate-500">
+                                Full domain: <span className="font-mono text-slate-400">{dom.domain}</span>
+                              </p>
+                            </div>
 
-                            {/* TXT Verification Record */}
-                            <tr>
-                              <td className="py-2.5 font-bold text-amber-400">TXT</td>
-                              <td className="py-2.5 text-slate-200">_davetech-challenge.{dom.domain}</td>
-                              <td className="py-2.5 text-slate-300 truncate max-w-xs">
-                                davetech-verification={dom.verificationToken || 'davetech-verify-token'}
-                              </td>
-                              <td className="py-2.5 text-slate-400">Automatic / 300</td>
-                              <td className="py-2.5 text-right">
+                            {/* Points To / Value */}
+                            <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-slate-400">Points To / Target Value</span>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopy(`davetech-verification=${dom.verificationToken || 'davetech-verify-token'}`, `txt_${dom.id}`)}
-                                  className="inline-flex items-center space-x-1 px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[10px] font-sans font-bold cursor-pointer"
+                                  onClick={() => handleCopy(`app.${baseDomain}`, `cname_val_${dom.id}`)}
+                                  className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition-colors cursor-pointer"
                                 >
-                                  {copiedKey === `txt_${dom.id}` ? (
+                                  {copiedKey === `cname_val_${dom.id}` ? (
                                     <>
                                       <Check className="w-3 h-3 text-emerald-400" />
-                                      <span>Copied!</span>
+                                      <span className="text-emerald-400">Copied Target!</span>
                                     </>
                                   ) : (
                                     <>
                                       <Copy className="w-3 h-3" />
-                                      <span>Copy Value</span>
+                                      <span>Copy Target</span>
                                     </>
                                   )}
                                 </button>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
+                              </div>
+                              <div className="font-mono text-xs font-bold text-emerald-400 break-all select-all">
+                                app.{baseDomain}
+                              </div>
+                              <p className="text-[10px] text-slate-500">
+                                Proxies traffic to Davetech SSL edge router
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RECORD 2: TXT Verification */}
+                        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                            <div className="flex items-center space-x-2">
+                              <span className="px-2.5 py-0.5 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-black text-xs">
+                                TXT
+                              </span>
+                              <span className="font-bold text-xs text-slate-200">Ownership Verification Challenge</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 font-mono">TTL: 300 / Automatic</span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {/* Host / Name */}
+                            <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-slate-400">Host / Name</span>
+                                <div className="flex items-center space-x-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(`_davetech-challenge`, `txt_short_${dom.id}`)}
+                                    className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                                    title="Copy short host prefix"
+                                  >
+                                    {copiedKey === `txt_short_${dom.id}` ? (
+                                      <>
+                                        <Check className="w-3 h-3 text-emerald-400" />
+                                        <span className="text-emerald-400">Copied!</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="w-3 h-3" />
+                                        <span>Copy Host</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopy(`_davetech-challenge.${dom.domain}`, `txt_full_${dom.id}`)}
+                                    className="inline-flex items-center space-x-1 px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-[10px] font-bold transition-colors cursor-pointer"
+                                    title="Copy full FQDN host"
+                                  >
+                                    {copiedKey === `txt_full_${dom.id}` ? (
+                                      <>
+                                        <Check className="w-3 h-3 text-emerald-400" />
+                                        <span className="text-emerald-400">Copied!</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="w-3 h-3" />
+                                        <span>Copy FQDN</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="font-mono text-xs font-bold text-amber-300 break-all select-all">
+                                _davetech-challenge.{dom.domain}
+                              </div>
+                              <p className="text-[10px] text-slate-500">
+                                If your DNS provider appends your domain automatically, use host: <span className="font-mono text-slate-300 font-bold">_davetech-challenge</span>
+                              </p>
+                            </div>
+
+                            {/* Verification String Value */}
+                            <div className="bg-slate-950/80 border border-slate-800 rounded-lg p-3 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-slate-400">TXT Value / Content String</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(
+                                    dom.verificationToken?.startsWith('davetech-verification=')
+                                      ? dom.verificationToken
+                                      : `davetech-verification=${dom.verificationToken || `davetech-challenge-${dom.id.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`}`,
+                                    `txt_val_${dom.id}`
+                                  )}
+                                  className="inline-flex items-center space-x-1 px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded text-xs font-bold transition-colors cursor-pointer"
+                                >
+                                  {copiedKey === `txt_val_${dom.id}` ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                      <span className="text-emerald-400 font-bold">Copied Full Token!</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Copy Full Verification Value</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="font-mono text-xs font-bold text-amber-300 bg-slate-900 p-2.5 rounded border border-slate-800 break-all select-all leading-relaxed tracking-wide">
+                                {dom.verificationToken?.startsWith('davetech-verification=')
+                                  ? dom.verificationToken
+                                  : `davetech-verification=${dom.verificationToken || `davetech-challenge-${dom.id.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`}`}
+                              </div>
+                              <p className="text-[10px] text-slate-400">
+                                Paste this entire string into the TXT record Value/Content field in your DNS manager.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800 font-sans text-[11px]">
-                        <span className="text-slate-400">
-                          Status: <span className="font-bold text-slate-200">{dom.verificationStatus}</span>
-                        </span>
+                      {/* Action Bar with Verify DNS Button */}
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800 font-sans text-xs">
+                        <div className="flex items-center space-x-2 text-slate-400 text-[11px]">
+                          <Info className="w-4 h-4 text-blue-400 shrink-0" />
+                          <span>
+                            After saving DNS records in your domain provider, click below to verify ownership.
+                          </span>
+                        </div>
+
                         <button
                           type="button"
                           onClick={() => handleVerifyDomain(dom.id)}
                           disabled={verifyingId === dom.id}
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition-all cursor-pointer"
+                          className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
                         >
                           {verifyingId === dom.id ? (
-                            <RefreshCw className="w-3 h-3 animate-spin" />
+                            <RefreshCw className="w-4 h-4 animate-spin" />
                           ) : (
-                            <CheckCircle2 className="w-3 h-3" />
+                            <CheckCircle2 className="w-4 h-4" />
                           )}
-                          <span>{verifyingId === dom.id ? 'Verifying...' : 'Verify DNS Records Now'}</span>
+                          <span>{verifyingId === dom.id ? 'Checking DNS Records...' : 'Verify DNS Records Now'}</span>
                         </button>
                       </div>
                     </div>
