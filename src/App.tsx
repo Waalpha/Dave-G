@@ -84,12 +84,25 @@ function MainAppContent() {
   }
 
   // Active tenant slug if accessed on a tenant subdomain or tenant route
-  const activeTenantSlug = domainResolution.type === 'TENANT'
-    ? (domainResolution.tenantSlug || undefined)
-    : (currentRoute.startsWith('/public/') ? currentRoute.replace(/^\/public\/?/, '').trim() : undefined);
+  let activeTenantSlug: string | undefined = undefined;
+  if (domainResolution.type === 'TENANT' && domainResolution.tenantSlug) {
+    activeTenantSlug = domainResolution.tenantSlug;
+  } else if (currentRoute.startsWith('/public/')) {
+    activeTenantSlug = currentRoute.replace(/^\/public\/?/, '').split('?')[0].trim();
+  } else if (currentRoute.startsWith('/login/')) {
+    activeTenantSlug = currentRoute.replace(/^\/login\/?/, '').split('?')[0].trim();
+  } else if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hashParams = window.location.hash.includes('?') ? new URLSearchParams(window.location.hash.split('?')[1]) : null;
+    const paramSlug = urlParams.get('tenant') || urlParams.get('subdomain') || urlParams.get('slug') ||
+                      hashParams?.get('tenant') || hashParams?.get('subdomain') || hashParams?.get('slug');
+    if (paramSlug && paramSlug !== 'admin' && paramSlug !== 'sales' && paramSlug !== 'support' && paramSlug !== 'billing' && paramSlug !== 'root' && paramSlug !== 'www') {
+      activeTenantSlug = paramSlug;
+    }
+  }
 
-  // 0. LOGIN ROUTE (/login)
-  if (currentRoute === '/login') {
+  // 0. LOGIN ROUTE (/login or /login/*)
+  if (currentRoute === '/login' || currentRoute.startsWith('/login')) {
     return (
       <LoginView
         tenantSlug={activeTenantSlug}

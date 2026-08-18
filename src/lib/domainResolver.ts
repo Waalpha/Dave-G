@@ -188,10 +188,17 @@ export function resolveHostname(hostnameInput?: string, searchParams?: URLSearch
     hostname = hostname.split(':')[0];
   }
 
-  // 1. Check for manual dev query param override (e.g. ?subdomain=apex or ?tenant=dreamline or ?area=sales)
+  // 1. Check for manual dev query param override (e.g. ?subdomain=apex or ?tenant=dreamline or ?area=sales or hash params)
   let params = searchParams;
-  if (!params && typeof window !== 'undefined' && window.location.search) {
-    params = new URLSearchParams(window.location.search);
+  if (!params && typeof window !== 'undefined') {
+    if (window.location.search) {
+      params = new URLSearchParams(window.location.search);
+    } else if (window.location.hash && window.location.hash.includes('?')) {
+      const hashQuery = window.location.hash.split('?')[1];
+      if (hashQuery) {
+        params = new URLSearchParams(hashQuery);
+      }
+    }
   }
 
   if (params) {

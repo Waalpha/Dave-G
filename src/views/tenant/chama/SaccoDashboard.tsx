@@ -319,7 +319,7 @@ export const SaccoDashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-gray-900">
-              {currentTenant?.name || 'Blessed to Bless SACCO'}
+              {currentTenant?.name || 'SACCO Society'}
             </h1>
             <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
               Chama & SACCO Live

@@ -51,7 +51,7 @@ export const ALL_ERP_MODULES: ErpModuleInfo[] = [
   },
   {
     id: 'sacco',
-    name: 'Chama & SACCO (Blessed to Bless)',
+    name: 'Chama & SACCO Management',
     description: 'Member shares, savings deposits, monthly contributions, loan management, welfare, and investments.',
     category: 'Industry Specific',
     icon: 'Coins',

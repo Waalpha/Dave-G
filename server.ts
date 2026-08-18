@@ -395,11 +395,7 @@ async function startServer() {
   });
 
   const handleGetAllTenants = (req: express.Request, res: express.Response) => {
-    let tenants = dbStore.getAllTenants();
-    if (!tenants || tenants.length === 0) {
-      dbStore.ensureDefaultTenant();
-      tenants = dbStore.getAllTenants();
-    }
+    const tenants = dbStore.getAllTenants() || [];
     return res.json(tenants);
   };
 
@@ -850,11 +846,11 @@ async function startServer() {
   });
 
   const handleGetPublicTenant = (req: express.Request, res: express.Response) => {
-    const rawSlug = req.params.slug || (req.query.slug as string) || '';
+    const rawSlug = req.params.slug || (req.query.slug as string) || (req.query.tenant as string) || (req.query.subdomain as string) || '';
     const slug = rawSlug.trim();
     let tenant: Tenant | undefined = undefined;
 
-    if (slug && slug !== 'default' && slug !== 'undefined' && slug !== 'null') {
+    if (slug && slug !== 'default' && slug !== 'undefined' && slug !== 'null' && slug !== 'root' && slug !== 'www') {
       tenant = dbStore.getTenantByDomain(slug) || dbStore.getTenantBySlugOrId(slug);
       if (!tenant || tenant.status !== 'ACTIVE') {
         return res.status(404).json({
@@ -863,12 +859,24 @@ async function startServer() {
         });
       }
     } else {
-      // Fallback only if no specific slug was requested
-      tenant = dbStore.getAllTenants().find(t => t.status === 'ACTIVE') || dbStore.getAllTenants()[0];
+      // Check hostname for tenant subdomain
+      const host = ((req.headers.host || req.hostname || '') as string).toLowerCase().split(':')[0];
+      const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+      if (host.endsWith(`.${baseDomain}`)) {
+        const sub = host.slice(0, -(baseDomain.length + 1)).trim();
+        if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'sales' && sub !== 'support' && sub !== 'billing') {
+          tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
+        }
+      } else if (host.endsWith('.localhost')) {
+        const sub = host.split('.')[0].trim();
+        if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'sales' && sub !== 'support' && sub !== 'billing') {
+          tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
+        }
+      }
     }
 
-    if (!tenant) {
-      return res.status(404).json({ error: 'TENANT_NOT_FOUND', message: `No active public tenant found.` });
+    if (!tenant || tenant.status !== 'ACTIVE') {
+      return res.status(404).json({ error: 'TENANT_NOT_FOUND', message: `No active tenant found.` });
     }
 
     // Strict Tenant Isolation: Retrieve ONLY data appropriate for this tenant's industry
@@ -1015,9 +1023,6 @@ async function startServer() {
       tenant = dbStore.getAllTenants().find(t => t.status === 'ACTIVE') || dbStore.getAllTenants()[0];
     }
     if (!tenant) {
-      tenant = dbStore.ensureDefaultTenant();
-    }
-    if (!tenant) {
       return res.status(404).json({ error: 'TENANT_NOT_FOUND', message: 'Target tenant not found or inactive.' });
     }
 
@@ -1122,10 +1127,6 @@ async function startServer() {
 
     if (!tenant || tenant.status !== 'ACTIVE') {
       tenant = dbStore.getAllTenants().find(t => t.status === 'ACTIVE') || dbStore.getAllTenants()[0];
-    }
-
-    if (!tenant) {
-      tenant = dbStore.ensureDefaultTenant();
     }
 
     if (!tenant) {

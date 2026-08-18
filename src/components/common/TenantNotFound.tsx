@@ -81,8 +81,8 @@ export const TenantNotFound: React.FC<TenantNotFoundProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="pt-4 border-t border-slate-800/80 text-[11px] text-slate-400">
-          Davetech Cloud ERP Platform • Multi-Tenant Architecture
+        <div className="pt-4 border-t border-slate-800/80 text-[11px] text-slate-500">
+          Secure Multi-Tenant Cloud Architecture
         </div>
       </div>
     </div>

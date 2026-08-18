@@ -749,13 +749,13 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 // Memory Data Store Engine
 class DatabaseStore {
-  private tenants: Tenant[] = [...INITIAL_TENANTS];
+  private tenants: Tenant[] = [];
   private users: User[] = [...INITIAL_USERS];
-  private campuses: Campus[] = [...INITIAL_CAMPUSES];
+  private campuses: Campus[] = [];
   private academicYears: AcademicYear[] = [];
   private terms: AcademicTerm[] = [];
-  private departments: Department[] = [...INITIAL_DEPARTMENTS];
-  private programs: Program[] = [...INITIAL_PROGRAMS];
+  private departments: Department[] = [];
+  private programs: Program[] = [];
   private units: UnitSubject[] = [];
   private schoolClasses: SchoolClass[] = [];
   private students: Student[] = [];
@@ -875,21 +875,17 @@ class DatabaseStore {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(raw);
-        if (Array.isArray(data.tenants) && data.tenants.length > 0) {
+        if (Array.isArray(data.tenants)) {
           this.tenants = data.tenants;
-          for (const it of INITIAL_TENANTS) {
-            if (!this.tenants.some(t => t.id === it.id || t.slug === it.slug || t.subdomain === it.subdomain)) {
-              this.tenants.push(it);
-            }
-          }
         }
-        if (Array.isArray(data.users) && data.users.length > 0) {
+        if (Array.isArray(data.users)) {
           this.users = data.users;
-          for (const iu of INITIAL_USERS) {
+          // Ensure root platform super admins are accessible
+          INITIAL_USERS.filter(u => u.role === 'SUPER_ADMIN').forEach(iu => {
             if (!this.users.some(u => u.id === iu.id || u.email.toLowerCase() === iu.email.toLowerCase())) {
               this.users.push(iu);
             }
-          }
+          });
         }
         if (Array.isArray(data.campuses)) this.campuses = data.campuses;
         if (Array.isArray(data.academicYears)) this.academicYears = data.academicYears;
@@ -944,42 +940,20 @@ class DatabaseStore {
     this.saveToDiskBackup();
   }
 
-  public ensureDefaultTenant(): Tenant {
-    if (this.tenants.length === 0) {
-      this.tenants = [...INITIAL_TENANTS];
-      if (this.departments.length === 0) this.departments = [...INITIAL_DEPARTMENTS];
-      if (this.programs.length === 0) this.programs = [...INITIAL_PROGRAMS];
-      if (this.campuses.length === 0) this.campuses = [...INITIAL_CAMPUSES];
-      if (this.posProducts.length === 0) this.posProducts = [...INITIAL_POS_PRODUCTS];
-      INITIAL_TENANTS.forEach(t => saveDocToFirestore('tenants', t.id, t).catch(() => {}));
-    }
-    return this.tenants[0];
+  public ensureDefaultTenant(): Tenant | null {
+    return this.tenants[0] || null;
   }
 
   public async syncFromFirestore() {
     try {
       const dbTenants = await loadCollectionFromFirestore<Tenant>('tenants');
-      if (Array.isArray(dbTenants) && dbTenants.length > 0) {
-        this.tenants = dbTenants;
-        // Ensure all default initial tenants exist
-        for (const it of INITIAL_TENANTS) {
-          if (!this.tenants.some(t => t.id === it.id || t.slug === it.slug || t.subdomain === it.subdomain)) {
-            this.tenants.push(it);
-            saveDocToFirestore('tenants', it.id, it).catch(() => {});
-          }
-        }
-      } else {
-        this.tenants = [...INITIAL_TENANTS];
-        for (const t of INITIAL_TENANTS) {
-          await saveDocToFirestore('tenants', t.id, t).catch(() => {});
-        }
-      }
+      this.tenants = Array.isArray(dbTenants) ? dbTenants : [];
 
       const dbUsers = await loadCollectionFromFirestore<User>('users');
       if (Array.isArray(dbUsers) && dbUsers.length > 0) {
         this.users = dbUsers;
         // Ensure primary Super Admin user exists
-        INITIAL_USERS.forEach(sa => {
+        INITIAL_USERS.filter(u => u.role === 'SUPER_ADMIN').forEach(sa => {
           if (!this.users.some(u => u.email.toLowerCase() === sa.email.toLowerCase() || u.id === sa.id)) {
             this.users.push(sa);
             saveDocToFirestore('users', sa.id, sa).catch(() => {});
@@ -993,11 +967,7 @@ class DatabaseStore {
       }
 
       const dbDepartments = await loadCollectionFromFirestore<Department>('departments');
-      if (Array.isArray(dbDepartments) && dbDepartments.length > 0) {
-        this.departments = dbDepartments;
-      } else if (this.departments.length === 0) {
-        this.departments = [...INITIAL_DEPARTMENTS];
-      }
+      this.departments = Array.isArray(dbDepartments) ? dbDepartments : [];
 
       const dbStudents = await loadCollectionFromFirestore<Student>('students');
       this.students = Array.isArray(dbStudents) ? dbStudents : [];
@@ -1006,7 +976,7 @@ class DatabaseStore {
       this.feePayments = Array.isArray(dbPayments) ? dbPayments : [];
 
       const dbCampuses = await loadCollectionFromFirestore<Campus>('campuses');
-      this.campuses = Array.isArray(dbCampuses) && dbCampuses.length > 0 ? dbCampuses : [...INITIAL_CAMPUSES];
+      this.campuses = Array.isArray(dbCampuses) ? dbCampuses : [];
 
       const dbYears = await loadCollectionFromFirestore<AcademicYear>('academicYears');
       this.academicYears = Array.isArray(dbYears) ? dbYears : [];
@@ -1015,7 +985,7 @@ class DatabaseStore {
       this.terms = Array.isArray(dbTerms) ? dbTerms : [];
 
       const dbPrograms = await loadCollectionFromFirestore<Program>('programs');
-      this.programs = Array.isArray(dbPrograms) && dbPrograms.length > 0 ? dbPrograms : [...INITIAL_PROGRAMS];
+      this.programs = Array.isArray(dbPrograms) ? dbPrograms : [];
 
       const dbUnits = await loadCollectionFromFirestore<UnitSubject>('units');
       this.units = Array.isArray(dbUnits) ? dbUnits : [];
@@ -1696,7 +1666,44 @@ class DatabaseStore {
     const progDeletions = this.programs.filter(p => p.tenantId === tenantId).map(p => this.removeDoc('programs', p.id));
     this.programs = this.programs.filter(p => p.tenantId !== tenantId);
 
-    await Promise.allSettled([...deptDeletions, ...studentDeletions, ...feeDeletions, ...campusDeletions, ...progDeletions]);
+    const unitDeletions = this.units.filter(u => u.tenantId === tenantId).map(u => this.removeDoc('units', u.id));
+    this.units = this.units.filter(u => u.tenantId !== tenantId);
+
+    const classDeletions = this.schoolClasses.filter(c => c.tenantId === tenantId).map(c => this.removeDoc('schoolClasses', c.id));
+    this.schoolClasses = this.schoolClasses.filter(c => c.tenantId !== tenantId);
+
+    const staffDeletions = this.staff.filter(s => s.tenantId === tenantId).map(s => this.removeDoc('staff', s.id));
+    this.staff = this.staff.filter(s => s.tenantId !== tenantId);
+
+    const timetableDeletions = this.timetable.filter(t => t.tenantId === tenantId).map(t => this.removeDoc('timetable', t.id));
+    this.timetable = this.timetable.filter(t => t.tenantId !== tenantId);
+
+    const attendanceDeletions = this.studentAttendance.filter(a => a.tenantId === tenantId).map(a => this.removeDoc('studentAttendance', a.id));
+    this.studentAttendance = this.studentAttendance.filter(a => a.tenantId !== tenantId);
+
+    const fsDeletions = this.feeStructures.filter(f => f.tenantId === tenantId).map(f => this.removeDoc('feeStructures', f.id));
+    this.feeStructures = this.feeStructures.filter(f => f.tenantId !== tenantId);
+
+    const invDeletions = this.studentInvoices.filter(i => i.tenantId === tenantId).map(i => this.removeDoc('studentInvoices', i.id));
+    this.studentInvoices = this.studentInvoices.filter(i => i.tenantId !== tenantId);
+
+    const gradeDeletions = this.studentGrades.filter(g => g.tenantId === tenantId).map(g => this.removeDoc('studentGrades', g.id));
+    this.studentGrades = this.studentGrades.filter(g => g.tenantId !== tenantId);
+
+    const bookDeletions = this.libraryBooks.filter(b => b.tenantId === tenantId).map(b => this.removeDoc('libraryBooks', b.id));
+    this.libraryBooks = this.libraryBooks.filter(b => b.tenantId !== tenantId);
+
+    const loanDeletions = this.libraryLoans.filter(l => l.tenantId === tenantId).map(l => this.removeDoc('libraryLoans', l.id));
+    this.libraryLoans = this.libraryLoans.filter(l => l.tenantId !== tenantId);
+
+    const roomDeletions = this.hostelRooms.filter(r => r.tenantId === tenantId).map(r => this.removeDoc('hostelRooms', r.id));
+    this.hostelRooms = this.hostelRooms.filter(r => r.tenantId !== tenantId);
+
+    await Promise.allSettled([
+      ...deptDeletions, ...studentDeletions, ...feeDeletions, ...campusDeletions, ...progDeletions,
+      ...unitDeletions, ...classDeletions, ...staffDeletions, ...timetableDeletions, ...attendanceDeletions,
+      ...fsDeletions, ...invDeletions, ...gradeDeletions, ...bookDeletions, ...loanDeletions, ...roomDeletions
+    ]);
 
     this.logAction(
       'platform_super_admin',
