@@ -49,16 +49,12 @@ async function startServer() {
       if (user) return user;
     }
 
-    // Default Super Admin fallback for seamless zero-barrier access
-    return (
-      dbStore.getUserByEmail('adminbreakthrough76@gmail.com') ||
-      dbStore.getUserByEmail('admin@platform.com') ||
-      dbStore.getAllUsers().find(u => u.role === 'SUPER_ADMIN') ||
-      dbStore.getAllUsers()[0]
-    );
+    return undefined;
   };
 
   const getEffectiveTenantId = (req: express.Request, user?: User): string => {
+    const host = (req.headers.host || req.hostname || '').toLowerCase().split(':')[0];
+
     // 1. If non-super admin user, strictly enforce user's home tenant ID
     if (user && user.tenantId && user.tenantId !== 'platform_super_admin' && user.role !== 'SUPER_ADMIN') {
       const requestedTenantId = (req.headers['x-tenant-id'] as string) ||
@@ -77,30 +73,19 @@ async function startServer() {
       return user.tenantId;
     }
 
-    // 2. Explicit header or query override (permitted for Super Admin or domain-aware routing)
+    // 2. Resolve by request hostname (custom domain, subdomain, or localhost prefix)
+    if (host) {
+      const resolved = dbStore.resolveTenantByHostname(host);
+      if (resolved.tenant && resolved.tenant.status === 'ACTIVE') {
+        return resolved.tenant.id;
+      }
+    }
+
+    // 3. Explicit header or query override (permitted for Super Admin or domain-aware routing)
     const headerTenantId = (req.headers['x-tenant-id'] as string) || (req.headers['x-tenant-slug'] as string) || (req.query.tenantId as string) || (req.query.slug as string) || (req.body && req.body.tenantId ? (req.body.tenantId as string) : undefined);
     if (headerTenantId) {
       const t = dbStore.getTenant(headerTenantId) || dbStore.getTenantByDomain(headerTenantId) || dbStore.getTenantBySlugOrId(headerTenantId);
       if (t) return t.id;
-    }
-
-    // 3. Subdomain extraction from hostname (e.g. brightacademy.davetech.co.ke)
-    const host = (req.headers.host || req.hostname || '').toLowerCase().split(':')[0];
-    const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
-    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'login', 'dashboard', 'portal'];
-
-    if (host.endsWith(`.${baseDomain}`)) {
-      const sub = host.slice(0, -(baseDomain.length + 1)).toLowerCase().trim();
-      if (sub && !reserved.includes(sub)) {
-        const t = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
-        if (t) return t.id;
-      }
-    } else if (host.endsWith('.localhost')) {
-      const sub = host.split('.')[0].toLowerCase().trim();
-      if (sub && !reserved.includes(sub)) {
-        const t = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
-        if (t) return t.id;
-      }
     }
 
     if (user && user.tenantId && user.tenantId !== 'platform_super_admin') {
@@ -718,13 +703,135 @@ async function startServer() {
     }
   });
 
+  // ==================== TENANT DOMAIN MANAGEMENT ENDPOINTS ====================
+
+  // Tenant Admin get configured domains
+  app.get('/api/tenant/domains', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = getEffectiveTenantId(req, user);
+    const domains = dbStore.getTenantDomains(tenantId);
+    return res.json({ domains });
+  });
+
+  // Tenant Admin add custom domain
+  app.post('/api/tenant/domains', requireAuth, async (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Administrators can add domains' });
+    }
+    const tenantId = getEffectiveTenantId(req, user);
+    const { domain, isPrimary } = req.body;
+    if (!domain) {
+      return res.status(400).json({ error: 'Domain name is required' });
+    }
+    try {
+      const newDomain = await dbStore.addTenantDomain(tenantId, domain, !!isPrimary, user);
+      return res.status(201).json({ success: true, domain: newDomain });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Tenant Admin verify domain DNS
+  app.post('/api/tenant/domains/:domainId/verify', requireAuth, async (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Administrators can verify domains' });
+    }
+    try {
+      const result = await dbStore.verifyTenantDomain(req.params.domainId, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Tenant Admin set primary domain
+  app.post('/api/tenant/domains/:domainId/set-primary', requireAuth, async (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Administrators can change primary domain' });
+    }
+    try {
+      const domain = await dbStore.setPrimaryTenantDomain(req.params.domainId, user);
+      return res.json({ success: true, domain });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Tenant Admin delete domain
+  app.delete('/api/tenant/domains/:domainId', requireAuth, async (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Administrators can delete domains' });
+    }
+    try {
+      const result = await dbStore.deleteTenantDomain(req.params.domainId, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // ==================== PLATFORM SUPER ADMIN DOMAIN MANAGEMENT ====================
+
+  app.get('/api/platform/domains', requireAuth, requireSuperAdmin, (req, res) => {
+    const domains = dbStore.getAllTenantDomains();
+    return res.json({ domains });
+  });
+
+  app.post('/api/platform/tenants/:tenantId/domains', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    const { domain, isPrimary } = req.body;
+    if (!domain) {
+      return res.status(400).json({ error: 'Domain name is required' });
+    }
+    try {
+      const newDomain = await dbStore.addTenantDomain(req.params.tenantId, domain, !!isPrimary, user);
+      return res.status(201).json({ success: true, domain: newDomain });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/platform/domains/:domainId/verify', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const result = await dbStore.verifyTenantDomain(req.params.domainId, user, true);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/platform/domains/:domainId/set-primary', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const domain = await dbStore.setPrimaryTenantDomain(req.params.domainId, user);
+      return res.json({ success: true, domain });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/platform/domains/:domainId', requireAuth, requireSuperAdmin, async (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const result = await dbStore.deleteTenantDomain(req.params.domainId, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   // ==================== TENANT PUBLIC WEBSITE ENDPOINTS (UNAUTHENTICATED) ====================
 
   app.get('/api/public/resolve-domain', (req, res) => {
     const hostname = ((req.query.hostname as string) || req.hostname || req.headers.host || '').toLowerCase().split(':')[0];
     const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
 
-    // 1. Check override query parameter (e.g. ?area=sales or ?subdomain=apex)
+    // 1. Check override query parameter (e.g. ?area=sales or ?subdomain=apex or ?customDomain=...)
     const areaOverride = ((req.query.area as string) || (req.query.portal as string) || '').toLowerCase().trim();
     if (areaOverride) {
       if (areaOverride === 'admin' || areaOverride === 'platform') {
@@ -738,6 +845,22 @@ async function startServer() {
       }
       if (areaOverride === 'billing') {
         return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
+      }
+    }
+
+    const customDomainOverride = ((req.query.customDomain as string) || (req.query.domain as string) || '').toLowerCase().trim();
+    if (customDomainOverride) {
+      const resolved = dbStore.resolveTenantByHostname(customDomainOverride);
+      if (resolved.tenant && resolved.tenant.status === 'ACTIVE') {
+        return res.json({
+          type: 'TENANT',
+          tenantSlug: resolved.tenant.slug,
+          tenantId: resolved.tenant.id,
+          tenantName: resolved.tenant.name,
+          branding: resolved.tenant.branding,
+          isCustomDomain: true,
+          baseDomain
+        });
       }
     }
 
@@ -772,77 +895,32 @@ async function startServer() {
       });
     }
 
-    // 2. Exact match root
-    if (hostname === baseDomain || hostname === `www.${baseDomain}` || hostname === 'localhost' || hostname === '127.0.0.1') {
+    // 2. Resolve using authoritative dbStore method
+    const resolution = dbStore.resolveTenantByHostname(hostname);
+    if (resolution.resolutionType === 'PLATFORM_ROOT') {
       return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
     }
-
-    // 3. Reserved platform subdomains
-    if (hostname === `admin.${baseDomain}` || hostname === 'admin.localhost') {
-      return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
-    }
-    if (hostname === `sales.${baseDomain}` || hostname === 'sales.localhost') {
-      return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
-    }
-    if (hostname === `support.${baseDomain}` || hostname === 'support.localhost' || hostname === `help.${baseDomain}`) {
-      return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
-    }
-    if (hostname === `billing.${baseDomain}` || hostname === 'billing.localhost') {
-      return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
-    }
-
-    // 4. Wildcard Subdomain match
-    let sub = '';
-    if (hostname.endsWith(`.${baseDomain}`)) {
-      sub = hostname.slice(0, -(baseDomain.length + 1)).toLowerCase().trim();
-    } else if (hostname.endsWith('.localhost')) {
-      sub = hostname.split('.')[0].toLowerCase().trim();
-    } else {
-      // 5. Check Custom Domain match
-      const customTenant = dbStore.getTenantByDomain(hostname);
-      if (customTenant && customTenant.status === 'ACTIVE') {
-        return res.json({
-          type: 'TENANT',
-          tenantSlug: customTenant.slug,
-          tenantId: customTenant.id,
-          tenantName: customTenant.name,
-          branding: customTenant.branding,
-          isCustomDomain: true,
-          baseDomain
-        });
-      }
+    if (resolution.resolutionType === 'RESERVED') {
+      const sub = hostname.split('.')[0];
+      if (sub === 'admin') return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
+      if (sub === 'sales') return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
+      if (sub === 'support' || sub === 'help') return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
+      if (sub === 'billing') return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
       return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
     }
-
-    if (sub === 'admin' || sub === 'platform') {
-      return res.json({ type: 'PLATFORM_ADMIN', platformArea: 'admin', baseDomain });
-    }
-    if (sub === 'sales') {
-      return res.json({ type: 'PLATFORM_SALES', platformArea: 'sales', baseDomain });
-    }
-    if (sub === 'support' || sub === 'help') {
-      return res.json({ type: 'PLATFORM_SUPPORT', platformArea: 'support', baseDomain });
-    }
-    if (sub === 'billing') {
-      return res.json({ type: 'PLATFORM_BILLING', platformArea: 'billing', baseDomain });
-    }
-    if (sub === 'www' || sub === 'root' || sub === 'default') {
-      return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
+    if (resolution.tenant && resolution.tenant.status === 'ACTIVE') {
+      return res.json({
+        type: 'TENANT',
+        tenantSlug: resolution.tenant.slug,
+        tenantId: resolution.tenant.id,
+        tenantName: resolution.tenant.name,
+        branding: resolution.tenant.branding,
+        isCustomDomain: resolution.resolutionType === 'CUSTOM',
+        baseDomain
+      });
     }
 
-    const tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
-    if (!tenant || tenant.status !== 'ACTIVE') {
-      return res.status(404).json({ type: 'TENANT_NOT_FOUND', slug: sub, baseDomain });
-    }
-
-    return res.json({
-      type: 'TENANT',
-      tenantSlug: tenant.slug,
-      tenantId: tenant.id,
-      tenantName: tenant.name,
-      branding: tenant.branding,
-      baseDomain
-    });
+    return res.json({ type: 'PLATFORM_ROOT', platformArea: 'root', baseDomain });
   });
 
   const handleGetPublicTenant = (req: express.Request, res: express.Response) => {
@@ -859,19 +937,11 @@ async function startServer() {
         });
       }
     } else {
-      // Check hostname for tenant subdomain
+      // Check hostname for tenant resolution (subdomain or verified custom domain)
       const host = ((req.headers.host || req.hostname || '') as string).toLowerCase().split(':')[0];
-      const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
-      if (host.endsWith(`.${baseDomain}`)) {
-        const sub = host.slice(0, -(baseDomain.length + 1)).trim();
-        if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'sales' && sub !== 'support' && sub !== 'billing') {
-          tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
-        }
-      } else if (host.endsWith('.localhost')) {
-        const sub = host.split('.')[0].trim();
-        if (sub && sub !== 'www' && sub !== 'admin' && sub !== 'sales' && sub !== 'support' && sub !== 'billing') {
-          tenant = dbStore.getTenantByDomain(sub) || dbStore.getTenantBySlugOrId(sub);
-        }
+      const resolved = dbStore.resolveTenantByHostname(host);
+      if (resolved.tenant && resolved.tenant.status === 'ACTIVE') {
+        tenant = resolved.tenant;
       }
     }
 
@@ -974,6 +1044,9 @@ async function startServer() {
       ? `Equipping students with industry-relevant skills, professional certifications, and hands-on training.`
       : `Delivering enterprise-grade solutions, client satisfaction, and operational efficiency.`;
 
+    const tenantDomains = dbStore.getTenantDomains(tenant.id);
+    const primaryDomainRecord = tenantDomains.find(d => d.isPrimary && d.verificationStatus === 'VERIFIED');
+
     const publicTenantInfo = {
       id: tenant.id,
       name: tenant.name,
@@ -981,6 +1054,8 @@ async function startServer() {
       subdomain: tenant.subdomain || tenant.slug,
       domainType: tenant.domainType || 'subdomain',
       customDomain: tenant.customDomain,
+      primaryDomain: primaryDomainRecord?.domain || tenant.customDomain || `${tenant.slug}.${process.env.BASE_DOMAIN || 'davetech.co.ke'}`,
+      domains: tenantDomains,
       type: tenant.type,
       educationType: tenant.educationType,
       branding: tenant.branding,
@@ -3526,9 +3601,15 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`ERP Multi-Tenant SaaS server running on http://0.0.0.0:${PORT}`);
+  });
+
+  server.on('error', (err: any) => {
+    console.error('Server error:', err);
   });
 }
 
-startServer();
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+});

@@ -34,25 +34,32 @@ const DEFAULT_SUPER_ADMIN: User = {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(DEFAULT_SUPER_ADMIN);
+  const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [inspectingTenant, setInspectingTenant] = useState<Tenant | null>(null);
   const [enabledModules, setEnabledModules] = useState<ModuleId[]>(ALL_ERP_MODULES.map(m => m.id));
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const getHeaders = () => {
-    let userId = localStorage.getItem('erp_user_id');
-    if (!userId) {
-      userId = DEFAULT_SUPER_ADMIN.id;
-      localStorage.setItem('erp_user_id', userId);
-    }
-    return {
-      'Content-Type': 'application/json',
-      'x-user-id': userId
+    const userId = localStorage.getItem('erp_user_id');
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
     };
+    if (userId) {
+      headers['x-user-id'] = userId;
+    }
+    return headers;
   };
 
   const refreshAuth = async () => {
+    const storedUserId = localStorage.getItem('erp_user_id');
+    if (!storedUserId) {
+      setUser(null);
+      setTenant(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/me', { headers: getHeaders() });
       if (res.ok) {
@@ -64,13 +71,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
       }
-      // If server returns empty or offline, keep default super admin
-      setUser(DEFAULT_SUPER_ADMIN);
-      setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
+      // If unauthorized, clear invalid session
+      localStorage.removeItem('erp_user_id');
+      setUser(null);
+      setTenant(null);
     } catch (err) {
-      console.error('Auth refresh note (using local super admin session):', err);
-      setUser(DEFAULT_SUPER_ADMIN);
-      setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
+      console.warn('Auth refresh note:', err);
+      // In offline scenario with existing local token, maintain session
     } finally {
       setIsLoading(false);
     }
@@ -293,11 +300,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     fetch('/api/auth/logout', { method: 'POST', headers: getHeaders() }).catch(() => {});
     localStorage.removeItem('erp_user_id');
-    setUser(DEFAULT_SUPER_ADMIN);
+    setUser(null);
     setTenant(null);
     setInspectingTenant(null);
     setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
-    window.location.hash = '/public';
   };
 
   const inspectTenant = async (tenantId: string): Promise<boolean> => {

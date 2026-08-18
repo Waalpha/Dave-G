@@ -9,6 +9,7 @@ import {
 import { EditTenantModal } from './components/EditTenantModal';
 import { TenantUsersModal } from './components/TenantUsersModal';
 import { GlobalUsersList } from './components/GlobalUsersList';
+import { TenantDomainManager } from '../tenant/components/TenantDomainManager';
 import { compressImageFile } from '../../lib/imageUtils';
 import { getBaseDomain, normalizeSubdomain, isReservedSubdomain } from '../../lib/domainResolver';
 
@@ -54,6 +55,7 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
   const [selectedTenantForModules, setSelectedTenantForModules] = useState<Tenant | null>(null);
   const [selectedTenantForEdit, setSelectedTenantForEdit] = useState<Tenant | null>(null);
   const [selectedTenantForUsers, setSelectedTenantForUsers] = useState<Tenant | null>(null);
+  const [selectedTenantForDomains, setSelectedTenantForDomains] = useState<Tenant | null>(null);
   const [selectedTenantForDelete, setSelectedTenantForDelete] = useState<Tenant | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -496,6 +498,16 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                         <span>Modules</span>
                       </button>
 
+                      {/* Manage Domains */}
+                      <button
+                        onClick={() => setSelectedTenantForDomains(t)}
+                        className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition-colors inline-flex items-center space-x-1 cursor-pointer"
+                        title="Manage tenant subdomains and custom domains"
+                      >
+                        <Globe className="w-3.5 h-3.5" />
+                        <span>Domains</span>
+                      </button>
+
                       {/* Toggle Status */}
                       <button
                         onClick={() => handleToggleTenantStatus(t)}
@@ -903,6 +915,46 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* DOMAINS & DNS MANAGEMENT MODAL (SUPER ADMIN) */}
+      {selectedTenantForDomains && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Domain &amp; Routing Management: {selectedTenantForDomains.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Tenant ID: {selectedTenantForDomains.id} &bull; Subdomain: {selectedTenantForDomains.slug || selectedTenantForDomains.subdomain}.{baseDomain}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedTenantForDomains(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <TenantDomainManager
+              tenantId={selectedTenantForDomains.id}
+              tenantName={selectedTenantForDomains.name}
+              isSuperAdmin={true}
+              onDomainsUpdated={() => {
+                fetchTenants();
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

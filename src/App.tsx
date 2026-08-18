@@ -207,14 +207,19 @@ function MainAppContent() {
     );
   }
 
-  // 0.1 If unauthenticated, fallback directly to Super Admin dashboard
+  // 0.1 If unauthenticated and requesting a workspace route, render LoginView
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-950">
-        <PlatformLayout currentTab={platformTab} onSelectTab={navigatePlatformTab}>
-          <PlatformDashboard onNavigateTab={navigatePlatformTab} />
-        </PlatformLayout>
-      </div>
+      <LoginView
+        tenantSlug={activeTenantSlug}
+        onNavigateToPublic={(slug) => {
+          if (slug) {
+            navigateTo(`/public/${slug}`);
+          } else {
+            navigateTo('/public');
+          }
+        }}
+      />
     );
   }
 

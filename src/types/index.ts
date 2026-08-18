@@ -140,6 +140,36 @@ export interface TenantPublicWebsiteConfig {
   typography?: PublicWebsiteTypographyConfig;
 }
 
+export type DomainType = 'SUBDOMAIN' | 'CUSTOM';
+export type DomainVerificationStatus = 'PENDING' | 'VERIFIED' | 'FAILED';
+export type DomainSslStatus = 'PENDING' | 'ACTIVE' | 'FAILED' | 'ISSUING';
+
+export interface TenantDnsRecord {
+  type: 'CNAME' | 'TXT' | 'A';
+  name: string;
+  value: string;
+  purpose: 'ROUTING' | 'VERIFICATION';
+  status: 'PENDING' | 'CONFIGURED' | 'FAILED';
+}
+
+export interface TenantDomain {
+  id: string;
+  tenantId: string;
+  domain: string; // e.g. "www.examplehospital.co.ke" or "hospital.davetech.co.ke"
+  normalizedDomain: string;
+  type: DomainType;
+  verificationStatus: DomainVerificationStatus;
+  isPrimary: boolean;
+  sslStatus: DomainSslStatus;
+  verificationToken?: string;
+  dnsRecords?: TenantDnsRecord[];
+  failureReason?: string;
+  lastCheckedAt?: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PublicTenantInfo {
   id: string;
   name: string;
@@ -147,6 +177,8 @@ export interface PublicTenantInfo {
   subdomain?: string;
   domainType?: 'subdomain' | 'custom';
   customDomain?: string | null;
+  domains?: TenantDomain[];
+  primaryDomain?: string;
   type: TenantType;
   educationType?: EducationType;
   branding: TenantBranding;
@@ -308,6 +340,8 @@ export interface Tenant {
   subdomain?: string;
   domainType?: 'subdomain' | 'custom';
   customDomain?: string | null;
+  domains?: TenantDomain[];
+  primaryDomain?: string;
   type: TenantType;
   educationType?: EducationType;
   facilityType?: FacilityType;

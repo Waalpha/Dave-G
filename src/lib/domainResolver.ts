@@ -3,10 +3,11 @@
  * 
  * Supports:
  * - Wildcard DNS (*.davetech.co.ke)
- * - Reserved Platform Subdomains (admin, sales, support, billing)
- * - Dynamic Multi-Tenant Subdomains (apex, dreamline, blessed, grace, stjude, etc.)
+ * - Tenant-Owned Verified Custom Domains (e.g. www.example.com, portal.example.co.ke)
+ * - Reserved Platform Subdomains (admin, sales, support, billing, etc.)
+ * - Dynamic Multi-Tenant Subdomains (schools, hospitals, saccos, retail, wholesale, churches)
  * - Local development (*.localhost, localhost, 127.0.0.1, query param overrides)
- * - Custom Domains
+ * - Strict Tenant Isolation (hostname-first resolution, zero tenant crosstalk)
  */
 
 export const RESERVED_PLATFORM_SUBDOMAINS: string[] = [
@@ -44,18 +45,21 @@ export type HostContext =
   | { type: 'platform'; area: 'support' }
   | { type: 'platform'; area: 'billing' }
   | { type: 'platform'; area: 'root' }
-  | { type: 'tenant'; slug: string }
+  | { type: 'tenant'; slug: string; isCustomDomain?: boolean }
   | { type: 'public' }
   | { type: 'unknown'; hostname: string };
 
 export interface ResolvedDomain {
   type: 'PLATFORM_ROOT' | 'PLATFORM_ADMIN' | 'PLATFORM_SALES' | 'PLATFORM_SUPPORT' | 'PLATFORM_BILLING' | 'TENANT' | 'RESERVED' | 'UNKNOWN';
   tenantSlug: string | null;
+  tenantId?: string | null;
+  tenantName?: string | null;
   hostname: string;
   isCustomDomain: boolean;
   rawSubdomain: string | null;
   platformArea?: PlatformArea;
   hostContext: HostContext;
+  branding?: any;
 }
 
 /**
@@ -94,6 +98,41 @@ export function normalizeSubdomain(input: string): string {
     .slice(0, 40);
 }
 
+/**
+ * Normalizes a custom domain or hostname
+ */
+export function normalizeDomainName(domain: string): string {
+  if (!domain) return '';
+  return domain
+    .toLowerCase()
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .split(':')[0];
+}
+
+/**
+ * Validates syntax for custom domains
+ */
+export function validateDomainName(domain: string): { valid: boolean; error?: string } {
+  const clean = normalizeDomainName(domain);
+  if (!clean) {
+    return { valid: false, error: 'Domain name cannot be empty.' };
+  }
+
+  const baseDomain = getBaseDomain();
+  if (clean === baseDomain || clean === `www.${baseDomain}`) {
+    return { valid: false, error: `The root domain ${clean} is reserved for Davetech platform.` };
+  }
+
+  const domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;
+  if (!domainRegex.test(clean) && !clean.endsWith('.localhost')) {
+    return { valid: false, error: 'Invalid domain format. Example: portal.organization.co.ke or www.organization.com' };
+  }
+
+  return { valid: true };
+}
+
 export const CLOUD_DEPLOYMENT_SUFFIXES = [
   '.onrender.com',
   '.render.com',
@@ -125,7 +164,7 @@ export const CLOUD_DEPLOYMENT_SUFFIXES = [
  */
 export function isCloudOrDevHost(hostname: string): boolean {
   if (!hostname) return false;
-  const clean = hostname.toLowerCase().trim();
+  const clean = normalizeDomainName(hostname);
   if (clean === 'localhost' || clean === '127.0.0.1') return true;
   return CLOUD_DEPLOYMENT_SUFFIXES.some(suffix => clean.endsWith(suffix));
 }
@@ -170,25 +209,20 @@ function createTenantResolution(
     hostname,
     isCustomDomain,
     rawSubdomain: cleanSlug,
-    hostContext: { type: 'tenant', slug: cleanSlug }
+    hostContext: { type: 'tenant', slug: cleanSlug, isCustomDomain }
   };
 }
 
 /**
  * Parses a hostname and resolves whether it belongs to the Root Website,
- * a Reserved Platform Area (admin, sales, support, billing), or a Tenant.
+ * a Reserved Platform Area (admin, sales, support, billing), a Davetech Subdomain, or a Custom Domain.
  */
 export function resolveHostname(hostnameInput?: string, searchParams?: URLSearchParams): ResolvedDomain {
-  let hostname = (hostnameInput || (typeof window !== 'undefined' ? window.location.hostname : ''))
-    .toLowerCase()
-    .trim();
+  let hostname = normalizeDomainName(
+    hostnameInput || (typeof window !== 'undefined' ? window.location.hostname : '')
+  );
 
-  // Strip port if present (e.g. localhost:3000 -> localhost)
-  if (hostname.includes(':')) {
-    hostname = hostname.split(':')[0];
-  }
-
-  // 1. Check for manual dev query param override (e.g. ?subdomain=apex or ?tenant=dreamline or ?area=sales or hash params)
+  // 1. Check for manual dev query param override (e.g. ?subdomain=apex or ?tenant=dreamline or ?area=sales or ?domain=...)
   let params = searchParams;
   if (!params && typeof window !== 'undefined') {
     if (window.location.search) {
@@ -209,6 +243,14 @@ export function resolveHostname(hostnameInput?: string, searchParams?: URLSearch
       if (cleanArea === 'sales') return createPlatformResolution('sales', hostname, 'sales');
       if (cleanArea === 'support') return createPlatformResolution('support', hostname, 'support');
       if (cleanArea === 'billing') return createPlatformResolution('billing', hostname, 'billing');
+    }
+
+    const customDomainOverride = params.get('customDomain') || params.get('domain');
+    if (customDomainOverride) {
+      const cleanCustom = normalizeDomainName(customDomainOverride);
+      if (cleanCustom) {
+        return createTenantResolution(cleanCustom, hostname, true);
+      }
     }
 
     const tenantOverride = params.get('subdomain') || params.get('tenant') || params.get('slug');
@@ -282,12 +324,58 @@ export function resolveHostname(hostnameInput?: string, searchParams?: URLSearch
       };
     }
 
-    // 4.3 Dynamic Tenant Subdomain (e.g. apex.davetech.co.ke -> slug: "apex")
+    // 4.3 Dynamic Tenant Subdomain (e.g. school.davetech.co.ke -> slug: "school")
     return createTenantResolution(subdomain, hostname, false);
   }
 
-  // 5. Fallback for custom domains or unknown host
-  return createPlatformResolution('root', hostname, null);
+  // 5. Tenant Custom Domain (e.g. www.example.com, portal.example.co.ke)
+  // When an unfamiliar external domain hits the server, resolve as custom domain
+  return createTenantResolution(hostname, hostname, true);
+}
+
+/**
+ * Asynchronously resolves domain with backend authoritative resolution
+ */
+export async function resolveDomainAsync(hostnameInput?: string): Promise<ResolvedDomain> {
+  const clientResolved = resolveHostname(hostnameInput);
+
+  // If already identified as a platform area or cloud root, return immediately
+  if (clientResolved.type !== 'TENANT') {
+    return clientResolved;
+  }
+
+  try {
+    const targetHost = clientResolved.hostname;
+    const query = clientResolved.isCustomDomain
+      ? `hostname=${encodeURIComponent(targetHost)}`
+      : `subdomain=${encodeURIComponent(clientResolved.tenantSlug || '')}`;
+
+    const res = await fetch(`/api/public/resolve-domain?${query}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.type === 'TENANT') {
+        return {
+          type: 'TENANT',
+          tenantSlug: data.tenantSlug || clientResolved.tenantSlug,
+          tenantId: data.tenantId,
+          tenantName: data.tenantName,
+          hostname: targetHost,
+          isCustomDomain: !!data.isCustomDomain || clientResolved.isCustomDomain,
+          rawSubdomain: data.tenantSlug,
+          branding: data.branding,
+          hostContext: {
+            type: 'tenant',
+            slug: data.tenantSlug || clientResolved.tenantSlug || '',
+            isCustomDomain: !!data.isCustomDomain
+          }
+        };
+      }
+    }
+  } catch {
+    // Return client-resolved fallback
+  }
+
+  return clientResolved;
 }
 
 /**
@@ -299,7 +387,7 @@ export function resolveHostContext(hostname?: string): HostContext {
 }
 
 /**
- * Builds the canonical public URL for a tenant
+ * Builds the canonical public URL for a tenant subdomain
  */
 export function buildTenantUrl(tenantSlug: string, isLocalDev: boolean = false): string {
   const baseDomain = getBaseDomain();
@@ -308,4 +396,23 @@ export function buildTenantUrl(tenantSlug: string, isLocalDev: boolean = false):
     return `${window.location.protocol}//${tenantSlug}.localhost${port}`;
   }
   return `https://${tenantSlug}.${baseDomain}`;
+}
+
+/**
+ * Builds the canonical public URL for a custom domain
+ */
+export function buildCustomDomainUrl(customDomain: string): string {
+  const clean = normalizeDomainName(customDomain);
+  return `https://${clean}`;
+}
+
+/**
+ * Returns the primary URL for a tenant (prioritizing custom domain if verified and primary)
+ */
+export function getPrimaryDomainUrl(tenant: { customDomain?: string | null; subdomain?: string; slug: string }): string {
+  if (tenant.customDomain && tenant.customDomain.trim()) {
+    return buildCustomDomainUrl(tenant.customDomain);
+  }
+  const slug = tenant.subdomain || tenant.slug;
+  return buildTenantUrl(slug);
 }

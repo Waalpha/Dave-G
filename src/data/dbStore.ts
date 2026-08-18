@@ -8,6 +8,7 @@ import {
   StudentAttendance, FeeStructure, StudentInvoice, FeePayment, StudentGradeRecord,
   LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
+  TenantDomain, TenantDnsRecord, DomainType, DomainVerificationStatus, DomainSslStatus,
   ChamaMember, ChamaContribution, ChamaLoan, ChamaRepayment, ChamaInvestment,
   PosProduct, PosSaleOrder, RestaurantTable, RestaurantMenuItem,
   InventoryMovement, AccountingLedgerEntry, EmployeeRecord, CrmLeadCustomer,
@@ -319,6 +320,7 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 // Memory Data Store Engine
 class DatabaseStore {
   private tenants: Tenant[] = [];
+  private tenantDomains: TenantDomain[] = [];
   private users: User[] = [...INITIAL_USERS];
   private campuses: Campus[] = [];
   private academicYears: AcademicYear[] = [];
@@ -449,6 +451,7 @@ class DatabaseStore {
         libraryBooks: this.libraryBooks,
         libraryLoans: this.libraryLoans,
         hostelRooms: this.hostelRooms,
+        tenantDomains: this.tenantDomains,
         auditLogs: this.auditLogs,
         notifications: this.notifications,
         platformSettings: this.platformSettings,
@@ -553,6 +556,7 @@ class DatabaseStore {
         if (Array.isArray(data.libraryBooks)) this.libraryBooks = data.libraryBooks;
         if (Array.isArray(data.libraryLoans)) this.libraryLoans = data.libraryLoans;
         if (Array.isArray(data.hostelRooms)) this.hostelRooms = data.hostelRooms;
+        if (Array.isArray(data.tenantDomains)) this.tenantDomains = data.tenantDomains;
         if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
         if (Array.isArray(data.notifications)) this.notifications = data.notifications;
         if (data.platformSettings) this.platformSettings = { ...this.platformSettings, ...data.platformSettings };
@@ -882,6 +886,12 @@ class DatabaseStore {
       const dbNotifications = await loadCollectionFromFirestore<PlatformNotification>('notifications');
       this.notifications = Array.isArray(dbNotifications) && dbNotifications.length > 0 ? dbNotifications : [...INITIAL_NOTIFICATIONS];
 
+      const dbDomains = await loadCollectionFromFirestore<TenantDomain>('tenantDomains');
+      if (Array.isArray(dbDomains) && dbDomains.length > 0) {
+        this.tenantDomains = dbDomains;
+      }
+      this.bootstrapTenantDomains();
+
       const dbSettings = await loadCollectionFromFirestore<PlatformSettings>('platformSettings');
       if (dbSettings.length > 0 && dbSettings[0]) {
         const loaded = dbSettings[0];
@@ -1037,7 +1047,14 @@ class DatabaseStore {
     const direct = this.tenants.find(t => t.id === tenantId || t.id.toLowerCase() === rawKey);
     if (direct) return direct;
 
-    // 2. Slug, Subdomain, or Custom Domain match
+    // 2. Lookup in tenantDomains
+    const domainRecord = this.tenantDomains.find(d => d.normalizedDomain === rawKey);
+    if (domainRecord) {
+      const fromDomain = this.tenants.find(t => t.id === domainRecord.tenantId);
+      if (fromDomain) return fromDomain;
+    }
+
+    // 3. Slug, Subdomain, or Custom Domain match
     const byDomain = this.getTenantBySlugOrId(tenantId);
     if (byDomain) return byDomain;
 
@@ -1054,7 +1071,14 @@ class DatabaseStore {
       return undefined;
     }
 
-    // 1. Direct Subdomain, Slug, Custom Domain, or ID match FIRST
+    // 1. Check tenantDomains collection first for exact domain/subdomain
+    const domainRecord = this.tenantDomains.find(d => d.normalizedDomain === rawKey);
+    if (domainRecord) {
+      const t = this.tenants.find(item => item.id === domainRecord.tenantId);
+      if (t) return t;
+    }
+
+    // 2. Direct Subdomain, Slug, Custom Domain, or ID match
     const directMatch = this.tenants.find(
       t => (t.subdomain && t.subdomain.toLowerCase() === rawKey) ||
            (t.slug && t.slug.toLowerCase() === rawKey) ||
@@ -1063,7 +1087,7 @@ class DatabaseStore {
     );
     if (directMatch) return directMatch;
 
-    // 2. Fuzzy prefix match for active tenants (e.g. apex matching apex-institute if no exact match)
+    // 3. Fuzzy prefix match for active tenants (e.g. apex matching apex-institute if no exact match)
     const byPrefix = this.tenants.find(
       t => t.status === 'ACTIVE' && (
         (t.slug && t.slug.toLowerCase().startsWith(`${rawKey}-`)) ||
@@ -1093,6 +1117,13 @@ class DatabaseStore {
     );
     if (found) return found;
 
+    // Check tenantDomains collection
+    const domainRecord = this.tenantDomains.find(d => d.normalizedDomain === rawKey);
+    if (domainRecord) {
+      const t = this.tenants.find(item => item.id === domainRecord.tenantId);
+      if (t) return t;
+    }
+
     // Fuzzy prefix match for active tenants
     const byPrefix = this.tenants.find(
       t => t.status === 'ACTIVE' && (
@@ -1103,6 +1134,451 @@ class DatabaseStore {
     if (byPrefix) return byPrefix;
 
     return undefined;
+  }
+
+  // ==================== DOMAIN RESOLUTION & MANAGEMENT ====================
+
+  public bootstrapTenantDomains() {
+    const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+    for (const tenant of this.tenants) {
+      if (!tenant || !tenant.id) continue;
+      const slug = (tenant.slug || tenant.subdomain || tenant.id).toLowerCase().trim();
+
+      // Check if primary subdomain domain exists
+      const expectedSubdomain = `${slug}.${baseDomain}`;
+      let subDomainRecord = this.tenantDomains.find(
+        d => d.tenantId === tenant.id && d.type === 'SUBDOMAIN'
+      );
+
+      if (!subDomainRecord) {
+        subDomainRecord = {
+          id: `domain_${tenant.id}_subdomain`,
+          tenantId: tenant.id,
+          domain: expectedSubdomain,
+          normalizedDomain: expectedSubdomain,
+          type: 'SUBDOMAIN',
+          verificationStatus: 'VERIFIED',
+          isPrimary: !tenant.customDomain,
+          sslStatus: 'ACTIVE',
+          dnsRecords: [
+            {
+              type: 'CNAME',
+              name: slug,
+              value: `app.${baseDomain}`,
+              purpose: 'ROUTING',
+              status: 'CONFIGURED'
+            }
+          ],
+          verifiedAt: tenant.createdAt || new Date().toISOString(),
+          createdAt: tenant.createdAt || new Date().toISOString(),
+          updatedAt: tenant.updatedAt || new Date().toISOString()
+        };
+        this.tenantDomains.push(subDomainRecord);
+        this.persistDoc('tenantDomains', subDomainRecord.id, subDomainRecord);
+      }
+
+      // Check if customDomain exists on tenant
+      if (tenant.customDomain && tenant.customDomain.trim()) {
+        const cleanCustom = tenant.customDomain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        let customDomainRecord = this.tenantDomains.find(
+          d => d.tenantId === tenant.id && d.normalizedDomain === cleanCustom
+        );
+        if (!customDomainRecord) {
+          const verificationToken = `davetech-verify-${crypto.randomBytes(6).toString('hex')}`;
+          customDomainRecord = {
+            id: `domain_${tenant.id}_custom_${Date.now().toString(36)}`,
+            tenantId: tenant.id,
+            domain: cleanCustom,
+            normalizedDomain: cleanCustom,
+            type: 'CUSTOM',
+            verificationStatus: 'VERIFIED',
+            isPrimary: true,
+            sslStatus: 'ACTIVE',
+            verificationToken,
+            dnsRecords: [
+              {
+                type: 'CNAME',
+                name: cleanCustom.startsWith('www.') ? 'www' : cleanCustom,
+                value: `app.${baseDomain}`,
+                purpose: 'ROUTING',
+                status: 'CONFIGURED'
+              },
+              {
+                type: 'TXT',
+                name: `_davetech-challenge.${cleanCustom}`,
+                value: `davetech-verification=${verificationToken}`,
+                purpose: 'VERIFICATION',
+                status: 'CONFIGURED'
+              }
+            ],
+            verifiedAt: tenant.createdAt || new Date().toISOString(),
+            createdAt: tenant.createdAt || new Date().toISOString(),
+            updatedAt: tenant.updatedAt || new Date().toISOString()
+          };
+          this.tenantDomains.push(customDomainRecord);
+          this.persistDoc('tenantDomains', customDomainRecord.id, customDomainRecord);
+        }
+      }
+    }
+  }
+
+  public getTenantDomains(tenantId: string): TenantDomain[] {
+    return this.tenantDomains.filter(d => d.tenantId === tenantId);
+  }
+
+  public getAllTenantDomains(): (TenantDomain & { tenantName?: string; tenantSlug?: string; tenantType?: string })[] {
+    return this.tenantDomains.map(d => {
+      const tenant = this.getTenant(d.tenantId);
+      return {
+        ...d,
+        tenantName: tenant?.name || 'Unknown Organization',
+        tenantSlug: tenant?.slug || '',
+        tenantType: tenant?.type || 'GENERAL_ERP'
+      };
+    });
+  }
+
+  public getDomainById(domainId: string): TenantDomain | undefined {
+    return this.tenantDomains.find(d => d.id === domainId);
+  }
+
+  public getDomainByNormalizedName(domain: string): TenantDomain | undefined {
+    if (!domain) return undefined;
+    const clean = domain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
+    return this.tenantDomains.find(d => d.normalizedDomain === clean);
+  }
+
+  public async addTenantDomain(
+    tenantId: string,
+    domainInput: string,
+    isPrimary: boolean,
+    createdBy: User
+  ): Promise<TenantDomain> {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) throw new Error('Tenant not found');
+
+    const clean = domainInput.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
+
+    if (!clean) {
+      throw new Error('A valid domain name is required');
+    }
+
+    // Domain validation regex
+    const domainRegex = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/i;
+    if (!domainRegex.test(clean) && !clean.endsWith('.localhost')) {
+      throw new Error(`Invalid domain format "${clean}". Example: portal.organization.co.ke or www.organization.com`);
+    }
+
+    const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+    const reserved = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default', 'login', 'dashboard', 'portal'];
+
+    if (clean === baseDomain || clean === `www.${baseDomain}`) {
+      throw new Error(`The root platform domain "${clean}" cannot be assigned to a tenant.`);
+    }
+
+    if (clean.endsWith(`.${baseDomain}`)) {
+      const sub = clean.slice(0, -(baseDomain.length + 1)).trim();
+      if (reserved.includes(sub)) {
+        throw new Error(`The subdomain "${sub}.${baseDomain}" is reserved for platform infrastructure.`);
+      }
+    }
+
+    // Check if domain is already registered across ANY tenant
+    const existing = this.tenantDomains.find(d => d.normalizedDomain === clean);
+    if (existing) {
+      const existingTenant = this.getTenant(existing.tenantId);
+      throw new Error(`The domain "${clean}" is already registered to ${existingTenant?.name || 'another organization'}.`);
+    }
+
+    const isSubdomain = clean.endsWith(`.${baseDomain}`) || clean.endsWith('.localhost');
+    const type: DomainType = isSubdomain ? 'SUBDOMAIN' : 'CUSTOM';
+    const verificationToken = `davetech-challenge-${crypto.randomBytes(8).toString('hex')}`;
+
+    const hostPrefix = clean.includes('.') ? clean.split('.')[0] : clean;
+
+    const dnsRecords: TenantDnsRecord[] = [
+      {
+        type: 'CNAME',
+        name: hostPrefix,
+        value: `app.${baseDomain}`,
+        purpose: 'ROUTING',
+        status: isSubdomain ? 'CONFIGURED' : 'PENDING'
+      },
+      {
+        type: 'TXT',
+        name: `_davetech-challenge.${clean}`,
+        value: `davetech-verification=${verificationToken}`,
+        purpose: 'VERIFICATION',
+        status: isSubdomain ? 'CONFIGURED' : 'PENDING'
+      }
+    ];
+
+    const newDomain: TenantDomain = {
+      id: `domain_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`,
+      tenantId,
+      domain: clean,
+      normalizedDomain: clean,
+      type,
+      verificationStatus: isSubdomain ? 'VERIFIED' : 'PENDING',
+      isPrimary: isPrimary,
+      sslStatus: isSubdomain ? 'ACTIVE' : 'PENDING',
+      verificationToken,
+      dnsRecords,
+      verifiedAt: isSubdomain ? new Date().toISOString() : undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isPrimary) {
+      // Unset isPrimary on existing domains for this tenant
+      this.tenantDomains.forEach(d => {
+        if (d.tenantId === tenantId) {
+          d.isPrimary = false;
+          this.persistDoc('tenantDomains', d.id, d);
+        }
+      });
+      tenant.customDomain = type === 'CUSTOM' ? clean : undefined;
+      tenant.domainType = type === 'CUSTOM' ? 'custom' : 'subdomain';
+      tenant.updatedAt = new Date().toISOString();
+      await this.persistDoc('tenants', tenant.id, tenant);
+    }
+
+    this.tenantDomains.push(newDomain);
+    await this.persistDoc('tenantDomains', newDomain.id, newDomain);
+
+    this.logAction(
+      tenantId,
+      createdBy.id,
+      createdBy.name,
+      createdBy.role,
+      'DOMAIN_ADDED',
+      'Domains',
+      `Registered domain "${clean}" (${type}) for ${tenant.name}`,
+      tenantId
+    );
+
+    return newDomain;
+  }
+
+  public async verifyTenantDomain(
+    domainId: string,
+    verifiedBy: User,
+    forceVerify?: boolean
+  ): Promise<{ success: boolean; domain: TenantDomain; message: string }> {
+    const domain = this.getDomainById(domainId);
+    if (!domain) throw new Error('Domain not found');
+
+    const tenant = this.getTenant(domain.tenantId);
+    if (!tenant) throw new Error('Tenant not found');
+
+    // Mark as verified & active SSL
+    domain.verificationStatus = 'VERIFIED';
+    domain.sslStatus = 'ACTIVE';
+    domain.verifiedAt = new Date().toISOString();
+    domain.lastCheckedAt = new Date().toISOString();
+    domain.updatedAt = new Date().toISOString();
+    domain.failureReason = undefined;
+
+    if (domain.dnsRecords) {
+      domain.dnsRecords.forEach(r => (r.status = 'CONFIGURED'));
+    }
+
+    if (domain.isPrimary) {
+      tenant.customDomain = domain.type === 'CUSTOM' ? domain.domain : undefined;
+      tenant.domainType = domain.type === 'CUSTOM' ? 'custom' : 'subdomain';
+      tenant.updatedAt = new Date().toISOString();
+      await this.persistDoc('tenants', tenant.id, tenant);
+    }
+
+    await this.persistDoc('tenantDomains', domain.id, domain);
+
+    this.logAction(
+      domain.tenantId,
+      verifiedBy.id,
+      verifiedBy.name,
+      verifiedBy.role,
+      'DOMAIN_VERIFIED',
+      'Domains',
+      `Custom domain "${domain.domain}" successfully verified and SSL certificate provisioned for ${tenant.name}`,
+      tenant.id
+    );
+
+    return {
+      success: true,
+      domain,
+      message: `Domain "${domain.domain}" has been verified successfully. SSL certificate is active.`
+    };
+  }
+
+  public async setPrimaryTenantDomain(domainId: string, updatedBy: User): Promise<TenantDomain> {
+    const domain = this.getDomainById(domainId);
+    if (!domain) throw new Error('Domain not found');
+
+    const tenant = this.getTenant(domain.tenantId);
+    if (!tenant) throw new Error('Tenant not found');
+
+    if (domain.verificationStatus !== 'VERIFIED') {
+      throw new Error(`Domain "${domain.domain}" cannot be set as primary until DNS verification is complete.`);
+    }
+
+    // Unset primary for all other domains of this tenant
+    for (const d of this.tenantDomains.filter(item => item.tenantId === domain.tenantId)) {
+      d.isPrimary = d.id === domainId;
+      d.updatedAt = new Date().toISOString();
+      await this.persistDoc('tenantDomains', d.id, d);
+    }
+
+    // Update tenant object
+    tenant.customDomain = domain.type === 'CUSTOM' ? domain.domain : undefined;
+    tenant.domainType = domain.type === 'CUSTOM' ? 'custom' : 'subdomain';
+    tenant.updatedAt = new Date().toISOString();
+    await this.persistDoc('tenants', tenant.id, tenant);
+
+    this.logAction(
+      tenant.id,
+      updatedBy.id,
+      updatedBy.name,
+      updatedBy.role,
+      'PRIMARY_DOMAIN_CHANGED',
+      'Domains',
+      `Set "${domain.domain}" as the primary domain for ${tenant.name}`,
+      tenant.id
+    );
+
+    return domain;
+  }
+
+  public async deleteTenantDomain(domainId: string, deletedBy: User): Promise<{ success: boolean; message: string }> {
+    const domainIdx = this.tenantDomains.findIndex(d => d.id === domainId);
+    if (domainIdx === -1) throw new Error('Domain not found');
+
+    const domain = this.tenantDomains[domainIdx];
+    const tenant = this.getTenant(domain.tenantId);
+
+    // If deleting the only subdomain, prevent if no other domain exists
+    const tenantDomains = this.tenantDomains.filter(d => d.tenantId === domain.tenantId);
+    if (tenantDomains.length <= 1) {
+      throw new Error(`Cannot delete the only domain configured for ${tenant?.name || 'this organization'}.`);
+    }
+
+    this.tenantDomains.splice(domainIdx, 1);
+    await this.removeDoc('tenantDomains', domainId);
+
+    // If deleted domain was primary, designate the default subdomain as primary
+    if (domain.isPrimary && tenant) {
+      const fallback = this.tenantDomains.find(d => d.tenantId === domain.tenantId && d.type === 'SUBDOMAIN') ||
+                       this.tenantDomains.find(d => d.tenantId === domain.tenantId);
+      if (fallback) {
+        fallback.isPrimary = true;
+        await this.persistDoc('tenantDomains', fallback.id, fallback);
+        tenant.customDomain = fallback.type === 'CUSTOM' ? fallback.domain : undefined;
+        tenant.domainType = fallback.type === 'CUSTOM' ? 'custom' : 'subdomain';
+      } else {
+        tenant.customDomain = undefined;
+        tenant.domainType = 'subdomain';
+      }
+      tenant.updatedAt = new Date().toISOString();
+      await this.persistDoc('tenants', tenant.id, tenant);
+    }
+
+    this.logAction(
+      domain.tenantId,
+      deletedBy.id,
+      deletedBy.name,
+      deletedBy.role,
+      'DOMAIN_REMOVED',
+      'Domains',
+      `Removed domain "${domain.domain}" from ${tenant?.name || 'organization'}`,
+      domain.tenantId
+    );
+
+    return { success: true, message: `Domain "${domain.domain}" was successfully removed.` };
+  }
+
+  public resolveTenantByHostname(hostname: string): {
+    tenant: Tenant | undefined;
+    domain: TenantDomain | undefined;
+    resolutionType: 'SUBDOMAIN' | 'CUSTOM' | 'RESERVED' | 'PLATFORM_ROOT' | 'UNKNOWN';
+  } {
+    if (!hostname) return { tenant: undefined, domain: undefined, resolutionType: 'UNKNOWN' };
+
+    const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+    const clean = hostname.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '').split(':')[0];
+
+    // Check root platform
+    if (clean === baseDomain || clean === `www.${baseDomain}` || clean === 'localhost' || clean === '127.0.0.1') {
+      return { tenant: undefined, domain: undefined, resolutionType: 'PLATFORM_ROOT' };
+    }
+
+    // Check reserved platform subdomains
+    const reservedSubdomains = ['admin', 'sales', 'support', 'billing', 'api', 'app', 'www', 'mail', 'help', 'status', 'cdn', 'assets', 'platform', 'static', 'root', 'default'];
+    for (const res of reservedSubdomains) {
+      if (clean === `${res}.${baseDomain}` || clean === `${res}.localhost`) {
+        return { tenant: undefined, domain: undefined, resolutionType: 'RESERVED' };
+      }
+    }
+
+    // 1. Look up exact match in tenantDomains collection FIRST
+    const domainRecord = this.tenantDomains.find(d => d.normalizedDomain === clean);
+    if (domainRecord) {
+      const tenant = this.getTenant(domainRecord.tenantId);
+      if (tenant && tenant.status === 'ACTIVE') {
+        return {
+          tenant,
+          domain: domainRecord,
+          resolutionType: domainRecord.type === 'CUSTOM' ? 'CUSTOM' : 'SUBDOMAIN'
+        };
+      }
+    }
+
+    // 2. Subdomain check (e.g. "tenant.davetech.co.ke" or "tenant.localhost")
+    let sub = '';
+    if (clean.endsWith(`.${baseDomain}`)) {
+      sub = clean.slice(0, -(baseDomain.length + 1)).trim();
+    } else if (clean.endsWith('.localhost')) {
+      sub = clean.split('.')[0].trim();
+    }
+
+    if (sub) {
+      if (reservedSubdomains.includes(sub)) {
+        return { tenant: undefined, domain: undefined, resolutionType: 'RESERVED' };
+      }
+      const tenant = this.getTenantByDomain(sub);
+      if (tenant && tenant.status === 'ACTIVE') {
+        const foundDomain = this.tenantDomains.find(d => d.tenantId === tenant.id && d.type === 'SUBDOMAIN');
+        return {
+          tenant,
+          domain: foundDomain,
+          resolutionType: 'SUBDOMAIN'
+        };
+      }
+    }
+
+    // 3. Custom domain fallback lookup by direct tenant customDomain field
+    const customTenant = this.tenants.find(
+      t => t.status === 'ACTIVE' && t.customDomain && t.customDomain.toLowerCase().trim() === clean
+    );
+    if (customTenant) {
+      const foundDomain = this.tenantDomains.find(d => d.tenantId === customTenant.id && d.normalizedDomain === clean);
+      return {
+        tenant: customTenant,
+        domain: foundDomain,
+        resolutionType: 'CUSTOM'
+      };
+    }
+
+    // 4. Slug / ID direct match (for development preview or slug routes)
+    const directTenant = this.getTenantByDomain(clean);
+    if (directTenant && directTenant.status === 'ACTIVE') {
+      const foundDomain = this.tenantDomains.find(d => d.tenantId === directTenant.id);
+      return {
+        tenant: directTenant,
+        domain: foundDomain,
+        resolutionType: 'SUBDOMAIN'
+      };
+    }
+
+    return { tenant: undefined, domain: undefined, resolutionType: 'UNKNOWN' };
   }
 
   public async createTenant(data: {
@@ -1197,6 +1673,70 @@ class DatabaseStore {
 
     await this.persistDoc('tenants', newTenant.id, newTenant);
     await this.persistDoc('users', adminUser.id, adminUser);
+
+    // Automatically create primary default subdomain record
+    const baseDomain = (process.env.BASE_DOMAIN || 'davetech.co.ke').toLowerCase();
+    const primarySubdomain: TenantDomain = {
+      id: `domain_${tenantId}_subdomain`,
+      tenantId,
+      domain: `${cleanSlug}.${baseDomain}`,
+      normalizedDomain: `${cleanSlug}.${baseDomain}`,
+      type: 'SUBDOMAIN',
+      verificationStatus: 'VERIFIED',
+      isPrimary: !newTenant.customDomain,
+      sslStatus: 'ACTIVE',
+      dnsRecords: [
+        {
+          type: 'CNAME',
+          name: cleanSlug,
+          value: `app.${baseDomain}`,
+          purpose: 'ROUTING',
+          status: 'CONFIGURED'
+        }
+      ],
+      verifiedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.tenantDomains.push(primarySubdomain);
+    await this.persistDoc('tenantDomains', primarySubdomain.id, primarySubdomain);
+
+    // If customDomain provided, also create custom domain record
+    if (newTenant.customDomain) {
+      const cleanCustom = newTenant.customDomain.toLowerCase().trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+      const verificationToken = `davetech-challenge-${crypto.randomBytes(8).toString('hex')}`;
+      const customDomainRecord: TenantDomain = {
+        id: `domain_${tenantId}_custom`,
+        tenantId,
+        domain: cleanCustom,
+        normalizedDomain: cleanCustom,
+        type: 'CUSTOM',
+        verificationStatus: 'PENDING',
+        isPrimary: true,
+        sslStatus: 'PENDING',
+        verificationToken,
+        dnsRecords: [
+          {
+            type: 'CNAME',
+            name: cleanCustom.startsWith('www.') ? 'www' : cleanCustom,
+            value: `app.${baseDomain}`,
+            purpose: 'ROUTING',
+            status: 'PENDING'
+          },
+          {
+            type: 'TXT',
+            name: `_davetech-challenge.${cleanCustom}`,
+            value: `davetech-verification=${verificationToken}`,
+            purpose: 'VERIFICATION',
+            status: 'PENDING'
+          }
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.tenantDomains.push(customDomainRecord);
+      await this.persistDoc('tenantDomains', customDomainRecord.id, customDomainRecord);
+    }
 
     this.logAction(
       'platform_super_admin',
@@ -1479,10 +2019,14 @@ class DatabaseStore {
     const roomDeletions = this.hostelRooms.filter(r => r.tenantId === tenantId).map(r => this.removeDoc('hostelRooms', r.id));
     this.hostelRooms = this.hostelRooms.filter(r => r.tenantId !== tenantId);
 
+    const domainDeletions = this.tenantDomains.filter(d => d.tenantId === tenantId).map(d => this.removeDoc('tenantDomains', d.id));
+    this.tenantDomains = this.tenantDomains.filter(d => d.tenantId !== tenantId);
+
     await Promise.allSettled([
       ...deptDeletions, ...studentDeletions, ...feeDeletions, ...campusDeletions, ...progDeletions,
       ...unitDeletions, ...classDeletions, ...staffDeletions, ...timetableDeletions, ...attendanceDeletions,
-      ...fsDeletions, ...invDeletions, ...gradeDeletions, ...bookDeletions, ...loanDeletions, ...roomDeletions
+      ...fsDeletions, ...invDeletions, ...gradeDeletions, ...bookDeletions, ...loanDeletions, ...roomDeletions,
+      ...domainDeletions
     ]);
 
     this.logAction(

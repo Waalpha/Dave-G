@@ -11,12 +11,13 @@ import { TenantPublicWebsiteConfig, TenantPublicNews, TenantPublicEvent, Tenant,
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
 import { HeroSlideModal } from './components/HeroSlideModal';
+import { TenantDomainManager } from './components/TenantDomainManager';
 import { compressImageFile } from '../../lib/imageUtils';
 import { DEFAULT_HERO_SLIDES } from '../../components/public/HeroSlider';
 
 export const TenantSettings: React.FC = () => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'public_website' | 'users'>('branding');
+  const [activeTab, setActiveTab] = useState<'branding' | 'domains' | 'public_website' | 'users'>('branding');
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenant?.id || '');
 
@@ -616,6 +617,18 @@ export const TenantSettings: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('domains')}
+          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'domains'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Domains &amp; Routing</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('public_website')}
           className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'public_website'
@@ -639,6 +652,18 @@ export const TenantSettings: React.FC = () => {
           <span>Team &amp; User Accounts</span>
         </button>
       </div>
+
+      {/* TAB: DOMAINS & ROUTING */}
+      {activeTab === 'domains' && (
+        <TenantDomainManager
+          tenantId={selectedTenantId || tenant?.id || ''}
+          tenantName={tenant?.name}
+          isSuperAdmin={user?.role === 'SUPER_ADMIN'}
+          onDomainsUpdated={() => {
+            refreshAuth?.();
+          }}
+        />
+      )}
 
       {/* TAB 1: BRANDING */}
       {activeTab === 'branding' && (

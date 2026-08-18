@@ -22,6 +22,11 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // Tenant Domains: custom domains and subdomains
+    match /tenantDomains/{domainId} {
+      allow read, write: if true;
+    }
+
     // Users: readable and writable for user management & RBAC
     match /users/{userId} {
       allow read, write: if true;
