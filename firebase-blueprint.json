@@ -21,6 +21,25 @@
       },
       "required": ["id", "name"]
     },
+    "tenantDomains": {
+      "title": "TenantDomain",
+      "description": "Custom domain and subdomain mappings for multi-tenant routing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "domain": { "type": "string" },
+        "normalizedDomain": { "type": "string" },
+        "type": { "type": "string" },
+        "verificationStatus": { "type": "string" },
+        "isPrimary": { "type": "boolean" },
+        "sslStatus": { "type": "string" },
+        "dnsRecords": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "domain"]
+    },
     "users": {
       "title": "User",
       "description": "Platform and tenant users with authentication and RBAC roles",
@@ -52,9 +71,29 @@
       },
       "required": ["platformName"]
     },
+    "platformSubscriptionPlans": {
+      "title": "SaaSSubscriptionPlan",
+      "description": "SaaS tiers, pricing, seat quotas, and bundled ERP modules",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "billingPeriod": { "type": "string" },
+        "maxUsers": { "type": "number" },
+        "maxStorageGb": { "type": "number" },
+        "moduleLimit": { "type": "number" },
+        "includedModules": { "type": "array" },
+        "features": { "type": "array" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "name", "code", "price"]
+    },
     "students": {
       "title": "Student",
-      "description": "Enrolled student records",
+      "description": "Enrolled student records in education tenants",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -70,24 +109,155 @@
       },
       "required": ["id", "tenantId", "fullName"]
     },
-    "posProducts": {
-      "title": "PosProduct",
-      "description": "Wholesale and POS inventory items",
+    "healthcarePatients": {
+      "title": "PatientRecord",
+      "description": "Healthcare patient medical demographics and registry",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "tenantId": { "type": "string" },
-        "name": { "type": "string" },
-        "sellingPrice": { "type": "number" },
-        "quantityInStock": { "type": "number" }
+        "patientNumber": { "type": "string" },
+        "nationalId": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "dateOfBirth": { "type": "string" },
+        "gender": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "emergencyContactName": { "type": "string" },
+        "emergencyContactPhone": { "type": "string" },
+        "insuranceProviderId": { "type": "string" },
+        "insurancePolicyNumber": { "type": "string" },
+        "allergies": { "type": "array" },
+        "chronicConditions": { "type": "array" },
+        "status": { "type": "string" }
       },
-      "required": ["id", "tenantId", "name"]
+      "required": ["id", "tenantId", "patientNumber", "firstName", "lastName"]
+    },
+    "healthcareAppointments": {
+      "title": "AppointmentRecord",
+      "description": "Outpatient clinic and specialist appointments",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "departmentId": { "type": "string" },
+        "doctorId": { "type": "string" },
+        "appointmentDate": { "type": "string" },
+        "appointmentTime": { "type": "string" },
+        "type": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "patientId", "appointmentDate"]
+    },
+    "healthcareInsuranceClaims": {
+      "title": "InsuranceClaimRecord",
+      "description": "Healthcare NHIF/SHIF and private insurance claims",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "claimNumber": { "type": "string" },
+        "providerId": { "type": "string" },
+        "patientId": { "type": "string" },
+        "patientName": { "type": "string" },
+        "policyNumber": { "type": "string" },
+        "invoiceId": { "type": "string" },
+        "claimedAmount": { "type": "number" },
+        "approvedAmount": { "type": "number" },
+        "status": { "type": "string" },
+        "submissionDate": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "claimNumber", "claimedAmount"]
+    },
+    "healthcareInventory": {
+      "title": "HealthcareInventoryItem",
+      "description": "Hospital medical supplies, surgical consumables, and pharmacy stock",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "itemCode": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
+        "quantityInStock": { "type": "number" },
+        "reorderLevel": { "type": "number" },
+        "unitCost": { "type": "number" },
+        "sellingPrice": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "name", "itemCode"]
+    },
+    "healthcareAmbulances": {
+      "title": "AmbulanceRecord",
+      "description": "Emergency ambulance vehicles and life-support assets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "model": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "driverName": { "type": "string" },
+        "driverPhone": { "type": "string" },
+        "stationLocation": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "registrationNumber"]
+    },
+    "healthcareBloodUnits": {
+      "title": "BloodUnitRecord",
+      "description": "Blood transfusion bank units and inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "unitNumber": { "type": "string" },
+        "bloodGroup": { "type": "string" },
+        "rhesusFactor": { "type": "string" },
+        "volumeMl": { "type": "number" },
+        "donorId": { "type": "string" },
+        "collectionDate": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "storageLocation": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "unitNumber", "bloodGroup"]
+    },
+    "healthcareMortuary": {
+      "title": "MortuaryRecord",
+      "description": "Mortuary management, cold storage chambers, and documentation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "tagNumber": { "type": "string" },
+        "deceasedName": { "type": "string" },
+        "chamberNumber": { "type": "string" },
+        "dateOfDeath": { "type": "string" },
+        "admissionDate": { "type": "string" },
+        "causeOfDeath": { "type": "string" },
+        "nextOfKinName": { "type": "string" },
+        "nextOfKinPhone": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "tagNumber", "deceasedName"]
     }
   },
   "firestore": {
     "/tenants/{tenantId}": {
       "schema": "tenants",
       "description": "Tenant configurations and settings"
+    },
+    "/tenantDomains/{domainId}": {
+      "schema": "tenantDomains",
+      "description": "Tenant custom domains and subdomain routings"
     },
     "/users/{userId}": {
       "schema": "users",
@@ -97,13 +267,41 @@
       "schema": "platformSettings",
       "description": "Platform global configuration"
     },
+    "/platformSubscriptionPlans/{planId}": {
+      "schema": "platformSubscriptionPlans",
+      "description": "Platform SaaS subscription plans"
+    },
     "/students/{studentId}": {
       "schema": "students",
       "description": "Student management records"
     },
-    "/posProducts/{productId}": {
-      "schema": "posProducts",
-      "description": "POS & inventory products"
+    "/healthcarePatients/{patientId}": {
+      "schema": "healthcarePatients",
+      "description": "Patient medical records"
+    },
+    "/healthcareAppointments/{appointmentId}": {
+      "schema": "healthcareAppointments",
+      "description": "Healthcare appointments"
+    },
+    "/healthcareInsuranceClaims/{claimId}": {
+      "schema": "healthcareInsuranceClaims",
+      "description": "Insurance claims"
+    },
+    "/healthcareInventory/{itemId}": {
+      "schema": "healthcareInventory",
+      "description": "Healthcare medical inventory"
+    },
+    "/healthcareAmbulances/{ambulanceId}": {
+      "schema": "healthcareAmbulances",
+      "description": "Ambulance emergency fleet"
+    },
+    "/healthcareBloodUnits/{unitId}": {
+      "schema": "healthcareBloodUnits",
+      "description": "Blood bank units"
+    },
+    "/healthcareMortuary/{recordId}": {
+      "schema": "healthcareMortuary",
+      "description": "Mortuary records"
     }
   }
 }

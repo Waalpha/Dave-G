@@ -7,49 +7,42 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // Master safety net default deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Platform Settings: readable by all, writable
+    // Platform Settings & SaaS Configurations
     match /platformSettings/{settingId} {
       allow read, write: if true;
     }
 
-    // Tenants: readable and writable for tenant provisioning & updating
+    match /platformSubscriptionPlans/{planId} {
+      allow read, write: if true;
+    }
+
+    // Tenant Management & Routing
     match /tenants/{tenantId} {
       allow read, write: if true;
     }
 
-    // Tenant Domains: custom domains and subdomains
     match /tenantDomains/{domainId} {
       allow read, write: if true;
     }
 
-    // Users: readable and writable for user management & RBAC
+    // Users & RBAC
     match /users/{userId} {
       allow read, write: if true;
     }
 
-    // Operational tenant collections
-    match /departments/{deptId} {
+    // System Logs & Notifications
+    match /auditLogs/{logId} {
       allow read, write: if true;
     }
 
-    match /programs/{programId} {
+    match /notifications/{notifId} {
       allow read, write: if true;
     }
 
+    // ==========================================
+    // Education & Campus Management Collections
+    // ==========================================
     match /campuses/{campusId} {
-      allow read, write: if true;
-    }
-
-    match /students/{studentId} {
-      allow read, write: if true;
-    }
-
-    match /feePayments/{paymentId} {
       allow read, write: if true;
     }
 
@@ -61,7 +54,23 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /departments/{deptId} {
+      allow read, write: if true;
+    }
+
+    match /programs/{programId} {
+      allow read, write: if true;
+    }
+
     match /units/{unitId} {
+      allow read, write: if true;
+    }
+
+    match /schoolClasses/{classId} {
+      allow read, write: if true;
+    }
+
+    match /students/{studentId} {
       allow read, write: if true;
     }
 
@@ -73,19 +82,45 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /studentAttendance/{attId} {
+      allow read, write: if true;
+    }
+
+    match /feeStructures/{feeId} {
+      allow read, write: if true;
+    }
+
+    match /studentInvoices/{invId} {
+      allow read, write: if true;
+    }
+
+    match /feePayments/{paymentId} {
+      allow read, write: if true;
+    }
+
+    match /studentGrades/{gradeId} {
+      allow read, write: if true;
+    }
+
+    match /libraryBooks/{bookId} {
+      allow read, write: if true;
+    }
+
+    match /libraryLoans/{loanId} {
+      allow read, write: if true;
+    }
+
+    match /hostelRooms/{roomId} {
+      allow read, write: if true;
+    }
+
     match /enrollments/{enrollmentId} {
       allow read, write: if true;
     }
 
-    match /auditLogs/{logId} {
-      allow read, write: if true;
-    }
-
-    match /notifications/{notifId} {
-      allow read, write: if true;
-    }
-
-    // Industry modules
+    // ==========================================
+    // Industry Modules (SACCO, POS, Retail, HR, CRM)
+    // ==========================================
     match /chamaMembers/{memberId} {
       allow read, write: if true;
     }
@@ -144,6 +179,234 @@ service cloud.firestore {
 
     match /churchGivings/{givingId} {
       allow read, write: if true;
+    }
+
+    // ==========================================
+    // Healthcare & Hospital Management Collections
+    // ==========================================
+    match /healthcarePatients/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePatientContacts/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePatientDocuments/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareDepartments/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareStaff/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareStaffShifts/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareAppointments/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareQueues/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareTriages/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareEncounters/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareVitals/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareDiagnoses/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareTreatmentPlans/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareProcedures/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePrescriptions/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePrescriptionItems/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareMedicines/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareMedicineBatches/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePharmacyDispenses/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePharmacyTransactions/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareLabTests/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareLabRequests/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareLabSamples/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareLabResults/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareRadiologyServices/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareRadiologyRequests/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareRadiologyReports/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareWards/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareRooms/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareBeds/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareAdmissions/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareNursingCare/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareNursingRecords/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareMedAdministrations/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareMedicationAdministration/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareTheatreRooms/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareTheatres/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareTheatreSurgeries/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareSurgeries/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInvoices/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInvoiceItems/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcarePayments/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInsuranceProviders/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInsuranceMembers/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInsuranceClaims/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareSuppliers/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInventory/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareInventoryItems/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareStockTransactions/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareAmbulances/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareAmbulanceTrips/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareBloodDonors/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareBloodUnits/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareBloodTransfusions/{id} {
+      allow read, write: if true;
+    }
+
+    match /healthcareMortuary/{id} {
+      allow read, write: if true;
+    }
+
+    // Default safety net for unmapped paths
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

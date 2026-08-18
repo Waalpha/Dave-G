@@ -10,6 +10,39 @@ try {
   // Ignore in environments where setLogLevel might already be configured
 }
 
+export enum FirestoreErrorCode {
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  NOT_FOUND = 'NOT_FOUND',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  INVALID_ARGUMENT = 'INVALID_ARGUMENT',
+  QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
+  UNAVAILABLE = 'UNAVAILABLE',
+  UNKNOWN = 'UNKNOWN'
+}
+
+export function classifyFirestoreError(err: any): { code: FirestoreErrorCode; message: string } {
+  const message = err instanceof Error ? err.message : String(err || 'Unknown error');
+  const lower = message.toLowerCase();
+
+  if (lower.includes('permission_denied') || lower.includes('permission-denied') || lower.includes('insufficient permissions')) {
+    return { code: FirestoreErrorCode.PERMISSION_DENIED, message };
+  }
+  if (lower.includes('not-found') || lower.includes('not_found')) {
+    return { code: FirestoreErrorCode.NOT_FOUND, message };
+  }
+  if (lower.includes('offline') || lower.includes('network') || lower.includes('unavailable') || lower.includes('failed to get document')) {
+    return { code: FirestoreErrorCode.NETWORK_ERROR, message };
+  }
+  if (lower.includes('invalid-argument') || lower.includes('invalid_argument')) {
+    return { code: FirestoreErrorCode.INVALID_ARGUMENT, message };
+  }
+  if (lower.includes('quota') || lower.includes('resource-exhausted')) {
+    return { code: FirestoreErrorCode.QUOTA_EXCEEDED, message };
+  }
+
+  return { code: FirestoreErrorCode.UNKNOWN, message };
+}
+
 let db: Firestore | null = null;
 
 export function getDb(): Firestore | null {
@@ -40,7 +73,8 @@ export function getDb(): Firestore | null {
       console.warn('[Firestore] firebase-applet-config.json not found');
     }
   } catch (err) {
-    console.error('[Firestore] Initialization error:', err);
+    const classified = classifyFirestoreError(err);
+    console.error(`[Firestore] Initialization error [${classified.code}]:`, classified.message);
     db = null;
   }
 
@@ -76,10 +110,11 @@ function sanitizeOversizedPayload(obj: any, maxStringLength = 100_000): any {
   return result;
 }
 
-export async function saveDocToFirestore(collectionName: string, docId: string, data: any): Promise<void> {
+export async function saveDocToFirestore(collectionName: string, docId: string, data: any): Promise<boolean> {
   const firestore = getDb();
   if (!firestore) {
-    throw new Error(`Firestore not initialized. Cannot persist document ${docId} to ${collectionName}.`);
+    console.warn(`[Firestore] Firestore not initialized. Skipped remote persist for ${collectionName}/${docId}.`);
+    return false;
   }
 
   let cleanData = JSON.parse(JSON.stringify(data));
@@ -97,32 +132,34 @@ export async function saveDocToFirestore(collectionName: string, docId: string, 
   try {
     const docRef = doc(firestore, collectionName, docId);
     await setDoc(docRef, cleanData, { merge: true });
-    console.log(`[Firestore] Successfully persisted ${collectionName}/${docId}`);
+    return true;
   } catch (err: any) {
     if (err?.message?.includes('closing') || err?.message?.includes('closed') || err?.message?.includes('hidden')) {
       db = null;
     }
-    console.error(`[Firestore] Error saving doc ${docId} to ${collectionName}:`, err?.message || err);
-    throw err;
+    const { code, message } = classifyFirestoreError(err);
+    console.warn(`[Firestore] Failed to save ${collectionName}/${docId} [${code}]: ${message}`);
+    return false;
   }
 }
 
-export async function deleteDocFromFirestore(collectionName: string, docId: string): Promise<void> {
+export async function deleteDocFromFirestore(collectionName: string, docId: string): Promise<boolean> {
   const firestore = getDb();
   if (!firestore) {
-    throw new Error(`Firestore not initialized. Cannot delete document ${docId} from ${collectionName}.`);
+    return false;
   }
 
   try {
     const docRef = doc(firestore, collectionName, docId);
     await deleteDoc(docRef);
-    console.log(`[Firestore] Successfully deleted ${collectionName}/${docId}`);
+    return true;
   } catch (err: any) {
     if (err?.message?.includes('closing') || err?.message?.includes('closed') || err?.message?.includes('hidden')) {
       db = null;
     }
-    console.error(`[Firestore] Error deleting doc ${docId} from ${collectionName}:`, err?.message || err);
-    throw err;
+    const { code, message } = classifyFirestoreError(err);
+    console.warn(`[Firestore] Failed to delete ${collectionName}/${docId} [${code}]: ${message}`);
+    return false;
   }
 }
 
@@ -140,7 +177,8 @@ export async function loadCollectionFromFirestore<T>(collectionName: string): Pr
     if (err?.message?.includes('closing') || err?.message?.includes('closed') || err?.message?.includes('hidden')) {
       db = null;
     }
-    console.warn(`[Firestore] Notice loading collection ${collectionName}:`, err?.message || err);
+    const { code, message } = classifyFirestoreError(err);
+    console.warn(`[Firestore] Notice loading collection ${collectionName} [${code}]: ${message}`);
     return [];
   }
 }

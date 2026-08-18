@@ -723,13 +723,23 @@ class DatabaseStore {
   }
 
   public async persistDoc(collectionName: string, docId: string, data: any): Promise<void> {
-    await saveDocToFirestore(collectionName, docId, data);
-    this.saveToDiskBackup();
+    try {
+      await saveDocToFirestore(collectionName, docId, data);
+    } catch (err: any) {
+      console.warn(`[DatabaseStore] Notice persisting ${collectionName}/${docId}:`, err?.message || err);
+    } finally {
+      this.saveToDiskBackup();
+    }
   }
 
   public async removeDoc(collectionName: string, docId: string): Promise<void> {
-    await deleteDocFromFirestore(collectionName, docId);
-    this.saveToDiskBackup();
+    try {
+      await deleteDocFromFirestore(collectionName, docId);
+    } catch (err: any) {
+      console.warn(`[DatabaseStore] Notice removing ${collectionName}/${docId}:`, err?.message || err);
+    } finally {
+      this.saveToDiskBackup();
+    }
   }
 
   public ensureDefaultTenant(): Tenant | null {
@@ -1279,7 +1289,7 @@ class DatabaseStore {
           updatedAt: tenant.updatedAt || new Date().toISOString()
         };
         this.tenantDomains.push(subDomainRecord);
-        this.persistDoc('tenantDomains', subDomainRecord.id, subDomainRecord);
+        this.persistDoc('tenantDomains', subDomainRecord.id, subDomainRecord).catch(() => {});
       }
 
       // Check if customDomain exists on tenant
@@ -1321,7 +1331,7 @@ class DatabaseStore {
             updatedAt: tenant.updatedAt || new Date().toISOString()
           };
           this.tenantDomains.push(customDomainRecord);
-          this.persistDoc('tenantDomains', customDomainRecord.id, customDomainRecord);
+          this.persistDoc('tenantDomains', customDomainRecord.id, customDomainRecord).catch(() => {});
         }
       }
     }

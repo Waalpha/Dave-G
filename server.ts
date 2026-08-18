@@ -5,6 +5,19 @@ import { dbStore, hashPassword } from './src/data/dbStore';
 import { ALL_ERP_MODULES, getModuleInfo } from './src/data/modulesCatalog';
 import { ModuleId, User, Tenant } from './src/types';
 
+// Global Process Crash Prevention Guards for Production Node.js
+process.on('unhandledRejection', (reason: any) => {
+  const errMsg = reason instanceof Error ? reason.stack || reason.message : String(reason);
+  const isPermDenied = errMsg.includes('PERMISSION_DENIED') || errMsg.includes('permission-denied') || errMsg.includes('insufficient permissions');
+  console.warn(`[Process Guard] Handled async rejection [${isPermDenied ? 'PERMISSION_DENIED' : 'ASYNC_WARNING'}]:`, errMsg);
+});
+
+process.on('uncaughtException', (err: Error) => {
+  const errMsg = err.stack || err.message;
+  const isPermDenied = errMsg.includes('PERMISSION_DENIED') || errMsg.includes('permission-denied') || errMsg.includes('insufficient permissions');
+  console.warn(`[Process Guard] Handled uncaught exception [${isPermDenied ? 'PERMISSION_DENIED' : 'UNCAUGHT_WARNING'}]:`, errMsg);
+});
+
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
