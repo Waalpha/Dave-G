@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Tenant, ModuleId } from '../types';
 import { ALL_ERP_MODULES } from '../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../data/initialTenants';
 
 interface AuthContextType {
   user: User | null;
@@ -325,13 +324,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
 
-    // Local resilient fallback lookup
-    const fallbackTenant = INITIAL_TENANTS.find(t => t.id === tenantId || t.slug === tenantId || t.subdomain === tenantId);
-    if (fallbackTenant) {
-      setInspectingTenant(fallbackTenant);
-      setEnabledModules(fallbackTenant.enabledModules || ALL_ERP_MODULES.map(m => m.id));
-      return true;
-    }
     return false;
   };
 

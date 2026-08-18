@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tenant, ModuleId, TenantType, EducationType } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../../data/initialTenants';
 import { useAuth } from '../../context/AuthContext';
 import {
   Building2, Plus, ShieldCheck, Check, X, Edit2, AlertCircle, RefreshCw, 
@@ -18,6 +17,15 @@ interface PlatformTenantsProps {
   initialTab?: 'tenants' | 'users';
 }
 
+const LEGACY_HANDCODED_IDS = new Set([
+  'tenant_apex_institute',
+  'tenant_blessed_sacco',
+  'tenant_breakthrough_college',
+  'tenant_dreamline_wholesale',
+  'tenant_grace_cathedral',
+  'tenant_st_jude_hospital'
+]);
+
 export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavigate, initialTab = 'tenants' }) => {
   const { inspectTenant } = useAuth();
   const [activeTab, setActiveTab] = useState<'tenants' | 'users'>(initialTab);
@@ -26,10 +34,12 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(t => t && !LEGACY_HANDCODED_IDS.has(t.id));
+        }
       } catch (e) {}
     }
-    return [...INITIAL_TENANTS];
+    return [];
   });
 
   useEffect(() => {
@@ -331,7 +341,25 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#D8DCEB]">
-                {tenants.map((t) => (
+                {tenants.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-12 text-center">
+                      <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                      <h4 className="text-base font-bold text-slate-800">No Organizations Registered</h4>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5">
+                        Your multi-tenant cloud ERP platform currently has no registered client organizations. Provision your first tenant or register via self-service signup.
+                      </p>
+                      <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="px-4 py-2.5 bg-[#1D53D9] hover:bg-[#153eb3] text-white text-xs font-bold rounded-xl shadow-xs inline-flex items-center space-x-2 cursor-pointer transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Provision First Organization</span>
+                      </button>
+                    </td>
+                  </tr>
+                ) : (
+                  tenants.map((t) => (
                   <tr key={t.id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 font-semibold text-[#1F2937]">
                       <div className="flex items-center space-x-3">
@@ -494,7 +522,7 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                       </button>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>

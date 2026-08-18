@@ -1,12 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Tenant, AuditLog } from '../../types';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
-import { INITIAL_TENANTS } from '../../data/initialTenants';
 import { Building2, ShieldCheck, Users, Layers, Activity, AlertTriangle, ArrowUpRight, Plus, Settings } from 'lucide-react';
 
 interface PlatformDashboardProps {
   onNavigateTab: (tab: string) => void;
 }
+
+const LEGACY_HANDCODED_IDS = new Set([
+  'tenant_apex_institute',
+  'tenant_blessed_sacco',
+  'tenant_breakthrough_college',
+  'tenant_dreamline_wholesale',
+  'tenant_grace_cathedral',
+  'tenant_st_jude_hospital'
+]);
 
 export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigateTab }) => {
   const [tenants, setTenants] = useState<Tenant[]>(() => {
@@ -14,10 +22,12 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          return parsed.filter(t => t && !LEGACY_HANDCODED_IDS.has(t.id));
+        }
       } catch (e) {}
     }
-    return [...INITIAL_TENANTS];
+    return [];
   });
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,13 +41,10 @@ export const PlatformDashboard: React.FC<PlatformDashboardProps> = ({ onNavigate
       ]);
       if (resT.ok) {
         const tData = await resT.json().catch(() => []);
-        if (Array.isArray(tData) && tData.length > 0) {
-          const tenantMap = new Map<string, Tenant>();
-          INITIAL_TENANTS.forEach(t => tenantMap.set(t.id, t));
-          tData.forEach((t: Tenant) => tenantMap.set(t.id, t));
-          const merged = Array.from(tenantMap.values());
-          setTenants(merged);
-          localStorage.setItem('erp_cached_tenants', JSON.stringify(merged));
+        if (Array.isArray(tData)) {
+          const cleaned = tData.filter((t: Tenant) => t && !LEGACY_HANDCODED_IDS.has(t.id));
+          setTenants(cleaned);
+          localStorage.setItem('erp_cached_tenants', JSON.stringify(cleaned));
         }
       }
       if (resL.ok) {

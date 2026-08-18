@@ -20,392 +20,13 @@ export function hashPassword(password: string, userId: string = 'global_salt'): 
 
 // In-Memory Database Store with Strict Tenant Isolation Enforcers
 
-import {
-  INITIAL_TENANTS,
-  DEFAULT_INITIAL_TENANT,
-  TENANT_SACCO,
-  TENANT_CHURCH,
-  TENANT_DREAMLINE_WHOLESALE,
-  TENANT_HEALTHCARE
-} from './initialTenants';
-export {
-  INITIAL_TENANTS,
-  DEFAULT_INITIAL_TENANT,
-  TENANT_SACCO,
-  TENANT_CHURCH,
-  TENANT_DREAMLINE_WHOLESALE,
-  TENANT_HEALTHCARE
-};
+import { INITIAL_TENANTS } from './initialTenants';
+export { INITIAL_TENANTS };
 
-export const INITIAL_POS_PRODUCTS: PosProduct[] = [
-  {
-    id: 'prd_wh_rice_25kg',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001001',
-    sku: 'FMCG-RICE-25KG',
-    name: 'Super Grade Aromatic Pishori Rice (25kg Bag)',
-    category: 'Grains & Foodstuffs',
-    costPrice: 2900,
-    wholesalePrice: 3200,
-    sellingPrice: 3600,
-    quantityInStock: 450,
-    minStockAlert: 50,
-    unit: '25kg Bag',
-    authorOrBrand: 'Pearl Grains',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_sugar_50kg',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001002',
-    sku: 'FMCG-SUG-50KG',
-    name: 'Pure Refined Cane White Sugar (50kg Sack)',
-    category: 'Grains & Foodstuffs',
-    costPrice: 5800,
-    wholesalePrice: 6400,
-    sellingPrice: 7100,
-    quantityInStock: 280,
-    minStockAlert: 30,
-    unit: '50kg Sack',
-    authorOrBrand: 'Mumias Crest',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_flour_bale',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001003',
-    sku: 'FMCG-FLOUR-24X1',
-    name: 'Fortified All-Purpose Wheat Flour (Bale 24x1kg)',
-    category: 'Grains & Foodstuffs',
-    costPrice: 1650,
-    wholesalePrice: 1850,
-    sellingPrice: 2150,
-    quantityInStock: 600,
-    minStockAlert: 80,
-    unit: 'Bale (24pk)',
-    authorOrBrand: 'Golden Harvest Mills',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_oil_20l',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001004',
-    sku: 'FMCG-OIL-20L',
-    name: 'Triple-Refined Vegetable Cooking Oil (20L Jerrycan)',
-    category: 'FMCG & Groceries',
-    costPrice: 3700,
-    wholesalePrice: 4100,
-    sellingPrice: 4600,
-    quantityInStock: 350,
-    minStockAlert: 40,
-    unit: '20L Jerrycan',
-    authorOrBrand: 'SunGold Pure',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_soap_ctn',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001005',
-    sku: 'DET-SOAP-25X800',
-    name: 'Multipurpose Laundry Bar Soap (Carton 25x800g)',
-    category: 'Household & Detergents',
-    costPrice: 2100,
-    wholesalePrice: 2400,
-    sellingPrice: 2800,
-    quantityInStock: 500,
-    minStockAlert: 60,
-    unit: 'Carton (25pcs)',
-    authorOrBrand: 'CleanMaster',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_tissue_bale',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001006',
-    sku: 'HOU-TIS-40RL',
-    name: 'Soft Touch 2-Ply Toilet Tissue (Bale 40 Rolls)',
-    category: 'Household & Detergents',
-    costPrice: 1150,
-    wholesalePrice: 1350,
-    sellingPrice: 1650,
-    quantityInStock: 400,
-    minStockAlert: 50,
-    unit: 'Bale (40 Rolls)',
-    authorOrBrand: 'Royal Velvet',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_milk_ctn',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001007',
-    sku: 'BEV-MILK-12X500',
-    name: 'Long Life UHT Whole Milk (Carton 12 x 500ml)',
-    category: 'Beverages',
-    costPrice: 680,
-    wholesalePrice: 780,
-    sellingPrice: 920,
-    quantityInStock: 850,
-    minStockAlert: 100,
-    unit: 'Carton (12pk)',
-    authorOrBrand: 'Highland Fresh Dairy',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_water_24pk',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001008',
-    sku: 'BEV-WAT-24X500',
-    name: 'Natural Spring Mineral Water (Shrink-pack 24 x 500ml)',
-    category: 'Beverages',
-    costPrice: 380,
-    wholesalePrice: 480,
-    sellingPrice: 650,
-    quantityInStock: 900,
-    minStockAlert: 120,
-    unit: 'Pack (24 bottles)',
-    authorOrBrand: 'Aquasure Spring',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_cement_50kg',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001009',
-    sku: 'BLD-CEM-50KG',
-    name: 'Portland Pozzolana Cement 32.5N (50kg Bag)',
-    category: 'Building & Hardware',
-    costPrice: 610,
-    wholesalePrice: 680,
-    sellingPrice: 780,
-    quantityInStock: 1200,
-    minStockAlert: 150,
-    unit: '50kg Bag',
-    authorOrBrand: 'Simba Power Cement',
-    status: 'ACTIVE'
-  },
-  {
-    id: 'prd_wh_iron_sheets',
-    tenantId: 'tenant_dreamline_wholesale',
-    barcode: '616110001010',
-    sku: 'BLD-IRN-10PC',
-    name: 'Corrugated Galvanized Iron Roofing Sheets (Bundle 10pcs 2.5m)',
-    category: 'Building & Hardware',
-    costPrice: 7600,
-    wholesalePrice: 8500,
-    sellingPrice: 9600,
-    quantityInStock: 150,
-    minStockAlert: 20,
-    unit: 'Bundle (10pcs)',
-    authorOrBrand: 'Mabati Rolling Mills',
-    status: 'ACTIVE'
-  }
-];
-
-export const INITIAL_CAMPUSES: Campus[] = [
-  {
-    id: 'camp_main',
-    tenantId: 'tenant_apex_institute',
-    name: 'Main Campus (Technology Park)',
-    code: 'MAIN',
-    location: 'Innovation Way, Nairobi',
-    isMain: true
-  },
-  {
-    id: 'camp_westlands',
-    tenantId: 'tenant_apex_institute',
-    name: 'Westlands Digital Learning Hub',
-    code: 'WST',
-    location: 'Parklands Road, Westlands',
-    isMain: false
-  },
-  {
-    id: 'camp_bt_main',
-    tenantId: 'tenant_breakthrough_college',
-    name: 'Breakthrough Towers Main Campus',
-    code: 'BT-MAIN',
-    location: 'Haile Selassie Avenue, Nairobi',
-    isMain: true
-  }
-];
-
-export const INITIAL_DEPARTMENTS: Department[] = [
-  {
-    id: 'dept_cs',
-    tenantId: 'tenant_apex_institute',
-    name: 'Computing & Applied Information Technology',
-    code: 'CIT',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_bus',
-    tenantId: 'tenant_apex_institute',
-    name: 'Business Administration & Management',
-    code: 'BAM',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_eng',
-    tenantId: 'tenant_apex_institute',
-    name: 'Engineering & Industrial Technologies',
-    code: 'ENG',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_health',
-    tenantId: 'tenant_apex_institute',
-    name: 'Health Sciences & Community Nutrition',
-    code: 'HSC',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  // Departments for Breakthrough International Training College
-  {
-    id: 'dept_bt_ict',
-    tenantId: 'tenant_breakthrough_college',
-    name: 'Information Communication Technology & Software Dev',
-    code: 'BT-ICT',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_bt_biz',
-    tenantId: 'tenant_breakthrough_college',
-    name: 'Business Management & Accounting Studies',
-    code: 'BT-BUS',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_bt_elec',
-    tenantId: 'tenant_breakthrough_college',
-    name: 'Electrical & Electronics Engineering',
-    code: 'BT-ELEC',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  // Medical Departments for St. Jude Healthcare
-  {
-    id: 'dept_med_emerg',
-    tenantId: 'tenant_st_jude_hospital',
-    name: 'Accident, Emergency & Trauma Casualty',
-    code: 'A&E',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_med_peds',
-    tenantId: 'tenant_st_jude_hospital',
-    name: 'Pediatrics & Child Wellness Clinic',
-    code: 'PED',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_med_surg',
-    tenantId: 'tenant_st_jude_hospital',
-    name: 'General & Minimally Invasive Surgery',
-    code: 'SURG',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  },
-  {
-    id: 'dept_med_diag',
-    tenantId: 'tenant_st_jude_hospital',
-    name: 'Diagnostic Radiology & Laboratory Pathology',
-    code: 'RAD-LAB',
-    status: 'ACTIVE',
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-12T00:00:00Z'
-  }
-];
-
-export const INITIAL_PROGRAMS: Program[] = [
-  {
-    id: 'prog_se',
-    tenantId: 'tenant_apex_institute',
-    departmentId: 'dept_cs',
-    name: 'Diploma in Software Engineering & AI',
-    code: 'DSE-01',
-    level: 'Diploma',
-    durationYears: 2
-  },
-  {
-    id: 'prog_cyber',
-    tenantId: 'tenant_apex_institute',
-    departmentId: 'dept_cs',
-    name: 'Diploma in Cyber Security & Digital Forensics',
-    code: 'DCS-02',
-    level: 'Diploma',
-    durationYears: 2
-  },
-  {
-    id: 'prog_ba',
-    tenantId: 'tenant_apex_institute',
-    departmentId: 'dept_bus',
-    name: 'Diploma in Business Administration & Procurement',
-    code: 'DBA-03',
-    level: 'Diploma',
-    durationYears: 2
-  },
-  {
-    id: 'prog_ee',
-    tenantId: 'tenant_apex_institute',
-    departmentId: 'dept_eng',
-    name: 'Diploma in Electrical & Telecommunication Engineering',
-    code: 'DEE-04',
-    level: 'Diploma',
-    durationYears: 3
-  },
-  {
-    id: 'prog_cert_it',
-    tenantId: 'tenant_apex_institute',
-    departmentId: 'dept_cs',
-    name: 'Certificate in Information & Communication Technology',
-    code: 'CIT-05',
-    level: 'Certificate',
-    durationYears: 1
-  },
-  // Breakthrough College Programs
-  {
-    id: 'prog_bt_dip_ict',
-    tenantId: 'tenant_breakthrough_college',
-    departmentId: 'dept_bt_ict',
-    name: 'Diploma in Information Communication Technology (KNEC)',
-    code: 'BT-DICT',
-    level: 'Diploma',
-    durationYears: 2
-  },
-  {
-    id: 'prog_bt_dip_biz',
-    tenantId: 'tenant_breakthrough_college',
-    departmentId: 'dept_bt_biz',
-    name: 'Diploma in Business Management & Entrepreneurship',
-    code: 'BT-DBM',
-    level: 'Diploma',
-    durationYears: 2
-  },
-  {
-    id: 'prog_bt_cert_elec',
-    tenantId: 'tenant_breakthrough_college',
-    departmentId: 'dept_bt_elec',
-    name: 'Certificate in Electrical Installation & Solar Tech',
-    code: 'BT-CEIT',
-    level: 'Certificate',
-    durationYears: 1
-  }
-];
+export const INITIAL_POS_PRODUCTS: PosProduct[] = [];
+export const INITIAL_CAMPUSES: Campus[] = [];
+export const INITIAL_DEPARTMENTS: Department[] = [];
+export const INITIAL_PROGRAMS: Program[] = [];
 
 export const INITIAL_USERS: User[] = [
   {
@@ -444,67 +65,6 @@ export const INITIAL_USERS: User[] = [
     email: 'admin@davetech.co.ke',
     name: 'Davetech Super Admin',
     role: 'SUPER_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  // Tenant Admins for Industry Workspaces
-  {
-    id: 'user_breakthrough_admin',
-    tenantId: 'tenant_breakthrough_college',
-    email: 'admin@breakthrough.ac.ke',
-    name: 'Breakthrough College Principal',
-    role: 'TENANT_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  {
-    id: 'user_dreamline_admin',
-    tenantId: 'tenant_dreamline_wholesale',
-    email: 'admin@dreamlineshop.co.ke',
-    name: 'Dreamline Wholesale Manager',
-    role: 'TENANT_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  {
-    id: 'user_apex_admin',
-    tenantId: 'tenant_apex_institute',
-    email: 'admin@apexinstitute.ac.ke',
-    name: 'Apex Principal Admin',
-    role: 'TENANT_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  {
-    id: 'user_sacco_admin',
-    tenantId: 'tenant_blessed_sacco',
-    email: 'admin@blessedtobliss.co.ke',
-    name: 'Blessed SACCO Secretary',
-    role: 'TENANT_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  {
-    id: 'user_church_admin',
-    tenantId: 'tenant_grace_cathedral',
-    email: 'pastor@gracecathedral.org',
-    name: 'Grace Cathedral Administrator',
-    role: 'TENANT_ADMIN',
-    permissions: ['*'],
-    createdAt: '2025-01-01T00:00:00Z',
-    updatedAt: '2026-08-15T00:00:00Z'
-  },
-  {
-    id: 'user_hospital_admin',
-    tenantId: 'tenant_st_jude_hospital',
-    email: 'admin@stjudehospital.org',
-    name: 'St. Jude Clinical Director',
-    role: 'TENANT_ADMIN',
     permissions: ['*'],
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2026-08-15T00:00:00Z'
@@ -875,11 +435,19 @@ class DatabaseStore {
       if (fs.existsSync(filePath)) {
         const raw = fs.readFileSync(filePath, 'utf8');
         const data = JSON.parse(raw);
+        const legacyHandcodedIds = new Set([
+          'tenant_apex_institute',
+          'tenant_blessed_sacco',
+          'tenant_breakthrough_college',
+          'tenant_dreamline_wholesale',
+          'tenant_grace_cathedral',
+          'tenant_st_jude_hospital'
+        ]);
         if (Array.isArray(data.tenants)) {
-          this.tenants = data.tenants;
+          this.tenants = data.tenants.filter((t: any) => t && !legacyHandcodedIds.has(t.id));
         }
         if (Array.isArray(data.users)) {
-          this.users = data.users;
+          this.users = data.users.filter((u: any) => u && !legacyHandcodedIds.has(u.tenantId));
           // Ensure root platform super admins are accessible
           INITIAL_USERS.filter(u => u.role === 'SUPER_ADMIN').forEach(iu => {
             if (!this.users.some(u => u.id === iu.id || u.email.toLowerCase() === iu.email.toLowerCase())) {
@@ -946,12 +514,30 @@ class DatabaseStore {
 
   public async syncFromFirestore() {
     try {
+      const legacyHandcodedIds = new Set([
+        'tenant_apex_institute',
+        'tenant_blessed_sacco',
+        'tenant_breakthrough_college',
+        'tenant_dreamline_wholesale',
+        'tenant_grace_cathedral',
+        'tenant_st_jude_hospital'
+      ]);
+
       const dbTenants = await loadCollectionFromFirestore<Tenant>('tenants');
-      this.tenants = Array.isArray(dbTenants) ? dbTenants : [];
+      this.tenants = (Array.isArray(dbTenants) ? dbTenants : []).filter((t: any) => t && !legacyHandcodedIds.has(t.id));
+
+      // Asynchronously clean up any old legacy tenant docs from Firestore
+      if (Array.isArray(dbTenants)) {
+        for (const t of dbTenants) {
+          if (t && legacyHandcodedIds.has(t.id)) {
+            deleteDocFromFirestore('tenants', t.id).catch(() => {});
+          }
+        }
+      }
 
       const dbUsers = await loadCollectionFromFirestore<User>('users');
       if (Array.isArray(dbUsers) && dbUsers.length > 0) {
-        this.users = dbUsers;
+        this.users = dbUsers.filter((u: any) => u && !legacyHandcodedIds.has(u.tenantId));
         // Ensure primary Super Admin user exists
         INITIAL_USERS.filter(u => u.role === 'SUPER_ADMIN').forEach(sa => {
           if (!this.users.some(u => u.email.toLowerCase() === sa.email.toLowerCase() || u.id === sa.id)) {
@@ -1234,32 +820,6 @@ class DatabaseStore {
     // 2. Slug, Subdomain, or Custom Domain match
     const byDomain = this.getTenantBySlugOrId(tenantId);
     if (byDomain) return byDomain;
-
-    // 3. Known ID aliases & fuzzy normalization for pre-configured tenants
-    if (rawKey.includes('dreamline')) {
-      const dreamline = this.tenants.find(t => t.id.includes('dreamline') || t.slug?.includes('dreamline') || t.subdomain?.includes('dreamline') || t.name.toLowerCase().includes('dreamline'));
-      if (dreamline) return dreamline;
-    }
-    if (rawKey.includes('breakthrough') || rawKey.includes('bitc')) {
-      const bt = this.tenants.find(t => t.id.includes('breakthrough') || t.id.includes('bitc') || t.slug?.includes('breakthrough') || t.subdomain?.includes('breakthrough') || t.name.toLowerCase().includes('breakthrough'));
-      if (bt) return bt;
-    }
-    if (rawKey.includes('sacco') || rawKey.includes('blessed')) {
-      const sacco = this.tenants.find(t => t.id.includes('sacco') || t.id.includes('blessed') || t.slug?.includes('sacco') || t.subdomain?.includes('blessed') || t.name.toLowerCase().includes('blessed'));
-      if (sacco) return sacco;
-    }
-    if (rawKey.includes('cathedral') || rawKey.includes('grace')) {
-      const church = this.tenants.find(t => t.id.includes('cathedral') || t.id.includes('grace') || t.slug?.includes('grace') || t.name.toLowerCase().includes('grace'));
-      if (church) return church;
-    }
-    if (rawKey.includes('jude') || rawKey.includes('hospital')) {
-      const hosp = this.tenants.find(t => t.id.includes('jude') || t.id.includes('hospital') || t.slug?.includes('jude') || t.name.toLowerCase().includes('jude'));
-      if (hosp) return hosp;
-    }
-    if (rawKey.includes('apex')) {
-      const apex = this.tenants.find(t => t.id.includes('apex') || t.slug?.includes('apex') || t.name.toLowerCase().includes('apex'));
-      if (apex) return apex;
-    }
 
     return undefined;
   }
