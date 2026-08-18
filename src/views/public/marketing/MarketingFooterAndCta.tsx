@@ -112,20 +112,23 @@ export const MarketingFooterAndCta: React.FC<MarketingFooterAndCtaProps> = ({
             
             {/* Brand Column */}
             <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNav('hero')}>
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-tr from-blue-600 to-cyan-500 p-1.5 flex items-center justify-center">
-                  <img 
-                    src={logoSrc} 
-                    alt="DAVETECH ERP" 
-                    className="w-full h-full object-contain"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
-                    }}
-                  />
+              <div className="flex items-center space-x-3.5 cursor-pointer group" onClick={() => handleNav('hero')}>
+                <img 
+                  src={logoSrc} 
+                  alt="DAVETECH ERP" 
+                  className="h-12 sm:h-14 w-auto max-h-14 object-contain drop-shadow-md transition-transform duration-200 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
+                  }}
+                />
+                <div className="flex flex-col">
+                  <span className="text-xl font-black tracking-tight text-white leading-none">
+                    DAVETECH <span className="text-cyan-400">ERP</span>
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase mt-1">
+                    Cloud Enterprise Platform
+                  </span>
                 </div>
-                <span className="text-lg font-black tracking-tight text-white">
-                  DAVETECH <span className="text-cyan-400">ERP</span>
-                </span>
               </div>
 
               <p className="text-xs font-semibold text-blue-400 tracking-wide uppercase">

@@ -55,24 +55,22 @@ export const MarketingHeader: React.FC<MarketingHeaderProps> = ({
           
           {/* Zone 1: Davetech ERP Brand Logo */}
           <div 
-            className="flex items-center space-x-3 cursor-pointer group" 
+            className="flex items-center space-x-3.5 cursor-pointer group py-1" 
             onClick={() => scrollTo('hero')}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-2 shadow-md shadow-blue-500/20 flex items-center justify-center transition-transform group-hover:scale-105">
-              <img 
-                src={logoSrc} 
-                alt="DAVETECH ERP" 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
-                }}
-              />
-            </div>
+            <img 
+              src={logoSrc} 
+              alt="DAVETECH ERP" 
+              className="h-12 sm:h-14 md:h-16 w-auto max-h-16 object-contain drop-shadow-md transition-transform duration-200 group-hover:scale-105"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = '/davetech-logo.svg';
+              }}
+            />
             <div className="flex flex-col">
-              <span className="text-lg sm:text-xl font-black tracking-tight text-white whitespace-nowrap">
+              <span className="text-xl sm:text-2xl font-black tracking-tight text-white whitespace-nowrap leading-none">
                 DAVETECH <span className="text-cyan-400">ERP</span>
               </span>
-              <span className="text-[10px] font-semibold text-slate-400 tracking-wider uppercase -mt-0.5 hidden sm:inline">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400 tracking-wider uppercase mt-1 hidden sm:inline">
                 Cloud Enterprise Platform
               </span>
             </div>

@@ -34,13 +34,9 @@
     <!-- ==================== EMBLEM: DT + LAPTOP + SWOOSH + PIXELS ==================== -->
     <g transform="translate(100, 30)">
       
-      <!-- LETTER 'D' (Bold slanted/italicized tech profile) -->
-      <path d="M 90 120 L 250 120 C 330 120, 360 170, 340 250 C 320 320, 270 370, 180 370 L 60 370 Z" 
-            fill="url(#dtGradBlue)" />
-      
-      <!-- Inner negative space of D -->
-      <path d="M 140 180 L 220 180 C 265 180, 280 210, 270 255 C 260 300, 230 315, 185 315 L 120 315 Z" 
-            fill="#080e1a" opacity="0.95" />
+      <!-- LETTER 'D' (Bold slanted/italicized tech profile with transparent cutout) -->
+      <path d="M 90 120 L 250 120 C 330 120, 360 170, 340 250 C 320 320, 270 370, 180 370 L 60 370 Z M 140 180 L 220 180 C 265 180, 280 210, 270 255 C 260 300, 230 315, 185 315 L 120 315 Z" 
+            fill="url(#dtGradBlue)" fill-rule="evenodd" />
 
       <!-- LETTER 'T' (Overlapping slanted with top bar and vertical stem) -->
       <!-- T Stem -->
