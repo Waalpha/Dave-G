@@ -9,10 +9,18 @@ import {
   LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
   TenantDomain, TenantDnsRecord, DomainType, DomainVerificationStatus, DomainSslStatus,
+  AttendanceSession, AttendanceScanRecord, AcademicTranscript, TranscriptUnit,
+  AcademicCertificate, AdmissionLetter, DocumentVerificationRecord,
   ChamaMember, ChamaContribution, ChamaLoan, ChamaRepayment, ChamaInvestment,
   PosProduct, PosSaleOrder, RestaurantTable, RestaurantMenuItem,
   InventoryMovement, AccountingLedgerEntry, EmployeeRecord, CrmLeadCustomer,
   ChurchMemberRecord, ChurchGivingRecord,
+  PosBusinessType, PosEnabledFeatures, PosTenantConfig, ClothingAttributes, ProductVariant,
+  Warehouse, Branch, PosCustomer, PosCustomerTransaction, PosSupplier,
+  PurchaseOrderItem, PurchaseOrder, GoodsReceivedItem, GoodsReceivedNote, SupplierPayment,
+  PosPaymentSplit, PosSaleReturnItem, PosSaleReturn, CashierShift, PosExpense,
+  BarTab, KitchenTicketItem, KitchenOrderTicket, HotelRoomType, HotelRoom, HotelGuest,
+  HotelFolioCharge, HotelReservation,
   PatientRecord, HealthcareDepartment, HealthcareStaffRecord, AppointmentRecord,
   QueueRecord, TriageRecord, ConsultationEncounter, PrescriptionRecord, PrescriptionItem,
   MedicineCatalogueItem, MedicineBatch, PharmacyDispenseRecord, LabTestCatalogueItem,
@@ -440,6 +448,12 @@ class DatabaseStore {
   private libraryBooks: LibraryBook[] = [];
   private libraryLoans: LibraryLoan[] = [];
   private hostelRooms: HostelRoom[] = [];
+  private attendanceSessions: AttendanceSession[] = [];
+  private attendanceScans: AttendanceScanRecord[] = [];
+  private academicTranscripts: AcademicTranscript[] = [];
+  private academicCertificates: AcademicCertificate[] = [];
+  private admissionLetters: AdmissionLetter[] = [];
+  private documentVerifications: DocumentVerificationRecord[] = [];
   private auditLogs: AuditLog[] = [];
   private notifications: PlatformNotification[] = [...INITIAL_NOTIFICATIONS];
   // Multi-Industry Collections
@@ -458,6 +472,25 @@ class DatabaseStore {
   private crmLeads: CrmLeadCustomer[] = [];
   private churchMembers: ChurchMemberRecord[] = [];
   private churchGivings: ChurchGivingRecord[] = [];
+  // Universal POS & Business Management Collections
+  private posConfigs: PosTenantConfig[] = [];
+  private warehouses: Warehouse[] = [];
+  private branches: Branch[] = [];
+  private posCustomers: PosCustomer[] = [];
+  private posCustomerTransactions: PosCustomerTransaction[] = [];
+  private posSuppliers: PosSupplier[] = [];
+  private purchaseOrders: PurchaseOrder[] = [];
+  private goodsReceivedNotes: GoodsReceivedNote[] = [];
+  private supplierPayments: SupplierPayment[] = [];
+  private posSaleReturns: PosSaleReturn[] = [];
+  private cashierShifts: CashierShift[] = [];
+  private posExpenses: PosExpense[] = [];
+  private barTabs: BarTab[] = [];
+  private kitchenTickets: KitchenOrderTicket[] = [];
+  private hotelRoomTypes: HotelRoomType[] = [];
+  private hotelRooms: HotelRoom[] = [];
+  private hotelGuests: HotelGuest[] = [];
+  private hotelReservations: HotelReservation[] = [];
   // Healthcare & Hospital Collections
   private patients: PatientRecord[] = [];
   private healthcareDepartments: HealthcareDepartment[] = [];
@@ -571,6 +604,24 @@ class DatabaseStore {
         crmLeads: this.crmLeads,
         churchMembers: this.churchMembers,
         churchGivings: this.churchGivings,
+        posConfigs: this.posConfigs,
+        warehouses: this.warehouses,
+        branches: this.branches,
+        posCustomers: this.posCustomers,
+        posCustomerTransactions: this.posCustomerTransactions,
+        posSuppliers: this.posSuppliers,
+        purchaseOrders: this.purchaseOrders,
+        goodsReceivedNotes: this.goodsReceivedNotes,
+        supplierPayments: this.supplierPayments,
+        posSaleReturns: this.posSaleReturns,
+        cashierShifts: this.cashierShifts,
+        posExpenses: this.posExpenses,
+        barTabs: this.barTabs,
+        kitchenTickets: this.kitchenTickets,
+        hotelRoomTypes: this.hotelRoomTypes,
+        hotelRooms: this.hotelRooms,
+        hotelGuests: this.hotelGuests,
+        hotelReservations: this.hotelReservations,
         patients: this.patients,
         healthcareDepartments: this.healthcareDepartments,
         healthcareStaff: this.healthcareStaff,
@@ -677,6 +728,24 @@ class DatabaseStore {
         if (Array.isArray(data.crmLeads)) this.crmLeads = data.crmLeads;
         if (Array.isArray(data.churchMembers)) this.churchMembers = data.churchMembers;
         if (Array.isArray(data.churchGivings)) this.churchGivings = data.churchGivings;
+        if (Array.isArray(data.posConfigs)) this.posConfigs = data.posConfigs;
+        if (Array.isArray(data.warehouses)) this.warehouses = data.warehouses;
+        if (Array.isArray(data.branches)) this.branches = data.branches;
+        if (Array.isArray(data.posCustomers)) this.posCustomers = data.posCustomers;
+        if (Array.isArray(data.posCustomerTransactions)) this.posCustomerTransactions = data.posCustomerTransactions;
+        if (Array.isArray(data.posSuppliers)) this.posSuppliers = data.posSuppliers;
+        if (Array.isArray(data.purchaseOrders)) this.purchaseOrders = data.purchaseOrders;
+        if (Array.isArray(data.goodsReceivedNotes)) this.goodsReceivedNotes = data.goodsReceivedNotes;
+        if (Array.isArray(data.supplierPayments)) this.supplierPayments = data.supplierPayments;
+        if (Array.isArray(data.posSaleReturns)) this.posSaleReturns = data.posSaleReturns;
+        if (Array.isArray(data.cashierShifts)) this.cashierShifts = data.cashierShifts;
+        if (Array.isArray(data.posExpenses)) this.posExpenses = data.posExpenses;
+        if (Array.isArray(data.barTabs)) this.barTabs = data.barTabs;
+        if (Array.isArray(data.kitchenTickets)) this.kitchenTickets = data.kitchenTickets;
+        if (Array.isArray(data.hotelRoomTypes)) this.hotelRoomTypes = data.hotelRoomTypes;
+        if (Array.isArray(data.hotelRooms)) this.hotelRooms = data.hotelRooms;
+        if (Array.isArray(data.hotelGuests)) this.hotelGuests = data.hotelGuests;
+        if (Array.isArray(data.hotelReservations)) this.hotelReservations = data.hotelReservations;
         if (Array.isArray(data.patients)) this.patients = data.patients;
         if (Array.isArray(data.healthcareDepartments)) this.healthcareDepartments = data.healthcareDepartments;
         if (Array.isArray(data.healthcareStaff)) this.healthcareStaff = data.healthcareStaff;
@@ -839,6 +908,24 @@ class DatabaseStore {
 
       const dbHostels = await loadCollectionFromFirestore<HostelRoom>('hostelRooms');
       this.hostelRooms = Array.isArray(dbHostels) ? dbHostels : [];
+
+      const dbAttSessions = await loadCollectionFromFirestore<AttendanceSession>('attendanceSessions');
+      this.attendanceSessions = Array.isArray(dbAttSessions) ? dbAttSessions : [];
+
+      const dbAttScans = await loadCollectionFromFirestore<AttendanceScanRecord>('attendanceScans');
+      this.attendanceScans = Array.isArray(dbAttScans) ? dbAttScans : [];
+
+      const dbTranscripts = await loadCollectionFromFirestore<AcademicTranscript>('academicTranscripts');
+      this.academicTranscripts = Array.isArray(dbTranscripts) ? dbTranscripts : [];
+
+      const dbCertificates = await loadCollectionFromFirestore<AcademicCertificate>('academicCertificates');
+      this.academicCertificates = Array.isArray(dbCertificates) ? dbCertificates : [];
+
+      const dbAdmissionLetters = await loadCollectionFromFirestore<AdmissionLetter>('admissionLetters');
+      this.admissionLetters = Array.isArray(dbAdmissionLetters) ? dbAdmissionLetters : [];
+
+      const dbDocVerifs = await loadCollectionFromFirestore<DocumentVerificationRecord>('documentVerifications');
+      this.documentVerifications = Array.isArray(dbDocVerifs) ? dbDocVerifs : [];
 
       const dbLogs = await loadCollectionFromFirestore<AuditLog>('auditLogs');
       this.auditLogs = Array.isArray(dbLogs) ? dbLogs : [];
@@ -2134,6 +2221,24 @@ class DatabaseStore {
     const roomDeletions = this.hostelRooms.filter(r => r.tenantId === tenantId).map(r => this.removeDoc('hostelRooms', r.id));
     this.hostelRooms = this.hostelRooms.filter(r => r.tenantId !== tenantId);
 
+    const attSessDeletions = this.attendanceSessions.filter(a => a.tenantId === tenantId).map(a => this.removeDoc('attendanceSessions', a.id));
+    this.attendanceSessions = this.attendanceSessions.filter(a => a.tenantId !== tenantId);
+
+    const attScanDeletions = this.attendanceScans.filter(a => a.tenantId === tenantId).map(a => this.removeDoc('attendanceScans', a.id));
+    this.attendanceScans = this.attendanceScans.filter(a => a.tenantId !== tenantId);
+
+    const trDeletions = this.academicTranscripts.filter(t => t.tenantId === tenantId).map(t => this.removeDoc('academicTranscripts', t.id));
+    this.academicTranscripts = this.academicTranscripts.filter(t => t.tenantId !== tenantId);
+
+    const certDeletions = this.academicCertificates.filter(c => c.tenantId === tenantId).map(c => this.removeDoc('academicCertificates', c.id));
+    this.academicCertificates = this.academicCertificates.filter(c => c.tenantId !== tenantId);
+
+    const admLetDeletions = this.admissionLetters.filter(l => l.tenantId === tenantId).map(l => this.removeDoc('admissionLetters', l.id));
+    this.admissionLetters = this.admissionLetters.filter(l => l.tenantId !== tenantId);
+
+    const docVerDeletions = this.documentVerifications.filter(v => v.tenantId === tenantId).map(v => this.removeDoc('documentVerifications', v.id));
+    this.documentVerifications = this.documentVerifications.filter(v => v.tenantId !== tenantId);
+
     const domainDeletions = this.tenantDomains.filter(d => d.tenantId === tenantId).map(d => this.removeDoc('tenantDomains', d.id));
     this.tenantDomains = this.tenantDomains.filter(d => d.tenantId !== tenantId);
 
@@ -2141,6 +2246,7 @@ class DatabaseStore {
       ...deptDeletions, ...studentDeletions, ...feeDeletions, ...campusDeletions, ...progDeletions,
       ...unitDeletions, ...classDeletions, ...staffDeletions, ...timetableDeletions, ...attendanceDeletions,
       ...fsDeletions, ...invDeletions, ...gradeDeletions, ...bookDeletions, ...loanDeletions, ...roomDeletions,
+      ...attSessDeletions, ...attScanDeletions, ...trDeletions, ...certDeletions, ...admLetDeletions, ...docVerDeletions,
       ...domainDeletions
     ]);
 
@@ -3914,6 +4020,876 @@ class DatabaseStore {
     return { recordedCount: count };
   }
 
+  // ============================================================
+  // ATTENDANCE SESSIONS & QR SCANNING (Teacher & Student)
+  // ============================================================
+
+  public createAttendanceSession(
+    tenantId: string,
+    data: {
+      classId: string;
+      unitId: string;
+      teacherId?: string;
+      lessonTitle?: string;
+      venue?: string;
+      durationMinutes?: number;
+    },
+    user: User
+  ): AttendanceSession {
+    const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === data.classId);
+    const unit = this.units.find(u => u.tenantId === tenantId && u.id === data.unitId);
+    if (!cls) throw new Error('Class not found for this institution.');
+    if (!unit) throw new Error('Course unit not found for this institution.');
+
+    const duration = Math.max(5, Math.min(180, Number(data.durationMinutes) || 15));
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + duration * 60 * 1000).toISOString();
+    const randCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const sessionCode = `ATT-${now.getFullYear()}-${randCode}`;
+    const sessionToken = `tok_${Date.now().toString(36)}_${crypto.randomBytes(12).toString('hex')}`;
+
+    let teacherName = user.name;
+    let teacherId = user.id;
+    if (data.teacherId) {
+      const staffMem = this.staff.find(s => s.tenantId === tenantId && s.id === data.teacherId);
+      if (staffMem) {
+        teacherName = staffMem.fullName;
+        teacherId = staffMem.id;
+      }
+    }
+
+    const session: AttendanceSession = {
+      id: `attsess_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      sessionCode,
+      sessionToken,
+      classId: cls.id,
+      className: cls.name,
+      unitId: unit.id,
+      unitCode: unit.code,
+      unitName: unit.name,
+      teacherId,
+      teacherName,
+      date: now.toISOString().split('T')[0],
+      lessonTitle: data.lessonTitle?.trim() || `${unit.name} Lecture Session`,
+      venue: data.venue?.trim() || cls.room || 'Main Hall / Room 101',
+      expiresAt,
+      durationMinutes: duration,
+      status: 'ACTIVE',
+      attendeeCount: 0,
+      createdAt: now.toISOString()
+    };
+
+    this.attendanceSessions.unshift(session);
+    saveDocToFirestore('attendanceSessions', session.id, session).catch(() => {});
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'CREATE_ATTENDANCE_SESSION',
+      'AttendanceSession',
+      session.id,
+      `Started live QR attendance session for ${session.unitCode} - ${session.className} (Code: ${session.sessionCode}, Valid for ${duration} mins)`
+    );
+
+    return session;
+  }
+
+  public getAttendanceSessions(tenantId: string, teacherId?: string, classId?: string, unitId?: string): AttendanceSession[] {
+    const now = new Date();
+    let list = this.attendanceSessions.filter(s => s.tenantId === tenantId);
+
+    // Auto-update expired sessions
+    list.forEach(sess => {
+      if (sess.status === 'ACTIVE' && new Date(sess.expiresAt) < now) {
+        sess.status = 'EXPIRED';
+        saveDocToFirestore('attendanceSessions', sess.id, sess).catch(() => {});
+      }
+    });
+
+    if (teacherId) list = list.filter(s => s.teacherId === teacherId);
+    if (classId) list = list.filter(s => s.classId === classId);
+    if (unitId) list = list.filter(s => s.unitId === unitId);
+
+    return list;
+  }
+
+  public getAttendanceSessionById(tenantId: string, sessionId: string): AttendanceSession | undefined {
+    const sess = this.attendanceSessions.find(s => s.tenantId === tenantId && (s.id === sessionId || s.sessionCode === sessionId || s.sessionToken === sessionId));
+    if (sess && sess.status === 'ACTIVE' && new Date(sess.expiresAt) < new Date()) {
+      sess.status = 'EXPIRED';
+      saveDocToFirestore('attendanceSessions', sess.id, sess).catch(() => {});
+    }
+    return sess;
+  }
+
+  public closeAttendanceSession(tenantId: string, sessionId: string, user: User): AttendanceSession {
+    const session = this.attendanceSessions.find(s => s.tenantId === tenantId && s.id === sessionId);
+    if (!session) throw new Error('Attendance session not found.');
+
+    session.status = 'CLOSED';
+    saveDocToFirestore('attendanceSessions', session.id, session).catch(() => {});
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'CLOSE_ATTENDANCE_SESSION',
+      'AttendanceSession',
+      session.id,
+      `Closed attendance session ${session.sessionCode} with ${session.attendeeCount} attendees`
+    );
+
+    return session;
+  }
+
+  public recordAttendanceScan(
+    tenantId: string,
+    scanData: {
+      sessionCodeOrToken: string;
+      studentId: string;
+      admissionNo?: string;
+      deviceInfo?: string;
+    },
+    user: User
+  ): { success: boolean; message: string; record?: AttendanceScanRecord; session?: AttendanceSession } {
+    const query = scanData.sessionCodeOrToken.trim();
+    if (!query) throw new Error('Session code or QR token is required.');
+
+    // Look up session
+    const session = this.attendanceSessions.find(
+      s => s.tenantId === tenantId && (s.id === query || s.sessionCode.toUpperCase() === query.toUpperCase() || s.sessionToken === query)
+    );
+
+    if (!session) {
+      return { success: false, message: 'Invalid or unrecognized attendance session code.' };
+    }
+
+    const now = new Date();
+    if (session.status === 'CLOSED') {
+      return { success: false, message: 'This attendance session has already been closed by the lecturer.' };
+    }
+    if (new Date(session.expiresAt) < now) {
+      session.status = 'EXPIRED';
+      saveDocToFirestore('attendanceSessions', session.id, session).catch(() => {});
+      return { success: false, message: 'This attendance QR session has expired.' };
+    }
+
+    // Look up student
+    const student = this.students.find(
+      s => s.tenantId === tenantId && (s.id === scanData.studentId || (scanData.admissionNo && s.admissionNo.toLowerCase() === scanData.admissionNo.toLowerCase()))
+    );
+    if (!student) {
+      return { success: false, message: 'Student record not found in this institution.' };
+    }
+
+    // Check if student already checked in for this session
+    const alreadyScanned = this.attendanceScans.find(
+      sc => sc.tenantId === tenantId && sc.sessionId === session.id && sc.studentId === student.id
+    );
+    if (alreadyScanned) {
+      return {
+        success: false,
+        message: `Attendance already recorded on ${new Date(alreadyScanned.scannedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`
+      };
+    }
+
+    // Determine status (Late if within last 20% of window)
+    const sessionDurationMs = session.durationMinutes * 60 * 1000;
+    const elapsedMs = now.getTime() - new Date(session.createdAt).getTime();
+    const isLate = elapsedMs > sessionDurationMs * 0.8;
+    const status: 'PRESENT' | 'LATE' = isLate ? 'LATE' : 'PRESENT';
+
+    // Create scan record
+    const scanRecord: AttendanceScanRecord = {
+      id: `attscan_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      sessionId: session.id,
+      sessionCode: session.sessionCode,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      classId: session.classId,
+      unitId: session.unitId,
+      teacherId: session.teacherId,
+      scannedAt: now.toISOString(),
+      status,
+      deviceInfo: scanData.deviceInfo || 'Mobile Web Scanner'
+    };
+
+    this.attendanceScans.unshift(scanRecord);
+    session.attendeeCount = (session.attendeeCount || 0) + 1;
+
+    // Also create/update permanent StudentAttendance record
+    const dateStr = session.date || now.toISOString().split('T')[0];
+    const existingAtt = this.studentAttendance.find(
+      a => a.tenantId === tenantId && a.studentId === student.id && a.unitId === session.unitId && a.date === dateStr
+    );
+
+    if (existingAtt) {
+      existingAtt.status = status;
+      existingAtt.remarks = `QR Scan: ${session.sessionCode}`;
+      saveDocToFirestore('studentAttendance', existingAtt.id, existingAtt).catch(() => {});
+    } else {
+      const newAtt: StudentAttendance = {
+        id: `att_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        date: dateStr,
+        classId: session.classId,
+        className: session.className,
+        unitId: session.unitId,
+        unitCode: session.unitCode,
+        unitName: session.unitName,
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        status,
+        remarks: `QR Checked In (${session.sessionCode})`,
+        markedBy: session.teacherName,
+        createdAt: now.toISOString()
+      };
+      this.studentAttendance.unshift(newAtt);
+      saveDocToFirestore('studentAttendance', newAtt.id, newAtt).catch(() => {});
+    }
+
+    saveDocToFirestore('attendanceScans', scanRecord.id, scanRecord).catch(() => {});
+    saveDocToFirestore('attendanceSessions', session.id, session).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'RECORD_ATTENDANCE_SCAN',
+      'AttendanceScanRecord',
+      scanRecord.id,
+      `Student ${student.fullName} (${student.admissionNo}) scanned attendance for ${session.unitCode} (${status})`
+    );
+
+    return {
+      success: true,
+      message: `Attendance marked as ${status} for ${session.unitCode} - ${session.unitName}!`,
+      record: scanRecord,
+      session
+    };
+  }
+
+  public getAttendanceScans(tenantId: string, sessionId?: string, studentId?: string): AttendanceScanRecord[] {
+    let list = this.attendanceScans.filter(s => s.tenantId === tenantId);
+    if (sessionId) list = list.filter(s => s.sessionId === sessionId);
+    if (studentId) list = list.filter(s => s.studentId === studentId);
+    return list;
+  }
+
+  public manualMarkSessionAttendance(
+    tenantId: string,
+    data: {
+      sessionId: string;
+      studentId: string;
+      status: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED';
+      remarks?: string;
+    },
+    user: User
+  ): AttendanceScanRecord {
+    const session = this.attendanceSessions.find(s => s.tenantId === tenantId && s.id === data.sessionId);
+    if (!session) throw new Error('Attendance session not found.');
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === data.studentId);
+    if (!student) throw new Error('Student not found.');
+
+    const now = new Date();
+    const existingIdx = this.attendanceScans.findIndex(
+      sc => sc.tenantId === tenantId && sc.sessionId === session.id && sc.studentId === student.id
+    );
+
+    const scanRecord: AttendanceScanRecord = {
+      id: existingIdx >= 0 ? this.attendanceScans[existingIdx].id : `attscan_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      sessionId: session.id,
+      sessionCode: session.sessionCode,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      classId: session.classId,
+      unitId: session.unitId,
+      teacherId: session.teacherId,
+      scannedAt: now.toISOString(),
+      status: data.status === 'LATE' ? 'LATE' : 'PRESENT',
+      deviceInfo: `Manual override by ${user.name}`
+    };
+
+    if (existingIdx >= 0) {
+      this.attendanceScans[existingIdx] = scanRecord;
+    } else {
+      this.attendanceScans.unshift(scanRecord);
+      session.attendeeCount = (session.attendeeCount || 0) + 1;
+    }
+
+    // Permanent attendance record
+    const dateStr = session.date || now.toISOString().split('T')[0];
+    const existingAtt = this.studentAttendance.find(
+      a => a.tenantId === tenantId && a.studentId === student.id && a.unitId === session.unitId && a.date === dateStr
+    );
+    if (existingAtt) {
+      existingAtt.status = data.status;
+      existingAtt.remarks = data.remarks || `Manual: ${user.name}`;
+      saveDocToFirestore('studentAttendance', existingAtt.id, existingAtt).catch(() => {});
+    } else {
+      const newAtt: StudentAttendance = {
+        id: `att_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        date: dateStr,
+        classId: session.classId,
+        className: session.className,
+        unitId: session.unitId,
+        unitCode: session.unitCode,
+        unitName: session.unitName,
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        status: data.status,
+        remarks: data.remarks || `Manual: ${user.name}`,
+        markedBy: user.name,
+        createdAt: now.toISOString()
+      };
+      this.studentAttendance.unshift(newAtt);
+      saveDocToFirestore('studentAttendance', newAtt.id, newAtt).catch(() => {});
+    }
+
+    saveDocToFirestore('attendanceScans', scanRecord.id, scanRecord).catch(() => {});
+    saveDocToFirestore('attendanceSessions', session.id, session).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'MANUAL_ATTENDANCE_OVERRIDE',
+      'AttendanceScanRecord',
+      scanRecord.id,
+      `Manually marked ${student.fullName} as ${data.status} for session ${session.sessionCode}`
+    );
+
+    return scanRecord;
+  }
+
+  // ============================================================
+  // ACADEMIC TRANSCRIPTS
+  // ============================================================
+
+  public generateTranscript(tenantId: string, studentId: string, user: User): AcademicTranscript {
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === studentId);
+    if (!student) throw new Error('Student not found for this institution.');
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const instName = tenant?.name || 'Academic Institution';
+
+    // Fetch real grade records
+    const studentGrades = this.studentGrades.filter(g => g.tenantId === tenantId && g.studentId === student.id);
+    const transcriptUnits: TranscriptUnit[] = studentGrades.map(g => {
+      const unit = this.units.find(u => u.tenantId === tenantId && u.id === g.unitId);
+      const creditHours = unit?.creditHours || 3;
+      return {
+        unitCode: g.unitCode,
+        unitName: g.unitName,
+        academicYear: g.academicYear,
+        academicTerm: g.academicTerm,
+        creditHours,
+        catScore: g.catScore,
+        examScore: g.examScore,
+        totalScore: g.totalScore,
+        grade: g.grade,
+        gradePoints: g.points ?? 4.0,
+        remarks: g.remarks || 'Satisfactory'
+      };
+    });
+
+    const totalCreditHours = transcriptUnits.reduce((acc, u) => acc + (u.creditHours || 3), 0);
+    const totalPoints = transcriptUnits.reduce((acc, u) => acc + ((u.gradePoints || 0) * (u.creditHours || 3)), 0);
+    const gpa = totalCreditHours > 0 ? Number((totalPoints / totalCreditHours).toFixed(2)) : 0;
+
+    let academicStanding: 'EXCELLENT' | 'GOOD STANDING' | 'PASS' | 'PROBATION' | 'COMPLETED' = 'GOOD STANDING';
+    if (student.status === 'GRADUATED') academicStanding = 'COMPLETED';
+    else if (gpa >= 3.6) academicStanding = 'EXCELLENT';
+    else if (gpa >= 2.5) academicStanding = 'GOOD STANDING';
+    else if (gpa >= 2.0) academicStanding = 'PASS';
+    else academicStanding = 'PROBATION';
+
+    const now = new Date();
+    const count = this.academicTranscripts.filter(t => t.tenantId === tenantId).length + 1;
+    const documentNumber = `TR-${now.getFullYear()}-${String(count).padStart(5, '0')}`;
+    const verificationCode = `VRF-TR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    // Verification URL pointing to standard verification route
+    const verificationUrl = `/verify-document/${verificationCode}`;
+
+    const transcript: AcademicTranscript = {
+      id: `transcript_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      documentNumber,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      programId: student.programId,
+      programName: student.programName,
+      departmentName: student.departmentName || 'Academic Department',
+      campusName: student.campusName || 'Main Campus',
+      enrollmentDate: student.enrolledAt ? student.enrolledAt.split('T')[0] : '2024-09-01',
+      completionDate: student.status === 'GRADUATED' ? now.toISOString().split('T')[0] : undefined,
+      academicStanding,
+      gpa,
+      totalCreditHours,
+      totalPoints: Number(totalPoints.toFixed(2)),
+      units: transcriptUnits,
+      gradingScaleSummary: 'A: 70-100% (4.0 GP) | B: 60-69% (3.0 GP) | C: 50-59% (2.0 GP) | D: 40-49% (1.0 GP) | F: 0-39% (0.0 GP)',
+      issuedBy: user.name,
+      issuedAt: now.toISOString(),
+      verificationCode,
+      verificationUrl
+    };
+
+    // Create verification record
+    const maskedName = student.fullName.split(' ').map((part, i) => i === 0 ? part : part.charAt(0) + '***').join(' ');
+    const verifRecord: DocumentVerificationRecord = {
+      id: `docver_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      verificationCode,
+      documentType: 'TRANSCRIPT',
+      documentNumber,
+      studentNameMasked: maskedName,
+      admissionNo: student.admissionNo,
+      programName: student.programName,
+      institutionName: instName,
+      issueDate: now.toISOString().split('T')[0],
+      status: 'OFFICIAL_VERIFIED',
+      verifiedCount: 0
+    };
+
+    this.academicTranscripts.unshift(transcript);
+    this.documentVerifications.unshift(verifRecord);
+
+    saveDocToFirestore('academicTranscripts', transcript.id, transcript).catch(() => {});
+    saveDocToFirestore('documentVerifications', verifRecord.id, verifRecord).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'GENERATE_ACADEMIC_TRANSCRIPT',
+      'AcademicTranscript',
+      transcript.id,
+      `Generated official academic transcript ${transcript.documentNumber} for ${student.fullName} (${student.admissionNo}) with GPA ${transcript.gpa}`
+    );
+
+    return transcript;
+  }
+
+  public getTranscripts(tenantId: string, studentId?: string): AcademicTranscript[] {
+    let list = this.academicTranscripts.filter(t => t.tenantId === tenantId);
+    if (studentId) list = list.filter(t => t.studentId === studentId);
+    return list;
+  }
+
+  public getTranscriptById(tenantId: string, id: string): AcademicTranscript | undefined {
+    return this.academicTranscripts.find(t => t.tenantId === tenantId && (t.id === id || t.documentNumber === id || t.verificationCode === id));
+  }
+
+  // ============================================================
+  // CERTIFICATES
+  // ============================================================
+
+  public generateCertificate(
+    tenantId: string,
+    data: {
+      studentId: string;
+      awardType?: 'DEGREE' | 'DIPLOMA' | 'HIGHER_DIPLOMA' | 'CERTIFICATE' | 'SHORT_COURSE' | 'VOCATIONAL_AWARD';
+      awardTitle?: string;
+      classification?: string;
+      completionDate?: string;
+      signatory1Title?: string;
+      signatory1Name?: string;
+      signatory2Title?: string;
+      signatory2Name?: string;
+    },
+    user: User
+  ): AcademicCertificate {
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === data.studentId);
+    if (!student) throw new Error('Student not found for this institution.');
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const instName = tenant?.name || 'Academic Institution';
+    const now = new Date();
+    const count = this.academicCertificates.filter(c => c.tenantId === tenantId).length + 1;
+    const certNumber = `CERT-${now.getFullYear()}-${String(count).padStart(5, '0')}`;
+    const verificationCode = `VRF-CRT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const verificationUrl = `/verify-document/${verificationCode}`;
+
+    const awardType = data.awardType || 'DIPLOMA';
+    const awardTitle = data.awardTitle?.trim() || `${awardType.charAt(0) + awardType.slice(1).toLowerCase()} in ${student.programName}`;
+
+    const certificate: AcademicCertificate = {
+      id: `cert_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      certificateNumber: certNumber,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      programId: student.programId,
+      programName: student.programName,
+      departmentName: student.departmentName,
+      awardType,
+      awardTitle,
+      classification: data.classification?.trim() || 'Credit',
+      completionDate: data.completionDate || now.toISOString().split('T')[0],
+      issueDate: now.toISOString().split('T')[0],
+      signatory1Title: data.signatory1Title?.trim() || 'Principal / Vice Chancellor',
+      signatory1Name: data.signatory1Name?.trim() || 'Prof. David K. Ndung\'u',
+      signatory2Title: data.signatory2Title?.trim() || 'Academic Registrar',
+      signatory2Name: data.signatory2Name?.trim() || user.name,
+      verificationCode,
+      verificationUrl,
+      status: 'ISSUED'
+    };
+
+    const maskedName = student.fullName.split(' ').map((part, i) => i === 0 ? part : part.charAt(0) + '***').join(' ');
+    const verifRecord: DocumentVerificationRecord = {
+      id: `docver_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      verificationCode,
+      documentType: 'CERTIFICATE',
+      documentNumber: certNumber,
+      studentNameMasked: maskedName,
+      admissionNo: student.admissionNo,
+      programName: certificate.awardTitle,
+      institutionName: instName,
+      issueDate: certificate.issueDate,
+      status: 'OFFICIAL_VERIFIED',
+      verifiedCount: 0
+    };
+
+    this.academicCertificates.unshift(certificate);
+    this.documentVerifications.unshift(verifRecord);
+
+    saveDocToFirestore('academicCertificates', certificate.id, certificate).catch(() => {});
+    saveDocToFirestore('documentVerifications', verifRecord.id, verifRecord).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'GENERATE_CERTIFICATE',
+      'AcademicCertificate',
+      certificate.id,
+      `Issued certificate ${certificate.certificateNumber} (${certificate.awardTitle}) for ${student.fullName}`
+    );
+
+    return certificate;
+  }
+
+  public getCertificates(tenantId: string, studentId?: string): AcademicCertificate[] {
+    let list = this.academicCertificates.filter(c => c.tenantId === tenantId);
+    if (studentId) list = list.filter(c => c.studentId === studentId);
+    return list;
+  }
+
+  public getCertificateById(tenantId: string, id: string): AcademicCertificate | undefined {
+    return this.academicCertificates.find(c => c.tenantId === tenantId && (c.id === id || c.certificateNumber === id || c.verificationCode === id));
+  }
+
+  // ============================================================
+  // ADMISSION LETTERS
+  // ============================================================
+
+  public generateAdmissionLetter(
+    tenantId: string,
+    studentId: string,
+    user: User,
+    data?: Partial<AdmissionLetter>
+  ): AdmissionLetter {
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === studentId);
+    if (!student) throw new Error('Student not found for this institution.');
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const instName = tenant?.name || 'Academic Institution';
+    const now = new Date();
+    const count = this.admissionLetters.filter(l => l.tenantId === tenantId).length + 1;
+    const letterNumber = `ADM-${now.getFullYear()}-${String(count).padStart(5, '0')}`;
+    const verificationCode = `VRF-ADM-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const verificationUrl = `/verify-document/${verificationCode}`;
+
+    const defaultConditions = [
+      'Production of original academic certificates and national identification document upon arrival.',
+      'Payment of at least 50% tuition fees and statutory fees prior to or on the reporting date.',
+      'Strict adherence to the student code of conduct and institutional examination regulations.'
+    ];
+
+    const admissionLetter: AdmissionLetter = {
+      id: `admlet_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      letterNumber,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      nationalId: student.nationalId,
+      programId: student.programId,
+      programName: student.programName,
+      departmentName: student.departmentName || 'Academic Department',
+      campusName: student.campusName || 'Main Campus',
+      intake: data?.intake || student.intake || 'September 2026',
+      academicYear: data?.academicYear || student.academicYear || `${now.getFullYear()}/${now.getFullYear() + 1}`,
+      reportingDate: data?.reportingDate || new Date(now.getTime() + 14 * 86400000).toISOString().split('T')[0],
+      duration: data?.duration || '2 Academic Years (4 Semesters)',
+      termTuitionFee: Number(data?.termTuitionFee) || 28000,
+      statutoryFees: Number(data?.statutoryFees) || 4500,
+      admissionConditions: Array.isArray(data?.admissionConditions) && data.admissionConditions.length > 0 ? data.admissionConditions : defaultConditions,
+      issuedBy: user.name,
+      issueDate: now.toISOString().split('T')[0],
+      verificationCode,
+      verificationUrl
+    };
+
+    const maskedName = student.fullName.split(' ').map((part, i) => i === 0 ? part : part.charAt(0) + '***').join(' ');
+    const verifRecord: DocumentVerificationRecord = {
+      id: `docver_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      verificationCode,
+      documentType: 'ADMISSION_LETTER',
+      documentNumber: letterNumber,
+      studentNameMasked: maskedName,
+      admissionNo: student.admissionNo,
+      programName: student.programName,
+      institutionName: instName,
+      issueDate: admissionLetter.issueDate,
+      status: 'OFFICIAL_VERIFIED',
+      verifiedCount: 0
+    };
+
+    this.admissionLetters.unshift(admissionLetter);
+    this.documentVerifications.unshift(verifRecord);
+
+    saveDocToFirestore('admissionLetters', admissionLetter.id, admissionLetter).catch(() => {});
+    saveDocToFirestore('documentVerifications', verifRecord.id, verifRecord).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'GENERATE_ADMISSION_LETTER',
+      'AdmissionLetter',
+      admissionLetter.id,
+      `Generated official admission letter ${admissionLetter.letterNumber} for ${student.fullName} (${student.admissionNo})`
+    );
+
+    return admissionLetter;
+  }
+
+  public getAdmissionLetters(tenantId: string, studentId?: string): AdmissionLetter[] {
+    let list = this.admissionLetters.filter(l => l.tenantId === tenantId);
+    if (studentId) list = list.filter(l => l.studentId === studentId);
+    return list;
+  }
+
+  public getAdmissionLetterById(tenantId: string, id: string): AdmissionLetter | undefined {
+    return this.admissionLetters.find(l => l.tenantId === tenantId && (l.id === id || l.letterNumber === id || l.verificationCode === id));
+  }
+
+  // ============================================================
+  // DOCUMENT VERIFICATION
+  // ============================================================
+
+  public verifyDocumentByCode(verificationCode: string): DocumentVerificationRecord | null {
+    const code = verificationCode.trim().toUpperCase();
+    const record = this.documentVerifications.find(
+      v => v.verificationCode.toUpperCase() === code || v.documentNumber.toUpperCase() === code
+    );
+    if (!record) return null;
+
+    record.verifiedCount = (record.verifiedCount || 0) + 1;
+    record.lastVerifiedAt = new Date().toISOString();
+    saveDocToFirestore('documentVerifications', record.id, record).catch(() => {});
+
+    return record;
+  }
+
+  public getDocumentVerifications(tenantId?: string): DocumentVerificationRecord[] {
+    if (tenantId) return this.documentVerifications.filter(v => v.tenantId === tenantId);
+    return this.documentVerifications;
+  }
+
+  // ============================================================
+  // STUDENT PORTAL AGGREGATOR
+  // ============================================================
+
+  public getStudentPortalData(tenantId: string, studentIdentifier: string): any {
+    const idLower = studentIdentifier.toLowerCase().trim();
+    // Find student by ID, admissionNo, or email
+    const student = this.students.find(
+      s => s.tenantId === tenantId && (s.id === studentIdentifier || s.admissionNo.toLowerCase() === idLower || s.email.toLowerCase() === idLower)
+    );
+
+    if (!student) return null;
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const department = this.departments.find(d => d.tenantId === tenantId && d.id === student.departmentId);
+    const program = this.programs.find(p => p.tenantId === tenantId && p.id === student.programId);
+    const schoolClass = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === student.classId);
+
+    // Units: get all units belonging to the student's program
+    const myUnits = this.units.filter(
+      u => u.tenantId === tenantId && (!u.programId || u.programId === student.programId)
+    );
+
+    // Timetable: get sessions matching student's class or program
+    const myTimetable = this.timetable.filter(
+      t => t.tenantId === tenantId && (!t.classId || t.classId === student.classId || t.groupName === student.className)
+    );
+
+    // Attendance records
+    const attendanceRecords = this.studentAttendance.filter(
+      a => a.tenantId === tenantId && a.studentId === student.id
+    );
+    const presentCount = attendanceRecords.filter(a => a.status === 'PRESENT' || a.status === 'LATE').length;
+    const totalSessions = attendanceRecords.length;
+    const attendancePercentage = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 100;
+
+    // Academic Grades & GPA
+    const grades = this.studentGrades.filter(g => g.tenantId === tenantId && g.studentId === student.id);
+    const totalCredits = grades.reduce((sum, g) => {
+      const u = this.units.find(un => un.id === g.unitId);
+      return sum + (u?.creditHours || 3);
+    }, 0);
+    const totalPoints = grades.reduce((sum, g) => {
+      const u = this.units.find(un => un.id === g.unitId);
+      return sum + ((g.points ?? 4.0) * (u?.creditHours || 3));
+    }, 0);
+    const gpa = totalCredits > 0 ? Number((totalPoints / totalCredits).toFixed(2)) : 0;
+
+    // Fee Invoices & Payments
+    const invoices = this.studentInvoices.filter(i => i.tenantId === tenantId && i.studentId === student.id);
+    const payments = this.feePayments.filter(p => p.tenantId === tenantId && p.studentId === student.id);
+    const totalInvoiced = invoices.reduce((sum, i) => sum + i.totalAmount, 0);
+    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+    const liveFeeBalance = student.feeBalance !== undefined ? student.feeBalance : Math.max(0, totalInvoiced - totalPaid);
+
+    // Authorized Documents
+    const transcripts = this.academicTranscripts.filter(t => t.tenantId === tenantId && t.studentId === student.id);
+    const certificates = this.academicCertificates.filter(c => c.tenantId === tenantId && c.studentId === student.id);
+    const admissionLetters = this.admissionLetters.filter(l => l.tenantId === tenantId && l.studentId === student.id);
+
+    // Active attendance sessions for today that the student can check into
+    const activeSessions = this.attendanceSessions.filter(
+      s => s.tenantId === tenantId && s.status === 'ACTIVE' && (!s.classId || s.classId === student.classId)
+    );
+
+    return {
+      student,
+      tenant: {
+        id: tenant?.id,
+        name: tenant?.name,
+        logo: (tenant as any)?.logoUrl || (tenant as any)?.logo,
+        educationType: tenant?.educationType || 'TVET',
+        currency: (tenant as any)?.currencySymbol || (tenant as any)?.currency || 'KES'
+      },
+      department,
+      program,
+      schoolClass,
+      myUnits,
+      myTimetable,
+      attendance: {
+        records: attendanceRecords,
+        presentCount,
+        totalSessions,
+        percentage: attendancePercentage
+      },
+      academics: {
+        grades,
+        gpa,
+        totalCredits,
+        standing: student.status === 'GRADUATED' ? 'COMPLETED' : (gpa >= 3.5 ? 'HONOURS / EXCELLENT' : (gpa >= 2.0 ? 'GOOD STANDING' : 'ACADEMIC PROBATION'))
+      },
+      fees: {
+        invoices,
+        payments,
+        totalInvoiced,
+        totalPaid,
+        balance: liveFeeBalance
+      },
+      documents: {
+        transcripts,
+        certificates,
+        admissionLetters
+      },
+      activeSessions
+    };
+  }
+
+  // ============================================================
+  // TEACHER PORTAL AGGREGATOR
+  // ============================================================
+
+  public getTeacherPortalData(tenantId: string, teacherIdentifier: string): any {
+    const idLower = teacherIdentifier.toLowerCase().trim();
+    const lecturer = this.staff.find(
+      s => s.tenantId === tenantId && (s.id === teacherIdentifier || (s.staffNo && s.staffNo.toLowerCase() === idLower) || s.email.toLowerCase() === idLower)
+    );
+
+    if (!lecturer) return null;
+
+    const tenant = this.tenants.find(t => t.id === tenantId);
+
+    // Assigned Units
+    const assignedUnits = this.units.filter(
+      u => u.tenantId === tenantId && (u.lecturerId === lecturer.id || u.lecturerName?.toLowerCase() === lecturer.fullName.toLowerCase())
+    );
+
+    // Assigned Classes
+    const assignedClasses = this.schoolClasses.filter(
+      c => c.tenantId === tenantId && (c.classTeacherId === lecturer.id || c.classTeacherName?.toLowerCase() === lecturer.fullName.toLowerCase())
+    );
+
+    // Timetable
+    const myTimetable = this.timetable.filter(
+      t => t.tenantId === tenantId && (t.lecturerId === lecturer.id || t.lecturerName?.toLowerCase() === lecturer.fullName.toLowerCase())
+    );
+
+    // Active & recent attendance sessions
+    const myAttendanceSessions = this.attendanceSessions.filter(
+      s => s.tenantId === tenantId && (s.teacherId === lecturer.id || s.teacherName.toLowerCase() === lecturer.fullName.toLowerCase())
+    );
+
+    // Enrolled students in lecturer's units/classes
+    const assignedClassIds = new Set(assignedClasses.map(c => c.id));
+    const assignedUnitProgIds = new Set(assignedUnits.map(u => u.programId).filter(Boolean));
+    const studentsInAssignedClasses = this.students.filter(
+      s => s.tenantId === tenantId && (assignedClassIds.has(s.classId || '') || assignedUnitProgIds.has(s.programId))
+    );
+
+    // Grades recorded by this lecturer
+    const recordedGrades = this.studentGrades.filter(
+      g => g.tenantId === tenantId && assignedUnits.some(u => u.id === g.unitId)
+    );
+
+    return {
+      lecturer,
+      tenant: {
+        id: tenant?.id,
+        name: tenant?.name,
+        logo: (tenant as any)?.logoUrl || (tenant as any)?.logo,
+        educationType: tenant?.educationType || 'TVET',
+        currency: (tenant as any)?.currencySymbol || (tenant as any)?.currency || 'KES'
+      },
+      assignedUnits,
+      assignedClasses,
+      timetable: myTimetable,
+      attendanceSessions: myAttendanceSessions,
+      students: studentsInAssignedClasses,
+      grades: recordedGrades
+    };
+  }
+
   public getLibraryBooks(tenantId: string): LibraryBook[] {
     return this.libraryBooks.filter(b => b.tenantId === tenantId);
   }
@@ -4288,29 +5264,148 @@ class DatabaseStore {
   }
 
   // ==========================================
-  // POS, RETAIL, WHOLESALE & BOOKSHOP METHODS
+  // UNIVERSAL POS & BUSINESS MANAGEMENT ENGINE
   // ==========================================
+
+  // 1. CONFIGURATION & TENANT FEATURE FLAGS
+  public getPosTenantConfig(tenantId: string): PosTenantConfig {
+    let cfg = this.posConfigs.find(c => c.tenantId === tenantId);
+    if (!cfg) {
+      const tenant = this.tenants.find(t => t.id === tenantId);
+      const isHospitality = tenant?.type === 'RESTAURANT' || tenant?.type === 'BAR';
+      cfg = {
+        id: `pcfg_${tenantId}`,
+        tenantId,
+        businessType: isHospitality ? 'RESTAURANT_CAFE' : 'GENERAL_RETAIL',
+        businessName: tenant?.branding?.companyName || tenant?.name || 'My Store',
+        address: tenant?.address || '',
+        phone: tenant?.contactPhone || '',
+        email: tenant?.contactEmail || '',
+        taxPin: tenant?.branding?.taxRegistrationNumber || '',
+        vatRatePercent: 16,
+        currency: tenant?.branding?.currency || 'KES',
+        currencySymbol: tenant?.branding?.currencySymbol || 'KSh',
+        receiptHeader: 'Thank you for your business!',
+        receiptFooter: 'Goods once sold are returnable within 7 days in original condition.',
+        termsAndConditions: 'Payment required upon presentation of invoice.',
+        enabledFeatures: {
+          retail: true,
+          wholesale: true,
+          mitumbaClothing: true,
+          inventory: true,
+          multiWarehouse: true,
+          multiBranch: true,
+          tables: isHospitality,
+          restaurant: isHospitality,
+          bar: isHospitality,
+          kitchenKds: isHospitality,
+          hotelRooms: false,
+          hotelGuests: false,
+          reservations: false,
+          roomService: false,
+          waiters: isHospitality,
+          tabs: isHospitality,
+          creditSales: true,
+          customerAccounts: true,
+          suppliers: true,
+          purchases: true,
+          stockTransfers: true,
+          barcodeScanning: true,
+          discounts: true,
+          returns: true,
+          expenses: true,
+          shifts: true,
+          allowOutOfStockSale: false,
+          maxDiscountPercentCashier: 10,
+          maxDiscountPercentManager: 50
+        },
+        updatedAt: new Date().toISOString()
+      };
+      this.posConfigs.push(cfg);
+      saveDocToFirestore('posConfigs', cfg.id, cfg).catch(() => {});
+    }
+    return cfg;
+  }
+
+  public updatePosTenantConfig(tenantId: string, data: Partial<PosTenantConfig>, updatedBy?: User): PosTenantConfig {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const existing = this.getPosTenantConfig(tenantId);
+    const updated: PosTenantConfig = {
+      ...existing,
+      ...data,
+      enabledFeatures: {
+        ...existing.enabledFeatures,
+        ...(data.enabledFeatures || {})
+      },
+      tenantId,
+      updatedAt: new Date().toISOString()
+    };
+    const idx = this.posConfigs.findIndex(c => c.tenantId === tenantId);
+    if (idx >= 0) {
+      this.posConfigs[idx] = updated;
+    } else {
+      this.posConfigs.push(updated);
+    }
+    saveDocToFirestore('posConfigs', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'POS_CONFIG_UPDATED', 'PosTenantConfig', `Updated POS business profile and feature toggles`, updated.id);
+    return updated;
+  }
+
+  // 2. PRODUCTS & CATALOG
   public getPosProducts(tenantId: string): PosProduct[] {
     return this.posProducts.filter(p => p.tenantId === tenantId);
+  }
+
+  public getPosProductById(tenantId: string, productId: string): PosProduct | undefined {
+    return this.posProducts.find(p => p.tenantId === tenantId && (p.id === productId || p.barcode === productId || p.sku === productId));
   }
 
   public addPosProduct(tenantId: string, data: Omit<PosProduct, 'id' | 'tenantId'>, createdBy?: User): PosProduct {
     const actorId = createdBy?.id || 'sys_admin';
     const actorName = createdBy?.name || 'Administrator';
     const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const costPrice = Number(data.costPrice) || 0;
+    const sellingPrice = Number(data.sellingPrice) || 0;
+    const wholesalePrice = Number(data.wholesalePrice) || sellingPrice;
+    const quantityInStock = Number(data.quantityInStock) || 0;
+    const minStockAlert = Number(data.minStockAlert) || 5;
+
     const product: PosProduct = {
       ...data,
       id: `prd_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
-      costPrice: Number(data.costPrice) || 0,
-      sellingPrice: Number(data.sellingPrice) || 0,
-      wholesalePrice: Number(data.wholesalePrice) || Number(data.sellingPrice) || 0,
-      quantityInStock: Number(data.quantityInStock) || 0,
-      minStockAlert: Number(data.minStockAlert) || 5
+      costPrice,
+      sellingPrice,
+      wholesalePrice,
+      quantityInStock,
+      minStockAlert,
+      status: quantityInStock > 0 ? 'ACTIVE' : (data.status || 'OUT_OF_STOCK')
     };
+
     this.posProducts.unshift(product);
     saveDocToFirestore('posProducts', product.id, product).catch(() => {});
-    this.logAction(tenantId, actorId, actorName, actorRole, 'PRODUCT_CREATED', 'PosProduct', `Added product "${product.name}" (${product.sku})`, product.id);
+
+    // If initial stock was provided, log inventory movement
+    if (quantityInStock > 0) {
+      const movement: InventoryMovement = {
+        id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        productId: product.id,
+        productName: product.name,
+        movementType: 'RESTOCK',
+        quantityChanged: quantityInStock,
+        balanceAfter: quantityInStock,
+        recordedBy: actorName,
+        date: new Date().toISOString(),
+        notes: 'Initial stock intake'
+      };
+      this.inventoryMovements.unshift(movement);
+      saveDocToFirestore('inventoryMovements', movement.id, movement).catch(() => {});
+    }
+
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PRODUCT_CREATED', 'PosProduct', `Added product "${product.name}" (${product.sku}) - Qty: ${product.quantityInStock}`, product.id);
     return product;
   }
 
@@ -4320,9 +5415,42 @@ class DatabaseStore {
     const actorRole = updatedBy?.role || 'TENANT_ADMIN';
     const idx = this.posProducts.findIndex(p => p.id === productId && p.tenantId === tenantId);
     if (idx === -1) throw new Error('Product not found');
-    this.posProducts[idx] = { ...this.posProducts[idx], ...data, tenantId };
+    
+    const prevQty = this.posProducts[idx].quantityInStock;
+    const newQty = data.quantityInStock !== undefined ? Number(data.quantityInStock) : prevQty;
+
+    this.posProducts[idx] = { 
+      ...this.posProducts[idx], 
+      ...data, 
+      tenantId,
+      costPrice: data.costPrice !== undefined ? Number(data.costPrice) : this.posProducts[idx].costPrice,
+      sellingPrice: data.sellingPrice !== undefined ? Number(data.sellingPrice) : this.posProducts[idx].sellingPrice,
+      wholesalePrice: data.wholesalePrice !== undefined ? Number(data.wholesalePrice) : this.posProducts[idx].wholesalePrice,
+      quantityInStock: newQty,
+      status: newQty > 0 ? 'ACTIVE' : (data.status || 'OUT_OF_STOCK')
+    };
     const updated = this.posProducts[idx];
     saveDocToFirestore('posProducts', updated.id, updated).catch(() => {});
+
+    // If quantity changed directly in update, log adjustment
+    if (newQty !== prevQty) {
+      const diff = newQty - prevQty;
+      const movement: InventoryMovement = {
+        id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        productId: updated.id,
+        productName: updated.name,
+        movementType: 'ADJUSTMENT',
+        quantityChanged: diff,
+        balanceAfter: newQty,
+        recordedBy: actorName,
+        date: new Date().toISOString(),
+        notes: `Manual stock adjustment (${diff > 0 ? '+' : ''}${diff})`
+      };
+      this.inventoryMovements.unshift(movement);
+      saveDocToFirestore('inventoryMovements', movement.id, movement).catch(() => {});
+    }
+
     this.logAction(tenantId, actorId, actorName, actorRole, 'PRODUCT_UPDATED', 'PosProduct', `Updated product "${updated.name}" (${updated.sku})`, updated.id);
     return updated;
   }
@@ -4340,6 +5468,459 @@ class DatabaseStore {
     return true;
   }
 
+  // 3. WAREHOUSES & BRANCHES
+  public getWarehouses(tenantId: string): Warehouse[] {
+    return this.warehouses.filter(w => w.tenantId === tenantId);
+  }
+
+  public addWarehouse(tenantId: string, data: Omit<Warehouse, 'id' | 'tenantId'>, createdBy?: User): Warehouse {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Administrator';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const wh: Warehouse = {
+      ...data,
+      id: `wh_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    if (wh.isDefault) {
+      this.warehouses.forEach(w => {
+        if (w.tenantId === tenantId) w.isDefault = false;
+      });
+    }
+    this.warehouses.unshift(wh);
+    saveDocToFirestore('warehouses', wh.id, wh).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'WAREHOUSE_CREATED', 'Warehouse', `Created warehouse "${wh.name}" (${wh.code})`, wh.id);
+    return wh;
+  }
+
+  public updateWarehouse(tenantId: string, id: string, data: Partial<Warehouse>, updatedBy?: User): Warehouse {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.warehouses.findIndex(w => w.id === id && w.tenantId === tenantId);
+    if (idx === -1) throw new Error('Warehouse not found');
+    if (data.isDefault) {
+      this.warehouses.forEach(w => {
+        if (w.tenantId === tenantId && w.id !== id) w.isDefault = false;
+      });
+    }
+    this.warehouses[idx] = { ...this.warehouses[idx], ...data, tenantId };
+    const updated = this.warehouses[idx];
+    saveDocToFirestore('warehouses', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'WAREHOUSE_UPDATED', 'Warehouse', `Updated warehouse "${updated.name}"`, updated.id);
+    return updated;
+  }
+
+  public deleteWarehouse(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'Administrator';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.warehouses.findIndex(w => w.id === id && w.tenantId === tenantId);
+    if (idx === -1) return false;
+    const wh = this.warehouses[idx];
+    this.warehouses.splice(idx, 1);
+    deleteDocFromFirestore('warehouses', id).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'WAREHOUSE_DELETED', 'Warehouse', `Deleted warehouse "${wh.name}"`, id);
+    return true;
+  }
+
+  public getBranches(tenantId: string): Branch[] {
+    return this.branches.filter(b => b.tenantId === tenantId);
+  }
+
+  public addBranch(tenantId: string, data: Omit<Branch, 'id' | 'tenantId'>, createdBy?: User): Branch {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Administrator';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const br: Branch = {
+      ...data,
+      id: `br_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'ACTIVE'
+    };
+    if (br.isMainBranch) {
+      this.branches.forEach(b => {
+        if (b.tenantId === tenantId) b.isMainBranch = false;
+      });
+    }
+    this.branches.unshift(br);
+    saveDocToFirestore('branches', br.id, br).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BRANCH_CREATED', 'Branch', `Created branch "${br.name}" (${br.code})`, br.id);
+    return br;
+  }
+
+  public updateBranch(tenantId: string, id: string, data: Partial<Branch>, updatedBy?: User): Branch {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.branches.findIndex(b => b.id === id && b.tenantId === tenantId);
+    if (idx === -1) throw new Error('Branch not found');
+    if (data.isMainBranch) {
+      this.branches.forEach(b => {
+        if (b.tenantId === tenantId && b.id !== id) b.isMainBranch = false;
+      });
+    }
+    this.branches[idx] = { ...this.branches[idx], ...data, tenantId };
+    const updated = this.branches[idx];
+    saveDocToFirestore('branches', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BRANCH_UPDATED', 'Branch', `Updated branch "${updated.name}"`, updated.id);
+    return updated;
+  }
+
+  public deleteBranch(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'Administrator';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.branches.findIndex(b => b.id === id && b.tenantId === tenantId);
+    if (idx === -1) return false;
+    const br = this.branches[idx];
+    this.branches.splice(idx, 1);
+    deleteDocFromFirestore('branches', id).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BRANCH_DELETED', 'Branch', `Deleted branch "${br.name}"`, id);
+    return true;
+  }
+
+  // 4. CUSTOMERS & CREDIT ACCOUNTS
+  public getPosCustomers(tenantId: string): PosCustomer[] {
+    return this.posCustomers.filter(c => c.tenantId === tenantId);
+  }
+
+  public addPosCustomer(tenantId: string, data: Omit<PosCustomer, 'id' | 'tenantId' | 'currentBalance' | 'loyaltyPoints' | 'totalSpent' | 'createdAt'>, createdBy?: User): PosCustomer {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Administrator';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.posCustomers.filter(c => c.tenantId === tenantId).length + 1;
+    const customerNo = data.customerNo || `CUST-${String(count).padStart(4, '0')}`;
+
+    const customer: PosCustomer = {
+      ...data,
+      id: `cst_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      customerNo,
+      creditLimit: Number(data.creditLimit) || 0,
+      currentBalance: 0,
+      loyaltyPoints: 0,
+      totalSpent: 0,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+    this.posCustomers.unshift(customer);
+    saveDocToFirestore('posCustomers', customer.id, customer).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CUSTOMER_CREATED', 'PosCustomer', `Added customer "${customer.name}" (${customer.customerNo})`, customer.id);
+    return customer;
+  }
+
+  public updatePosCustomer(tenantId: string, id: string, data: Partial<PosCustomer>, updatedBy?: User): PosCustomer {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.posCustomers.findIndex(c => c.id === id && c.tenantId === tenantId);
+    if (idx === -1) throw new Error('Customer not found');
+    this.posCustomers[idx] = { ...this.posCustomers[idx], ...data, tenantId };
+    const updated = this.posCustomers[idx];
+    saveDocToFirestore('posCustomers', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CUSTOMER_UPDATED', 'PosCustomer', `Updated customer "${updated.name}" (${updated.customerNo})`, updated.id);
+    return updated;
+  }
+
+  public deletePosCustomer(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'Administrator';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.posCustomers.findIndex(c => c.id === id && c.tenantId === tenantId);
+    if (idx === -1) return false;
+    const c = this.posCustomers[idx];
+    this.posCustomers.splice(idx, 1);
+    deleteDocFromFirestore('posCustomers', id).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CUSTOMER_DELETED', 'PosCustomer', `Deleted customer "${c.name}"`, id);
+    return true;
+  }
+
+  public getPosCustomerTransactions(tenantId: string, customerId?: string): PosCustomerTransaction[] {
+    return this.posCustomerTransactions.filter(t => t.tenantId === tenantId && (!customerId || t.customerId === customerId));
+  }
+
+  public recordCustomerCreditPayment(
+    tenantId: string, 
+    data: { customerId: string; amount: number; paymentMethod: string; reference?: string; notes?: string }, 
+    createdBy?: User
+  ): PosCustomerTransaction {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Cashier';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const customer = this.posCustomers.find(c => c.id === data.customerId && c.tenantId === tenantId);
+    if (!customer) throw new Error('Customer not found');
+
+    const paymentAmount = Number(data.amount) || 0;
+    customer.currentBalance = Math.max(0, customer.currentBalance - paymentAmount);
+    saveDocToFirestore('posCustomers', customer.id, customer).catch(() => {});
+
+    const tx: PosCustomerTransaction = {
+      id: `ctx_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      customerId: customer.id,
+      customerName: customer.name,
+      type: 'PAYMENT',
+      amount: paymentAmount,
+      balanceAfter: customer.currentBalance,
+      paymentMethod: data.paymentMethod,
+      reference: data.reference,
+      notes: data.notes,
+      date: new Date().toISOString(),
+      recordedBy: actorName
+    };
+    this.posCustomerTransactions.unshift(tx);
+    saveDocToFirestore('posCustomerTransactions', tx.id, tx).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CUSTOMER_PAYMENT_RECORDED', 'PosCustomerTransaction', `Received credit payment of KES ${paymentAmount} from "${customer.name}". New balance: KES ${customer.currentBalance}`, tx.id);
+    return tx;
+  }
+
+  // 5. SUPPLIERS & PURCHASING
+  public getPosSuppliers(tenantId: string): PosSupplier[] {
+    return this.posSuppliers.filter(s => s.tenantId === tenantId);
+  }
+
+  public addPosSupplier(tenantId: string, data: Omit<PosSupplier, 'id' | 'tenantId' | 'currentBalance' | 'createdAt'>, createdBy?: User): PosSupplier {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Administrator';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.posSuppliers.filter(s => s.tenantId === tenantId).length + 1;
+    const supplierNo = data.supplierNo || `SUP-${String(count).padStart(4, '0')}`;
+
+    const supplier: PosSupplier = {
+      ...data,
+      id: `sup_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      supplierNo,
+      currentBalance: 0,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString()
+    };
+    this.posSuppliers.unshift(supplier);
+    saveDocToFirestore('posSuppliers', supplier.id, supplier).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'SUPPLIER_CREATED', 'PosSupplier', `Added supplier "${supplier.name}" (${supplier.supplierNo})`, supplier.id);
+    return supplier;
+  }
+
+  public updatePosSupplier(tenantId: string, id: string, data: Partial<PosSupplier>, updatedBy?: User): PosSupplier {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.posSuppliers.findIndex(s => s.id === id && s.tenantId === tenantId);
+    if (idx === -1) throw new Error('Supplier not found');
+    this.posSuppliers[idx] = { ...this.posSuppliers[idx], ...data, tenantId };
+    const updated = this.posSuppliers[idx];
+    saveDocToFirestore('posSuppliers', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'SUPPLIER_UPDATED', 'PosSupplier', `Updated supplier "${updated.name}" (${updated.supplierNo})`, updated.id);
+    return updated;
+  }
+
+  public deletePosSupplier(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'Administrator';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.posSuppliers.findIndex(s => s.id === id && s.tenantId === tenantId);
+    if (idx === -1) return false;
+    const sup = this.posSuppliers[idx];
+    this.posSuppliers.splice(idx, 1);
+    deleteDocFromFirestore('posSuppliers', id).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'SUPPLIER_DELETED', 'PosSupplier', `Deleted supplier "${sup.name}"`, id);
+    return true;
+  }
+
+  public getPurchaseOrders(tenantId: string): PurchaseOrder[] {
+    return this.purchaseOrders.filter(p => p.tenantId === tenantId);
+  }
+
+  public createPurchaseOrder(tenantId: string, data: Omit<PurchaseOrder, 'id' | 'tenantId' | 'createdAt'>, createdBy?: User): PurchaseOrder {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Purchasing Officer';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.purchaseOrders.filter(p => p.tenantId === tenantId).length + 1;
+    const year = new Date().getFullYear();
+    const poNumber = data.poNumber || `PO-${year}-${String(count).padStart(4, '0')}`;
+
+    const po: PurchaseOrder = {
+      ...data,
+      id: `po_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      poNumber,
+      createdBy: actorName,
+      createdAt: new Date().toISOString()
+    };
+    this.purchaseOrders.unshift(po);
+    saveDocToFirestore('purchaseOrders', po.id, po).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PURCHASE_ORDER_CREATED', 'PurchaseOrder', `Created purchase order ${po.poNumber} for "${po.supplierName}" - Total: KES ${po.totalAmount}`, po.id);
+    return po;
+  }
+
+  public updatePurchaseOrderStatus(tenantId: string, id: string, status: PurchaseOrder['status'], updatedBy?: User): PurchaseOrder {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Administrator';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.purchaseOrders.findIndex(p => p.id === id && p.tenantId === tenantId);
+    if (idx === -1) throw new Error('Purchase order not found');
+    this.purchaseOrders[idx].status = status;
+    const updated = this.purchaseOrders[idx];
+    saveDocToFirestore('purchaseOrders', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'PURCHASE_ORDER_STATUS_CHANGED', 'PurchaseOrder', `PO ${updated.poNumber} marked as ${status}`, updated.id);
+    return updated;
+  }
+
+  public getGoodsReceivedNotes(tenantId: string): GoodsReceivedNote[] {
+    return this.goodsReceivedNotes.filter(g => g.tenantId === tenantId);
+  }
+
+  public createGoodsReceivedNote(tenantId: string, data: Omit<GoodsReceivedNote, 'id' | 'tenantId'>, createdBy?: User): GoodsReceivedNote {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Storekeeper';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.goodsReceivedNotes.filter(g => g.tenantId === tenantId).length + 1;
+    const year = new Date().getFullYear();
+    const grnNumber = data.grnNumber || `GRN-${year}-${String(count).padStart(4, '0')}`;
+
+    const grn: GoodsReceivedNote = {
+      ...data,
+      id: `grn_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      grnNumber,
+      receivedBy: actorName,
+      receivedDate: data.receivedDate || new Date().toISOString()
+    };
+
+    // 1. Automatically increase stock quantity for each received product
+    grn.items.forEach(item => {
+      const prod = this.posProducts.find(p => p.id === item.productId && p.tenantId === tenantId);
+      if (prod) {
+        prod.quantityInStock += item.quantityReceived;
+        if (item.unitCost > 0) prod.costPrice = item.unitCost;
+        if (prod.quantityInStock > 0) prod.status = 'ACTIVE';
+        saveDocToFirestore('posProducts', prod.id, prod).catch(() => {});
+
+        // Log movement
+        const mov: InventoryMovement = {
+          id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+          tenantId,
+          productId: prod.id,
+          productName: prod.name,
+          movementType: 'RESTOCK',
+          quantityChanged: item.quantityReceived,
+          balanceAfter: prod.quantityInStock,
+          recordedBy: actorName,
+          date: new Date().toISOString(),
+          notes: `GRN: ${grn.grnNumber} from ${grn.supplierName}`
+        };
+        this.inventoryMovements.unshift(mov);
+        saveDocToFirestore('inventoryMovements', mov.id, mov).catch(() => {});
+      }
+    });
+
+    // 2. If tied to a PO, update the PO quantities received
+    if (grn.poId) {
+      const po = this.purchaseOrders.find(p => p.id === grn.poId && p.tenantId === tenantId);
+      if (po) {
+        let allReceived = true;
+        po.items.forEach(poItem => {
+          const rec = grn.items.find(gi => gi.productId === poItem.productId);
+          if (rec) {
+            poItem.quantityReceived = (poItem.quantityReceived || 0) + rec.quantityReceived;
+          }
+          if (poItem.quantityReceived < poItem.quantityOrdered) {
+            allReceived = false;
+          }
+        });
+        po.status = allReceived ? 'RECEIVED' : 'PARTIAL_RECEIVED';
+        saveDocToFirestore('purchaseOrders', po.id, po).catch(() => {});
+      }
+    }
+
+    // 3. Update supplier balance
+    const supplier = this.posSuppliers.find(s => s.id === grn.supplierId && s.tenantId === tenantId);
+    if (supplier) {
+      supplier.currentBalance += grn.totalAmount;
+      saveDocToFirestore('posSuppliers', supplier.id, supplier).catch(() => {});
+    }
+
+    this.goodsReceivedNotes.unshift(grn);
+    saveDocToFirestore('goodsReceivedNotes', grn.id, grn).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'GRN_CREATED', 'GoodsReceivedNote', `Received stock via ${grn.grnNumber} from "${grn.supplierName}" - Value: KES ${grn.totalAmount}`, grn.id);
+    return grn;
+  }
+
+  public getSupplierPayments(tenantId: string): SupplierPayment[] {
+    return this.supplierPayments.filter(s => s.tenantId === tenantId);
+  }
+
+  public recordSupplierPayment(tenantId: string, data: Omit<SupplierPayment, 'id' | 'tenantId'>, createdBy?: User): SupplierPayment {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Accountant';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.supplierPayments.filter(s => s.tenantId === tenantId).length + 1;
+    const paymentNumber = data.paymentNumber || `SPAY-${String(count).padStart(4, '0')}`;
+
+    const payment: SupplierPayment = {
+      ...data,
+      id: `spay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      paymentNumber,
+      paidBy: actorName,
+      date: data.date || new Date().toISOString()
+    };
+
+    const supplier = this.posSuppliers.find(s => s.id === payment.supplierId && s.tenantId === tenantId);
+    if (supplier) {
+      supplier.currentBalance = Math.max(0, supplier.currentBalance - payment.amount);
+      saveDocToFirestore('posSuppliers', supplier.id, supplier).catch(() => {});
+    }
+
+    this.supplierPayments.unshift(payment);
+    saveDocToFirestore('supplierPayments', payment.id, payment).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'SUPPLIER_PAYMENT_RECORDED', 'SupplierPayment', `Paid KES ${payment.amount} to supplier "${payment.supplierName}" (Ref: ${payment.reference})`, payment.id);
+    return payment;
+  }
+
+  // 6. INVENTORY MOVEMENTS & STOCK VALUATION
+  public getInventoryMovements(tenantId: string, productId?: string): InventoryMovement[] {
+    return this.inventoryMovements.filter(m => m.tenantId === tenantId && (!productId || m.productId === productId));
+  }
+
+  public recordInventoryMovement(
+    tenantId: string, 
+    data: Omit<InventoryMovement, 'id' | 'tenantId' | 'recordedBy' | 'date'>, 
+    createdBy?: User
+  ): InventoryMovement {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Storekeeper';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+
+    const prod = this.posProducts.find(p => p.id === data.productId && p.tenantId === tenantId);
+    if (!prod) throw new Error('Product not found');
+
+    const qty = Number(data.quantityChanged) || 0;
+    if (data.movementType === 'RESTOCK' || data.movementType === 'TRANSFER') {
+      prod.quantityInStock += qty;
+    } else {
+      prod.quantityInStock = Math.max(0, prod.quantityInStock - Math.abs(qty));
+    }
+    prod.status = prod.quantityInStock > 0 ? 'ACTIVE' : 'OUT_OF_STOCK';
+    saveDocToFirestore('posProducts', prod.id, prod).catch(() => {});
+
+    const mov: InventoryMovement = {
+      ...data,
+      id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      balanceAfter: prod.quantityInStock,
+      recordedBy: actorName,
+      date: new Date().toISOString()
+    };
+    this.inventoryMovements.unshift(mov);
+    saveDocToFirestore('inventoryMovements', mov.id, mov).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'INVENTORY_MOVEMENT_RECORDED', 'InventoryMovement', `Movement [${mov.movementType}] for "${prod.name}": ${mov.quantityChanged}. New balance: ${prod.quantityInStock}`, mov.id);
+    return mov;
+  }
+
+  // 7. SALES, SPLITS, CREDIT, RETURNS & SHIFTS
   public getPosSales(tenantId: string): PosSaleOrder[] {
     return this.posSales.filter(s => s.tenantId === tenantId);
   }
@@ -4354,37 +5935,360 @@ class DatabaseStore {
       tenantId,
       cashierId: actorId,
       cashierName: actorName,
-      date: new Date().toISOString()
+      date: data.date || new Date().toISOString()
     };
 
-    // Deduct stock quantities for each purchased item
+    // 1. Deduct stock quantities for each purchased item and log movement
     sale.items.forEach(item => {
       const prod = this.posProducts.find(p => p.id === item.productId && p.tenantId === tenantId);
       if (prod) {
         prod.quantityInStock = Math.max(0, prod.quantityInStock - item.quantity);
         if (prod.quantityInStock === 0) prod.status = 'OUT_OF_STOCK';
         saveDocToFirestore('posProducts', prod.id, prod).catch(() => {});
+
+        const mov: InventoryMovement = {
+          id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+          tenantId,
+          productId: prod.id,
+          productName: prod.name,
+          movementType: 'SALE',
+          quantityChanged: -item.quantity,
+          balanceAfter: prod.quantityInStock,
+          recordedBy: actorName,
+          date: sale.date,
+          notes: `POS Sale Receipt: ${sale.receiptNo}`
+        };
+        this.inventoryMovements.unshift(mov);
+        saveDocToFirestore('inventoryMovements', mov.id, mov).catch(() => {});
       }
     });
 
+    // 2. Handle Customer Credit Sales
+    if (sale.paymentMethod === 'CREDIT' && sale.customerId) {
+      const customer = this.posCustomers.find(c => c.id === sale.customerId && c.tenantId === tenantId);
+      if (customer) {
+        customer.currentBalance += sale.grandTotal;
+        customer.totalSpent += sale.grandTotal;
+        customer.loyaltyPoints += Math.floor(sale.grandTotal / 100);
+        saveDocToFirestore('posCustomers', customer.id, customer).catch(() => {});
+
+        const ctx: PosCustomerTransaction = {
+          id: `ctx_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+          tenantId,
+          customerId: customer.id,
+          customerName: customer.name,
+          type: 'CREDIT_SALE',
+          amount: sale.grandTotal,
+          balanceAfter: customer.currentBalance,
+          saleReceiptNo: sale.receiptNo,
+          notes: `Credit purchase - Receipt ${sale.receiptNo}`,
+          date: sale.date,
+          recordedBy: actorName
+        };
+        this.posCustomerTransactions.unshift(ctx);
+        saveDocToFirestore('posCustomerTransactions', ctx.id, ctx).catch(() => {});
+      }
+    } else if (sale.customerId) {
+      const customer = this.posCustomers.find(c => c.id === sale.customerId && c.tenantId === tenantId);
+      if (customer) {
+        customer.totalSpent += sale.grandTotal;
+        customer.loyaltyPoints += Math.floor(sale.grandTotal / 100);
+        saveDocToFirestore('posCustomers', customer.id, customer).catch(() => {});
+      }
+    }
+
+    // 3. Handle Hotel Room Folio Charges
+    if (sale.paymentMethod === 'ROOM_CHARGE' && sale.roomNumber) {
+      const rsv = this.hotelReservations.find(r => r.roomNumber === sale.roomNumber && r.status === 'CHECKED_IN' && r.tenantId === tenantId);
+      if (rsv) {
+        const charge: HotelFolioCharge = {
+          id: `chg_${Date.now().toString(36)}`,
+          date: sale.date,
+          category: sale.saleType === 'BAR' ? 'BAR' : sale.saleType === 'RESTAURANT' ? 'RESTAURANT' : 'ROOM_SERVICE',
+          description: `POS Bill: ${sale.receiptNo} (${sale.items.map(i => `${i.productName} x${i.quantity}`).join(', ')})`,
+          amount: sale.grandTotal,
+          referenceNo: sale.receiptNo,
+          servedBy: actorName
+        };
+        rsv.folioCharges.push(charge);
+        rsv.otherCharges += sale.grandTotal;
+        rsv.totalBill += sale.grandTotal;
+        rsv.balance += sale.grandTotal;
+        saveDocToFirestore('hotelReservations', rsv.id, rsv).catch(() => {});
+      }
+    }
+
+    // 4. Update Active Cashier Shift Sales Totals
+    const activeShift = this.cashierShifts.find(s => s.cashierId === actorId && s.status === 'OPEN' && s.tenantId === tenantId);
+    if (activeShift) {
+      activeShift.totalSales += sale.grandTotal;
+      if (sale.paymentMethod === 'CASH') {
+        activeShift.cashSales += sale.grandTotal;
+        activeShift.expectedCashInDrawer += sale.grandTotal;
+      } else if (sale.paymentMethod === 'MPESA') {
+        activeShift.mpesaSales += sale.grandTotal;
+      } else if (sale.paymentMethod === 'CARD') {
+        activeShift.cardSales += sale.grandTotal;
+      } else if (sale.paymentMethod === 'CREDIT') {
+        activeShift.creditSales += sale.grandTotal;
+      } else if (sale.paymentMethod === 'ROOM_CHARGE') {
+        activeShift.roomChargeSales += sale.grandTotal;
+      } else if (sale.paymentMethod === 'SPLIT' && sale.splitPayments) {
+        sale.splitPayments.forEach(sp => {
+          if (sp.method === 'CASH') {
+            activeShift.cashSales += sp.amount;
+            activeShift.expectedCashInDrawer += sp.amount;
+          } else if (sp.method === 'MPESA') {
+            activeShift.mpesaSales += sp.amount;
+          } else if (sp.method === 'CARD') {
+            activeShift.cardSales += sp.amount;
+          } else if (sp.method === 'CREDIT') {
+            activeShift.creditSales += sp.amount;
+          } else if (sp.method === 'ROOM_CHARGE') {
+            activeShift.roomChargeSales += sp.amount;
+          }
+        });
+      }
+      saveDocToFirestore('cashierShifts', activeShift.id, activeShift).catch(() => {});
+    }
+
     this.posSales.unshift(sale);
     saveDocToFirestore('posSales', sale.id, sale).catch(() => {});
-    this.logAction(tenantId, actorId, actorName, actorRole, 'POS_SALE_COMPLETED', 'PosSaleOrder', `Processed sale ${sale.receiptNo} of KES ${sale.grandTotal} (${sale.saleType})`, sale.id);
+    this.logAction(tenantId, actorId, actorName, actorRole, 'POS_SALE_COMPLETED', 'PosSaleOrder', `Processed sale ${sale.receiptNo} of KES ${sale.grandTotal} (${sale.paymentMethod})`, sale.id);
     return sale;
   }
 
-  // ==========================================
-  // RESTAURANT & BAR METHODS
-  // ==========================================
+  public getPosSaleReturns(tenantId: string): PosSaleReturn[] {
+    return this.posSaleReturns.filter(r => r.tenantId === tenantId);
+  }
+
+  public recordPosSaleReturn(
+    tenantId: string, 
+    data: Omit<PosSaleReturn, 'id' | 'tenantId' | 'date'>, 
+    createdBy?: User
+  ): PosSaleReturn {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Cashier';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.posSaleReturns.filter(r => r.tenantId === tenantId).length + 1;
+    const returnNumber = data.returnNumber || `RET-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+
+    const ret: PosSaleReturn = {
+      ...data,
+      id: `ret_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      returnNumber,
+      returnedByStaff: actorName,
+      date: new Date().toISOString()
+    };
+
+    // If items are restockable, increment stock level back and log movement
+    ret.items.forEach(item => {
+      if (item.condition === 'RESTOCKABLE') {
+        const prod = this.posProducts.find(p => p.id === item.productId && p.tenantId === tenantId);
+        if (prod) {
+          prod.quantityInStock += item.quantity;
+          prod.status = 'ACTIVE';
+          saveDocToFirestore('posProducts', prod.id, prod).catch(() => {});
+
+          const mov: InventoryMovement = {
+            id: `mov_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+            tenantId,
+            productId: prod.id,
+            productName: prod.name,
+            movementType: 'RESTOCK',
+            quantityChanged: item.quantity,
+            balanceAfter: prod.quantityInStock,
+            recordedBy: actorName,
+            date: ret.date,
+            notes: `Sale Return ${ret.returnNumber} (Ref Receipt: ${ret.originalReceiptNo})`
+          };
+          this.inventoryMovements.unshift(mov);
+          saveDocToFirestore('inventoryMovements', mov.id, mov).catch(() => {});
+        }
+      }
+    });
+
+    this.posSaleReturns.unshift(ret);
+    saveDocToFirestore('posSaleReturns', ret.id, ret).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'SALE_RETURN_RECORDED', 'PosSaleReturn', `Processed sale return ${ret.returnNumber} for receipt ${ret.originalReceiptNo} - Refund: KES ${ret.totalRefundAmount}`, ret.id);
+    return ret;
+  }
+
+  // 8. CASHIER SHIFTS & RECONCILIATION
+  public getCashierShifts(tenantId: string): CashierShift[] {
+    return this.cashierShifts.filter(s => s.tenantId === tenantId);
+  }
+
+  public getActiveCashierShift(tenantId: string, cashierId: string): CashierShift | undefined {
+    return this.cashierShifts.find(s => s.tenantId === tenantId && s.cashierId === cashierId && s.status === 'OPEN');
+  }
+
+  public openCashierShift(
+    tenantId: string, 
+    data: { openingCashFloat: number; branchId?: string; branchName?: string }, 
+    cashierUser?: User
+  ): CashierShift {
+    const actorId = cashierUser?.id || 'sys_admin';
+    const actorName = cashierUser?.name || 'Cashier';
+    const actorRole = cashierUser?.role || 'TENANT_ADMIN';
+
+    // Close any prior dangling shift for this user
+    const existing = this.getActiveCashierShift(tenantId, actorId);
+    if (existing) {
+      existing.status = 'CLOSED';
+      existing.endTime = new Date().toISOString();
+      saveDocToFirestore('cashierShifts', existing.id, existing).catch(() => {});
+    }
+
+    const count = this.cashierShifts.filter(s => s.tenantId === tenantId).length + 1;
+    const shiftNumber = `SHF-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+    const float = Number(data.openingCashFloat) || 0;
+
+    const shift: CashierShift = {
+      id: `shf_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      shiftNumber,
+      cashierId: actorId,
+      cashierName: actorName,
+      branchId: data.branchId,
+      branchName: data.branchName,
+      startTime: new Date().toISOString(),
+      openingCashFloat: float,
+      cashSales: 0,
+      mpesaSales: 0,
+      cardSales: 0,
+      creditSales: 0,
+      roomChargeSales: 0,
+      totalSales: 0,
+      cashIn: 0,
+      cashOut: 0,
+      expensesTotal: 0,
+      expectedCashInDrawer: float,
+      status: 'OPEN'
+    };
+
+    this.cashierShifts.unshift(shift);
+    saveDocToFirestore('cashierShifts', shift.id, shift).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CASHIER_SHIFT_OPENED', 'CashierShift', `Opened till shift ${shift.shiftNumber} with float KES ${float}`, shift.id);
+    return shift;
+  }
+
+  public closeCashierShift(
+    tenantId: string, 
+    shiftId: string, 
+    data: { actualCashCount: number; closingNotes?: string }, 
+    cashierUser?: User
+  ): CashierShift {
+    const actorId = cashierUser?.id || 'sys_admin';
+    const actorName = cashierUser?.name || 'Cashier';
+    const actorRole = cashierUser?.role || 'TENANT_ADMIN';
+    const idx = this.cashierShifts.findIndex(s => s.id === shiftId && s.tenantId === tenantId);
+    if (idx === -1) throw new Error('Shift record not found');
+
+    const shift = this.cashierShifts[idx];
+    const actual = Number(data.actualCashCount) || 0;
+    const variance = actual - shift.expectedCashInDrawer;
+
+    shift.actualCashCount = actual;
+    shift.cashVariance = variance;
+    shift.closingNotes = data.closingNotes;
+    shift.endTime = new Date().toISOString();
+    shift.status = 'CLOSED';
+
+    saveDocToFirestore('cashierShifts', shift.id, shift).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'CASHIER_SHIFT_CLOSED', 'CashierShift', `Closed till shift ${shift.shiftNumber} (Expected: KES ${shift.expectedCashInDrawer}, Counted: KES ${actual}, Variance: KES ${variance})`, shift.id);
+    return shift;
+  }
+
+  // 9. EXPENSES
+  public getPosExpenses(tenantId: string): PosExpense[] {
+    return this.posExpenses.filter(e => e.tenantId === tenantId);
+  }
+
+  public recordPosExpense(
+    tenantId: string, 
+    data: Omit<PosExpense, 'id' | 'tenantId' | 'recordedBy' | 'date'>, 
+    createdBy?: User
+  ): PosExpense {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Cashier';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.posExpenses.filter(e => e.tenantId === tenantId).length + 1;
+    const expenseNumber = data.expenseNumber || `EXP-${String(count).padStart(4, '0')}`;
+
+    const expense: PosExpense = {
+      ...data,
+      id: `exp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      expenseNumber,
+      amount: Number(data.amount) || 0,
+      recordedBy: actorName,
+      date: new Date().toISOString()
+    };
+
+    // If paid via cash, deduct from active cashier shift expected cash
+    if (expense.paymentMethod === 'CASH') {
+      const activeShift = this.cashierShifts.find(s => s.cashierId === actorId && s.status === 'OPEN' && s.tenantId === tenantId);
+      if (activeShift) {
+        activeShift.expensesTotal += expense.amount;
+        activeShift.expectedCashInDrawer = Math.max(0, activeShift.expectedCashInDrawer - expense.amount);
+        saveDocToFirestore('cashierShifts', activeShift.id, activeShift).catch(() => {});
+      }
+    }
+
+    this.posExpenses.unshift(expense);
+    saveDocToFirestore('posExpenses', expense.id, expense).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'POS_EXPENSE_RECORDED', 'PosExpense', `Recorded expense ${expense.expenseNumber} [${expense.category}] of KES ${expense.amount}: ${expense.description}`, expense.id);
+    return expense;
+  }
+
+  public approvePosExpense(tenantId: string, expenseId: string, approvedBy?: User): PosExpense {
+    const actorId = approvedBy?.id || 'sys_admin';
+    const actorName = approvedBy?.name || 'Manager';
+    const actorRole = approvedBy?.role || 'TENANT_ADMIN';
+    const idx = this.posExpenses.findIndex(e => e.id === expenseId && e.tenantId === tenantId);
+    if (idx === -1) throw new Error('Expense not found');
+    this.posExpenses[idx].approvedBy = actorName;
+    const updated = this.posExpenses[idx];
+    saveDocToFirestore('posExpenses', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'POS_EXPENSE_APPROVED', 'PosExpense', `Approved expense ${updated.expenseNumber}`, updated.id);
+    return updated;
+  }
+
+  // 10. RESTAURANT TABLES & KITCHEN ORDERS (KDS)
   public getRestaurantTables(tenantId: string): RestaurantTable[] {
     return this.restaurantTables.filter(t => t.tenantId === tenantId);
   }
 
-  public updateRestaurantTableStatus(tenantId: string, tableId: string, status: RestaurantTable['status'], guestCount?: number): RestaurantTable {
+  public addRestaurantTable(tenantId: string, data: Omit<RestaurantTable, 'id' | 'tenantId'>, createdBy?: User): RestaurantTable {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Administrator';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const table: RestaurantTable = {
+      ...data,
+      id: `tbl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'AVAILABLE'
+    };
+    this.restaurantTables.unshift(table);
+    saveDocToFirestore('restaurantTables', table.id, table).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'TABLE_CREATED', 'RestaurantTable', `Added table ${table.tableNumber} in ${table.section}`, table.id);
+    return table;
+  }
+
+  public updateRestaurantTableStatus(
+    tenantId: string, 
+    tableId: string, 
+    status: RestaurantTable['status'], 
+    guestCount?: number,
+    currentOrderId?: string
+  ): RestaurantTable {
     const idx = this.restaurantTables.findIndex(t => t.id === tableId && t.tenantId === tenantId);
     if (idx === -1) throw new Error('Table not found');
     this.restaurantTables[idx].status = status;
     if (guestCount !== undefined) this.restaurantTables[idx].guestCount = guestCount;
+    if (currentOrderId !== undefined) this.restaurantTables[idx].currentOrderId = currentOrderId;
     const updated = this.restaurantTables[idx];
     saveDocToFirestore('restaurantTables', updated.id, updated).catch(() => {});
     return updated;
@@ -4407,6 +6311,412 @@ class DatabaseStore {
     saveDocToFirestore('restaurantMenu', item.id, item).catch(() => {});
     this.logAction(tenantId, actorId, actorName, actorRole, 'MENU_ITEM_ADDED', 'RestaurantMenuItem', `Added menu item "${item.name}" (KES ${item.price})`, item.id);
     return item;
+  }
+
+  public getKitchenTickets(tenantId: string): KitchenOrderTicket[] {
+    return this.kitchenTickets.filter(k => k.tenantId === tenantId);
+  }
+
+  public createKitchenTicket(
+    tenantId: string, 
+    data: Omit<KitchenOrderTicket, 'id' | 'tenantId' | 'createdAt' | 'updatedAt'>, 
+    createdBy?: User
+  ): KitchenOrderTicket {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Waiter';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.kitchenTickets.filter(k => k.tenantId === tenantId).length + 1;
+    const ticketNumber = data.ticketNumber || `KOT-${String(count).padStart(3, '0')}`;
+
+    const ticket: KitchenOrderTicket = {
+      ...data,
+      id: `kot_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      ticketNumber,
+      status: data.status || 'NEW',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.kitchenTickets.unshift(ticket);
+    saveDocToFirestore('kitchenTickets', ticket.id, ticket).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'KITCHEN_TICKET_CREATED', 'KitchenOrderTicket', `Sent ${ticket.ticketNumber} to ${ticket.station} (${ticket.items.length} items)`, ticket.id);
+    return ticket;
+  }
+
+  public updateKitchenTicketStatus(
+    tenantId: string, 
+    ticketId: string, 
+    status: KitchenOrderTicket['status'], 
+    updatedBy?: User
+  ): KitchenOrderTicket {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Chef';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.kitchenTickets.findIndex(k => k.id === ticketId && k.tenantId === tenantId);
+    if (idx === -1) throw new Error('Kitchen ticket not found');
+    this.kitchenTickets[idx].status = status;
+    this.kitchenTickets[idx].updatedAt = new Date().toISOString();
+    const updated = this.kitchenTickets[idx];
+    saveDocToFirestore('kitchenTickets', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'KITCHEN_TICKET_STATUS', 'KitchenOrderTicket', `Ticket ${updated.ticketNumber} marked as ${status}`, updated.id);
+    return updated;
+  }
+
+  // 11. BAR TABS
+  public getBarTabs(tenantId: string): BarTab[] {
+    return this.barTabs.filter(b => b.tenantId === tenantId);
+  }
+
+  public openBarTab(
+    tenantId: string, 
+    data: { tabName: string; tableId?: string; tableName?: string; waiterId?: string; waiterName?: string }, 
+    createdBy?: User
+  ): BarTab {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Bartender';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.barTabs.filter(b => b.tenantId === tenantId).length + 1;
+    const tabNumber = `TAB-${String(count).padStart(3, '0')}`;
+
+    const tab: BarTab = {
+      id: `tab_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      tabNumber,
+      tabName: data.tabName,
+      tableId: data.tableId,
+      tableName: data.tableName,
+      waiterId: data.waiterId || actorId,
+      waiterName: data.waiterName || actorName,
+      status: 'OPEN',
+      items: [],
+      subtotal: 0,
+      tax: 0,
+      total: 0,
+      openedAt: new Date().toISOString()
+    };
+    this.barTabs.unshift(tab);
+    saveDocToFirestore('barTabs', tab.id, tab).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BAR_TAB_OPENED', 'BarTab', `Opened bar tab "${tab.tabName}" (${tab.tabNumber})`, tab.id);
+    return tab;
+  }
+
+  public updateBarTab(tenantId: string, tabId: string, items: PosSaleItem[], updatedBy?: User): BarTab {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Bartender';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.barTabs.findIndex(b => b.id === tabId && b.tenantId === tenantId);
+    if (idx === -1) throw new Error('Bar tab not found');
+
+    const subtotal = items.reduce((sum, i) => sum + i.total, 0);
+    const tax = Math.round(subtotal * 0.16);
+    const total = subtotal;
+
+    this.barTabs[idx].items = items;
+    this.barTabs[idx].subtotal = subtotal;
+    this.barTabs[idx].tax = tax;
+    this.barTabs[idx].total = total;
+    const updated = this.barTabs[idx];
+    saveDocToFirestore('barTabs', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BAR_TAB_UPDATED', 'BarTab', `Updated tab ${updated.tabNumber} - Total: KES ${updated.total}`, updated.id);
+    return updated;
+  }
+
+  public closeBarTab(tenantId: string, tabId: string, updatedBy?: User): BarTab {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Cashier';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.barTabs.findIndex(b => b.id === tabId && b.tenantId === tenantId);
+    if (idx === -1) throw new Error('Bar tab not found');
+    this.barTabs[idx].status = 'CLOSED';
+    this.barTabs[idx].closedAt = new Date().toISOString();
+    const updated = this.barTabs[idx];
+    saveDocToFirestore('barTabs', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'BAR_TAB_CLOSED', 'BarTab', `Closed bar tab ${updated.tabNumber}`, updated.id);
+    return updated;
+  }
+
+  // 12. HOTEL, ROOMS & FOLIO BILLING
+  public getHotelRoomTypes(tenantId: string): HotelRoomType[] {
+    return this.hotelRoomTypes.filter(h => h.tenantId === tenantId);
+  }
+
+  public addHotelRoomType(tenantId: string, data: Omit<HotelRoomType, 'id' | 'tenantId'>, createdBy?: User): HotelRoomType {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Hotel Manager';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const rt: HotelRoomType = {
+      ...data,
+      id: `rt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId
+    };
+    this.hotelRoomTypes.unshift(rt);
+    saveDocToFirestore('hotelRoomTypes', rt.id, rt).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_ROOM_TYPE_CREATED', 'HotelRoomType', `Created room type "${rt.name}" - Rate: KES ${rt.basePricePerNight}/night`, rt.id);
+    return rt;
+  }
+
+  public updateHotelRoomType(tenantId: string, id: string, data: Partial<HotelRoomType>, updatedBy?: User): HotelRoomType {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Hotel Manager';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelRoomTypes.findIndex(h => h.id === id && h.tenantId === tenantId);
+    if (idx === -1) throw new Error('Room type not found');
+    this.hotelRoomTypes[idx] = { ...this.hotelRoomTypes[idx], ...data, tenantId };
+    const updated = this.hotelRoomTypes[idx];
+    saveDocToFirestore('hotelRoomTypes', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_ROOM_TYPE_UPDATED', 'HotelRoomType', `Updated room type "${updated.name}"`, updated.id);
+    return updated;
+  }
+
+  public getHotelRooms(tenantId: string): HotelRoom[] {
+    return this.hotelRooms.filter(r => r.tenantId === tenantId);
+  }
+
+  public addHotelRoom(tenantId: string, data: Omit<HotelRoom, 'id' | 'tenantId'>, createdBy?: User): HotelRoom {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Hotel Manager';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const room: HotelRoom = {
+      ...data,
+      id: `hrm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      status: data.status || 'AVAILABLE'
+    };
+    this.hotelRooms.unshift(room);
+    saveDocToFirestore('hotelRooms', room.id, room).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_ROOM_CREATED', 'HotelRoom', `Added room ${room.roomNumber} (${room.roomTypeName}) on floor ${room.floor}`, room.id);
+    return room;
+  }
+
+  public updateHotelRoom(tenantId: string, id: string, data: Partial<HotelRoom>, updatedBy?: User): HotelRoom {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Hotel Manager';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelRooms.findIndex(r => r.id === id && r.tenantId === tenantId);
+    if (idx === -1) throw new Error('Hotel room not found');
+    this.hotelRooms[idx] = { ...this.hotelRooms[idx], ...data, tenantId };
+    const updated = this.hotelRooms[idx];
+    saveDocToFirestore('hotelRooms', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_ROOM_UPDATED', 'HotelRoom', `Updated room ${updated.roomNumber}`, updated.id);
+    return updated;
+  }
+
+  public updateHotelRoomStatus(
+    tenantId: string, 
+    roomId: string, 
+    status: HotelRoom['status'], 
+    guestInfo?: { guestId?: string; guestName?: string; reservationId?: string }
+  ): HotelRoom {
+    const idx = this.hotelRooms.findIndex(r => (r.id === roomId || r.roomNumber === roomId) && r.tenantId === tenantId);
+    if (idx === -1) throw new Error('Hotel room not found');
+    this.hotelRooms[idx].status = status;
+    if (guestInfo) {
+      this.hotelRooms[idx].currentGuestId = guestInfo.guestId;
+      this.hotelRooms[idx].currentGuestName = guestInfo.guestName;
+      this.hotelRooms[idx].currentReservationId = guestInfo.reservationId;
+    } else if (status === 'AVAILABLE' || status === 'CLEANING') {
+      this.hotelRooms[idx].currentGuestId = undefined;
+      this.hotelRooms[idx].currentGuestName = undefined;
+      this.hotelRooms[idx].currentReservationId = undefined;
+    }
+    const updated = this.hotelRooms[idx];
+    saveDocToFirestore('hotelRooms', updated.id, updated).catch(() => {});
+    return updated;
+  }
+
+  public getHotelGuests(tenantId: string): HotelGuest[] {
+    return this.hotelGuests.filter(g => g.tenantId === tenantId);
+  }
+
+  public addHotelGuest(tenantId: string, data: Omit<HotelGuest, 'id' | 'tenantId' | 'totalStays' | 'createdAt'>, createdBy?: User): HotelGuest {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Front Desk';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.hotelGuests.filter(g => g.tenantId === tenantId).length + 1;
+    const guestNumber = data.guestNumber || `GST-${String(count).padStart(4, '0')}`;
+
+    const guest: HotelGuest = {
+      ...data,
+      id: `gst_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      guestNumber,
+      totalStays: 0,
+      createdAt: new Date().toISOString()
+    };
+    this.hotelGuests.unshift(guest);
+    saveDocToFirestore('hotelGuests', guest.id, guest).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_GUEST_CREATED', 'HotelGuest', `Registered guest "${guest.fullName}" (${guest.guestNumber})`, guest.id);
+    return guest;
+  }
+
+  public updateHotelGuest(tenantId: string, id: string, data: Partial<HotelGuest>, updatedBy?: User): HotelGuest {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'Front Desk';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelGuests.findIndex(g => g.id === id && g.tenantId === tenantId);
+    if (idx === -1) throw new Error('Guest record not found');
+    this.hotelGuests[idx] = { ...this.hotelGuests[idx], ...data, tenantId };
+    const updated = this.hotelGuests[idx];
+    saveDocToFirestore('hotelGuests', updated.id, updated).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_GUEST_UPDATED', 'HotelGuest', `Updated guest profile "${updated.fullName}"`, updated.id);
+    return updated;
+  }
+
+  public getHotelReservations(tenantId: string): HotelReservation[] {
+    return this.hotelReservations.filter(r => r.tenantId === tenantId);
+  }
+
+  public createHotelReservation(
+    tenantId: string, 
+    data: Omit<HotelReservation, 'id' | 'tenantId' | 'createdAt' | 'folioCharges' | 'roomCharges' | 'otherCharges' | 'totalBill' | 'balance'>, 
+    createdBy?: User
+  ): HotelReservation {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'Front Desk';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const count = this.hotelReservations.filter(r => r.tenantId === tenantId).length + 1;
+    const year = new Date().getFullYear();
+    const reservationNumber = data.reservationNumber || `RSV-${year}-${String(count).padStart(4, '0')}`;
+
+    const nightlyRate = Number(data.nightlyRate) || 0;
+    const totalNights = Number(data.totalNights) || 1;
+    const roomCharges = nightlyRate * totalNights;
+    const otherCharges = 0;
+    const totalBill = roomCharges + otherCharges;
+    const amountPaid = Number(data.amountPaid) || 0;
+    const balance = Math.max(0, totalBill - amountPaid);
+
+    const rsv: HotelReservation = {
+      ...data,
+      id: `rsv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      reservationNumber,
+      nightlyRate,
+      totalNights,
+      roomCharges,
+      otherCharges,
+      totalBill,
+      amountPaid,
+      balance,
+      folioCharges: [
+        {
+          id: `chg_room_${Date.now().toString(36)}`,
+          date: new Date().toISOString(),
+          category: 'ROOM_STAY',
+          description: `Room accommodation: ${data.roomTypeName} (Room ${data.roomNumber}) for ${totalNights} night(s)`,
+          amount: roomCharges,
+          servedBy: actorName
+        }
+      ],
+      status: data.status || 'CONFIRMED',
+      createdAt: new Date().toISOString()
+    };
+
+    // If reservation is immediately checked in, update room status
+    if (rsv.status === 'CHECKED_IN') {
+      rsv.actualCheckInTime = new Date().toISOString();
+      this.updateHotelRoomStatus(tenantId, rsv.roomId, 'OCCUPIED', {
+        guestId: rsv.guestId,
+        guestName: rsv.guestName,
+        reservationId: rsv.id
+      });
+    } else {
+      this.updateHotelRoomStatus(tenantId, rsv.roomId, 'RESERVED', {
+        guestId: rsv.guestId,
+        guestName: rsv.guestName,
+        reservationId: rsv.id
+      });
+    }
+
+    this.hotelReservations.unshift(rsv);
+    saveDocToFirestore('hotelReservations', rsv.id, rsv).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_RESERVATION_CREATED', 'HotelReservation', `Booked room ${rsv.roomNumber} for "${rsv.guestName}" (${rsv.checkInDate} to ${rsv.checkOutDate}) - Total: KES ${rsv.totalBill}`, rsv.id);
+    return rsv;
+  }
+
+  public checkInHotelGuest(tenantId: string, reservationId: string, checkedInBy?: User): HotelReservation {
+    const actorId = checkedInBy?.id || 'sys_admin';
+    const actorName = checkedInBy?.name || 'Front Desk';
+    const actorRole = checkedInBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelReservations.findIndex(r => r.id === reservationId && r.tenantId === tenantId);
+    if (idx === -1) throw new Error('Reservation not found');
+
+    const rsv = this.hotelReservations[idx];
+    rsv.status = 'CHECKED_IN';
+    rsv.actualCheckInTime = new Date().toISOString();
+
+    this.updateHotelRoomStatus(tenantId, rsv.roomId, 'OCCUPIED', {
+      guestId: rsv.guestId,
+      guestName: rsv.guestName,
+      reservationId: rsv.id
+    });
+
+    const guest = this.hotelGuests.find(g => g.id === rsv.guestId && g.tenantId === tenantId);
+    if (guest) {
+      guest.totalStays += 1;
+      saveDocToFirestore('hotelGuests', guest.id, guest).catch(() => {});
+    }
+
+    saveDocToFirestore('hotelReservations', rsv.id, rsv).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_GUEST_CHECKED_IN', 'HotelReservation', `Checked in "${rsv.guestName}" to room ${rsv.roomNumber}`, rsv.id);
+    return rsv;
+  }
+
+  public checkOutHotelGuest(tenantId: string, reservationId: string, finalPayment?: number, checkedOutBy?: User): HotelReservation {
+    const actorId = checkedOutBy?.id || 'sys_admin';
+    const actorName = checkedOutBy?.name || 'Front Desk';
+    const actorRole = checkedOutBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelReservations.findIndex(r => r.id === reservationId && r.tenantId === tenantId);
+    if (idx === -1) throw new Error('Reservation not found');
+
+    const rsv = this.hotelReservations[idx];
+    if (finalPayment && finalPayment > 0) {
+      rsv.amountPaid += Number(finalPayment);
+      rsv.balance = Math.max(0, rsv.totalBill - rsv.amountPaid);
+    }
+
+    rsv.status = 'CHECKED_OUT';
+    rsv.actualCheckOutTime = new Date().toISOString();
+
+    // Mark room as cleaning
+    this.updateHotelRoomStatus(tenantId, rsv.roomId, 'CLEANING');
+
+    saveDocToFirestore('hotelReservations', rsv.id, rsv).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_GUEST_CHECKED_OUT', 'HotelReservation', `Checked out "${rsv.guestName}" from room ${rsv.roomNumber}. Final balance: KES ${rsv.balance}`, rsv.id);
+    return rsv;
+  }
+
+  public addHotelFolioCharge(
+    tenantId: string, 
+    reservationId: string, 
+    charge: Omit<HotelFolioCharge, 'id' | 'date'>, 
+    addedBy?: User
+  ): HotelReservation {
+    const actorId = addedBy?.id || 'sys_admin';
+    const actorName = addedBy?.name || 'Service Staff';
+    const actorRole = addedBy?.role || 'TENANT_ADMIN';
+    const idx = this.hotelReservations.findIndex(r => r.id === reservationId && r.tenantId === tenantId);
+    if (idx === -1) throw new Error('Reservation not found');
+
+    const rsv = this.hotelReservations[idx];
+    const amount = Number(charge.amount) || 0;
+
+    const folioItem: HotelFolioCharge = {
+      ...charge,
+      id: `chg_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      amount,
+      date: new Date().toISOString(),
+      servedBy: charge.servedBy || actorName
+    };
+
+    rsv.folioCharges.push(folioItem);
+    rsv.otherCharges += amount;
+    rsv.totalBill += amount;
+    rsv.balance += amount;
+
+    saveDocToFirestore('hotelReservations', rsv.id, rsv).catch(() => {});
+    this.logAction(tenantId, actorId, actorName, actorRole, 'HOTEL_FOLIO_CHARGE_ADDED', 'HotelReservation', `Charged KES ${amount} [${charge.category}] to room ${rsv.roomNumber} (${rsv.guestName}): ${charge.description}`, rsv.id);
+    return rsv;
   }
 
   // ==========================================

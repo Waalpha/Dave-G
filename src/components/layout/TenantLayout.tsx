@@ -192,30 +192,35 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                   className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium cursor-pointer"
                 >
                   <UserIcon className="w-3.5 h-3.5 text-blue-600" />
-                  <span>My Profile & Avatar</span>
+                  <span>My Profile &amp; Avatar</span>
                 </button>
 
-                <button
-                  onClick={() => {
-                    setProfileOpen(false);
-                    onNavigate('/app/domains');
-                  }}
-                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
-                >
-                  <Globe className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Domains &amp; DNS Routing</span>
-                </button>
+                {(user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN') && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=users';
+                      }}
+                      className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
+                    >
+                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Team &amp; User Accounts</span>
+                    </button>
 
-                <button
-                  onClick={() => {
-                    setProfileOpen(false);
-                    onNavigate('/app/settings');
-                  }}
-                  className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Organization Settings</span>
-                </button>
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onNavigate('/app/settings');
+                      }}
+                      className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Organization Settings</span>
+                    </button>
+                  </>
+                )}
 
                 <div className="border-t border-slate-100 my-1"></div>
 
@@ -320,11 +325,14 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
             {/* Common Tools */}
             <div>
               <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                Management & Tools
+                Management &amp; Tools
               </div>
               <div className="mt-1 space-y-0.5">
                 <button
-                  onClick={() => onNavigate('/app/reports')}
+                  onClick={() => {
+                    onNavigate('/app/reports');
+                    setIsMobileMenuOpen(false);
+                  }}
                   className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all ${
                     currentRoute === '/app/reports'
                       ? 'bg-slate-900 text-white'
@@ -332,25 +340,16 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                   }`}
                 >
                   <FileBarChart className="w-4 h-4 text-slate-500" />
-                  <span>Reports & Analytics</span>
+                  <span>Reports &amp; Analytics</span>
                 </button>
 
                 {(user?.role === 'TENANT_ADMIN' || user?.role === 'SUPER_ADMIN') && (
                   <>
                     <button
-                      onClick={() => onNavigate('/app/domains')}
-                      className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        currentRoute === '/app/domains'
-                          ? 'bg-blue-600 text-white font-semibold shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Globe className={`w-4 h-4 ${currentRoute === '/app/domains' ? 'text-white' : 'text-blue-600'}`} />
-                      <span>Domains &amp; Routing</span>
-                    </button>
-
-                    <button
-                      onClick={() => onNavigate('/app/settings')}
+                      onClick={() => {
+                        onNavigate('/app/settings');
+                        setIsMobileMenuOpen(false);
+                      }}
                       className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                         currentRoute === '/app/settings'
                           ? 'bg-slate-900 text-white'
@@ -360,8 +359,31 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                       <Settings className="w-4 h-4 text-slate-500" />
                       <span>Organization Settings</span>
                     </button>
+
+                    <button
+                      onClick={() => {
+                        onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=users';
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+                    >
+                      <Users className="w-4 h-4 text-slate-500" />
+                      <span>Team &amp; User Accounts</span>
+                    </button>
                   </>
                 )}
+
+                <button
+                  onClick={() => {
+                    onNavigate('/public');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-100 transition-all cursor-pointer"
+                >
+                  <Globe className="w-4 h-4 text-blue-600" />
+                  <span>Public Website</span>
+                </button>
               </div>
             </div>
           </div>

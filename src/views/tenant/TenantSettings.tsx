@@ -7,37 +7,44 @@ import {
   Shield, AlertTriangle, AlertCircle, Mail, UserPlus, Sliders,
   MoveUp, MoveDown, Eye, Copy, ArrowRight
 } from 'lucide-react';
-import { TenantPublicWebsiteConfig, TenantPublicNews, TenantPublicEvent, Tenant, User, TenantHeroSlide } from '../../types';
+import { TenantPublicWebsiteConfig, TenantPublicNews, TenantPublicEvent, Tenant, User, TenantHeroSlide, TenantDomain } from '../../types';
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
 import { HeroSlideModal } from './components/HeroSlideModal';
-import { TenantDomainManager } from './components/TenantDomainManager';
 import { compressImageFile } from '../../lib/imageUtils';
 import { DEFAULT_HERO_SLIDES } from '../../components/public/HeroSlider';
+import { getBaseDomain, buildTenantUrl, buildCustomDomainUrl } from '../../lib/domainResolver';
 
 interface TenantSettingsProps {
-  initialTab?: 'branding' | 'domains' | 'public_website' | 'users';
+  initialTab?: 'branding' | 'public_website' | 'users';
 }
 
 export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'branding' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'domains' | 'public_website' | 'users'>(() => {
+  const [activeTab, setActiveTab] = useState<'branding' | 'public_website' | 'users'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
-      if (hash.includes('domains')) return 'domains';
       if (hash.includes('users')) return 'users';
       if (hash.includes('website')) return 'public_website';
     }
-    return initialTab;
+    return initialTab === ('domains' as any) ? 'public_website' : initialTab;
   });
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      if ((initialTab as string) === 'domains') {
+        setActiveTab('public_website');
+      } else {
+        setActiveTab(initialTab);
+      }
     }
   }, [initialTab]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string>(tenant?.id || '');
+
+  // Read-only domain info state
+  const [tenantDomains, setTenantDomains] = useState<TenantDomain[]>([]);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Users state for Tenant User Management
   const [tenantUsers, setTenantUsers] = useState<User[]>([]);
@@ -186,8 +193,36 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
         if (tenant) populateFromTenant(tenant);
       }
     };
+
+    const fetchDomains = async () => {
+      try {
+        const targetId = (user?.role === 'SUPER_ADMIN' ? selectedTenantId : tenant?.id) || tenant?.id || '';
+        if (!targetId) return;
+        const res = await fetch(`/api/tenant/domains`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': localStorage.getItem('erp_user_id') || '',
+            'x-tenant-id': targetId
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTenantDomains(data.domains || []);
+        }
+      } catch (e) {
+        console.error('Failed to load tenant domains:', e);
+      }
+    };
+
     fetchInfo();
+    fetchDomains();
   }, [selectedTenantId, tenant, user]);
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   // Handle Logo File Upload
   const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -631,19 +666,7 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           }`}
         >
           <Building2 className="w-4 h-4" />
-          <span>ERP Branding & Currency</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('domains')}
-          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'domains'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Globe className="w-4 h-4" />
-          <span>Domains &amp; Routing</span>
+          <span>ERP Branding &amp; Currency</span>
         </button>
 
         <button
@@ -655,7 +678,7 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           }`}
         >
           <Globe className="w-4 h-4" />
-          <span>Public Website & Landing Page</span>
+          <span>Public Website &amp; Domain Info</span>
         </button>
 
         <button
@@ -670,18 +693,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           <span>Team &amp; User Accounts</span>
         </button>
       </div>
-
-      {/* TAB: DOMAINS & ROUTING */}
-      {activeTab === 'domains' && (
-        <TenantDomainManager
-          tenantId={selectedTenantId || tenant?.id || ''}
-          tenantName={tenant?.name}
-          isSuperAdmin={user?.role === 'SUPER_ADMIN'}
-          onDomainsUpdated={() => {
-            refreshAuth?.();
-          }}
-        />
-      )}
 
       {/* TAB 1: BRANDING */}
       {activeTab === 'branding' && (
@@ -915,6 +926,145 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
               </label>
             </div>
           </div>
+
+          {/* Read-Only Public Website Address & Platform-Managed Domain Info */}
+          {(() => {
+            const currentTenantObj = (user?.role === 'SUPER_ADMIN' ? allTenants.find(t => t.id === selectedTenantId) : tenant) || tenant;
+            const bDomain = getBaseDomain();
+            const subdomainSlug = currentTenantObj?.slug || currentTenantObj?.subdomain || 'organization';
+            const customDomainRecord = tenantDomains.find(d => d.type === 'CUSTOM');
+            const primaryDomainRecord = tenantDomains.find(d => d.isPrimary) || tenantDomains[0];
+            const primaryDomainDisplay = primaryDomainRecord ? primaryDomainRecord.domain : `${subdomainSlug}.${bDomain}`;
+            const primaryDomainUrl = primaryDomainRecord?.type === 'CUSTOM'
+              ? buildCustomDomainUrl(primaryDomainRecord.domain)
+              : buildTenantUrl(subdomainSlug);
+
+            return (
+              <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/20 border border-slate-200 rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2">
+                      <Globe className="w-4 h-4 text-blue-600" />
+                      <span>Public Website Address &amp; Hostname</span>
+                    </h3>
+                    <p className="text-slate-500 text-[11px] mt-0.5">
+                      Production URL and DNS routing status assigned to your organization.
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
+                    <span>Domain Active</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {/* Primary Domain */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Website Address</span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-slate-900 text-xs truncate max-w-[200px] sm:max-w-xs">
+                        {primaryDomainDisplay}
+                      </span>
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(primaryDomainUrl, 'primary-url')}
+                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                          title="Copy Domain URL"
+                        >
+                          {copiedKey === 'primary-url' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                        <a
+                          href={primaryDomainUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Open live website in new tab"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2 text-[11px] text-slate-500">
+                      <span className="flex items-center space-x-1 text-emerald-600 font-semibold">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Active / Verified</span>
+                      </span>
+                      <span>&bull;</span>
+                      <span className="flex items-center space-x-1 text-teal-600 font-semibold">
+                        <Shield className="w-3 h-3" />
+                        <span>SSL / TLS 1.3 Active</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Custom Domain */}
+                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Custom Domain</span>
+                    {customDomainRecord ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-slate-900 text-xs truncate max-w-[200px] sm:max-w-xs">
+                            {customDomainRecord.domain}
+                          </span>
+                          <div className="flex items-center space-x-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(`https://${customDomainRecord.domain}`, 'custom-url')}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                              title="Copy Custom Domain"
+                            >
+                              {copiedKey === 'custom-url' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                            <a
+                              href={`https://${customDomainRecord.domain}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
+                              title="Open live custom domain in new tab"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 text-[11px] text-slate-500">
+                          <span className={`flex items-center space-x-1 font-semibold ${
+                            customDomainRecord.verificationStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-600'
+                          }`}>
+                            {customDomainRecord.verificationStatus === 'VERIFIED' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                            <span>{customDomainRecord.verificationStatus === 'VERIFIED' ? 'Verified' : 'Pending Verification'}</span>
+                          </span>
+                          <span>&bull;</span>
+                          <span className="flex items-center space-x-1 text-teal-600 font-semibold">
+                            <Shield className="w-3 h-3" />
+                            <span>SSL Active</span>
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-slate-500 font-medium py-1">
+                          Not connected
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          To link a branded custom domain (e.g. www.{companyName ? companyName.toLowerCase().replace(/[^a-z0-9]/g, '') : 'organization'}.com), contact Davetech Platform Administration.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Central Platform Infrastructure Notice */}
+                <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px] text-slate-600 flex items-start space-x-2">
+                  <Shield className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-slate-800">Platform-Managed Infrastructure: </span>
+                    Domain assignment, DNS records, and hostname routing are managed centrally by Davetech Platform Administration.
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Hero Slider Carousel Configuration */}
           <div className="space-y-4 pt-2">

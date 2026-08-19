@@ -2,7 +2,15 @@
  * Multi-Tenant SaaS ERP Types & Interface Definitions
  */
 
-export type UserRole = 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'TENANT_USER';
+export type UserRole = 
+  | 'SUPER_ADMIN' 
+  | 'TENANT_ADMIN' 
+  | 'TENANT_USER'
+  | 'STUDENT'
+  | 'TEACHER'
+  | 'REGISTRAR'
+  | 'ACADEMIC_ADMIN'
+  | 'FINANCE_OFFICER';
 
 export type FacilityType = 
   | 'HOSPITAL'
@@ -139,6 +147,29 @@ export interface TenantPublicWebsiteConfig {
   customMetaDescription?: string;
   typography?: PublicWebsiteTypographyConfig;
 }
+
+export type PlatformPermission =
+  | 'platform.domains.view'
+  | 'platform.domains.create'
+  | 'platform.domains.edit'
+  | 'platform.domains.delete'
+  | 'platform.domains.verify'
+  | 'platform.domains.manage_routing'
+  | 'platform.tenants.view'
+  | 'platform.tenants.create'
+  | 'platform.tenants.manage'
+  | 'platform.users.manage'
+  | 'platform.settings.manage';
+
+export type TenantPermission =
+  | 'organization.profile.view'
+  | 'organization.branding.manage'
+  | 'organization.website.view'
+  | 'organization.website.manage'
+  | 'organization.users.view'
+  | 'organization.users.manage'
+  | 'organization.reports.view'
+  | 'organization.modules.access';
 
 export type DomainType = 'SUBDOMAIN' | 'CUSTOM';
 export type DomainVerificationStatus = 'PENDING' | 'VERIFIED' | 'FAILED';
@@ -401,6 +432,10 @@ export interface User {
   customRoleName?: string;
   avatarUrl?: string;
   department?: string;
+  studentId?: string;
+  staffId?: string;
+  admissionNo?: string;
+  staffNo?: string;
   permissions: string[]; // e.g. ['education.view', 'students.create']
   passwordHash?: string;
   resetToken?: string;
@@ -759,6 +794,188 @@ export interface HostelRoom {
 }
 
 // ==========================================
+// EDUCATION ENHANCED TYPES (QR Attendance, Portals, Transcripts & Certificates)
+// ==========================================
+
+export interface AttendanceSession {
+  id: string;
+  tenantId: string;
+  sessionCode: string; // e.g. "ATT-2026-X89K"
+  sessionToken: string; // short-lived cryptographically secure random token
+  classId: string;
+  className: string;
+  unitId: string;
+  unitCode: string;
+  unitName: string;
+  teacherId: string;
+  teacherName: string;
+  date: string;
+  lessonTitle: string;
+  venue?: string;
+  expiresAt: string; // ISO date string
+  durationMinutes: number; // e.g. 10, 15, 30
+  status: 'ACTIVE' | 'CLOSED' | 'EXPIRED';
+  attendeeCount: number;
+  createdAt: string;
+}
+
+export interface AttendanceScanRecord {
+  id: string;
+  tenantId: string;
+  sessionId: string;
+  sessionCode: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  classId: string;
+  unitId: string;
+  teacherId: string;
+  scannedAt: string;
+  status: 'PRESENT' | 'LATE';
+  deviceInfo?: string;
+}
+
+export interface TranscriptUnit {
+  unitCode: string;
+  unitName: string;
+  academicYear: string;
+  academicTerm: string;
+  creditHours: number;
+  catScore: number;
+  examScore: number;
+  totalScore: number;
+  grade: string;
+  gradePoints: number;
+  remarks: string;
+}
+
+export interface AcademicTranscript {
+  id: string;
+  tenantId: string;
+  documentNumber: string; // e.g. "TR-2026-0001"
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  programId: string;
+  programName: string;
+  departmentName: string;
+  campusName: string;
+  enrollmentDate: string;
+  completionDate?: string;
+  academicStanding: 'EXCELLENT' | 'GOOD STANDING' | 'PASS' | 'PROBATION' | 'COMPLETED';
+  gpa: number; // e.g. 3.75
+  totalCreditHours: number;
+  totalPoints: number;
+  units: TranscriptUnit[];
+  gradingScaleSummary: string;
+  issuedBy: string;
+  issuedAt: string;
+  verificationCode: string;
+  verificationUrl: string;
+  qrCodeDataUrl?: string;
+}
+
+export interface AcademicCertificate {
+  id: string;
+  tenantId: string;
+  certificateNumber: string; // e.g. "CERT-2026-0001"
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  programId: string;
+  programName: string;
+  departmentName?: string;
+  awardType: 'DEGREE' | 'DIPLOMA' | 'HIGHER_DIPLOMA' | 'CERTIFICATE' | 'SHORT_COURSE' | 'VOCATIONAL_AWARD';
+  awardTitle: string; // e.g. "Diploma in Information Communication Technology (DICT)"
+  classification?: string; // e.g. "Distinction", "Credit", "Pass", "First Class Honours"
+  completionDate: string;
+  issueDate: string;
+  signatory1Title: string; // e.g. "Principal / Vice Chancellor"
+  signatory1Name: string;
+  signatory2Title: string; // e.g. "Academic Registrar"
+  signatory2Name: string;
+  verificationCode: string;
+  verificationUrl: string;
+  qrCodeDataUrl?: string;
+  status: 'ISSUED' | 'REVOKED';
+}
+
+export interface AdmissionLetter {
+  id: string;
+  tenantId: string;
+  letterNumber: string; // e.g. "ADM-2026-0001"
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  nationalId?: string;
+  programId: string;
+  programName: string;
+  departmentName: string;
+  campusName: string;
+  intake: string;
+  academicYear: string;
+  reportingDate: string;
+  duration: string; // e.g. "2 Academic Years (6 Semesters)"
+  termTuitionFee: number;
+  statutoryFees: number;
+  admissionConditions: string[];
+  issuedBy: string;
+  issueDate: string;
+  verificationCode: string;
+  verificationUrl: string;
+  qrCodeDataUrl?: string;
+}
+
+export interface DocumentVerificationRecord {
+  id: string;
+  tenantId: string;
+  verificationCode: string; // unique public code
+  documentType: 'TRANSCRIPT' | 'CERTIFICATE' | 'ADMISSION_LETTER';
+  documentNumber: string;
+  studentNameMasked: string; // e.g. "J*** K***"
+  admissionNo: string;
+  programName: string;
+  institutionName: string;
+  issueDate: string;
+  status: 'OFFICIAL_VERIFIED' | 'REVOKED' | 'EXPIRED';
+  verifiedCount: number;
+  lastVerifiedAt?: string;
+}
+
+export type EducationPermission =
+  | 'education.students.view'
+  | 'education.students.create'
+  | 'education.students.edit'
+  | 'education.students.delete'
+  | 'education.staff.view'
+  | 'education.staff.manage'
+  | 'education.courses.view'
+  | 'education.courses.manage'
+  | 'education.departments.view'
+  | 'education.departments.manage'
+  | 'education.units.view'
+  | 'education.units.manage'
+  | 'education.classes.view'
+  | 'education.classes.manage'
+  | 'education.timetable.view'
+  | 'education.timetable.manage'
+  | 'education.attendance.view'
+  | 'education.attendance.manage'
+  | 'education.attendance.scan'
+  | 'education.results.view'
+  | 'education.results.enter'
+  | 'education.results.edit'
+  | 'education.results.approve'
+  | 'education.admissions.view'
+  | 'education.admissions.manage'
+  | 'education.transcripts.generate'
+  | 'education.certificates.generate'
+  | 'education.admission_letters.generate'
+  | 'education.fees.view'
+  | 'education.fees.manage'
+  | 'education.reports.view';
+
+// ==========================================
 // CHAMA / SACCO MODULE TYPES (Blessed to Bless)
 // ==========================================
 export interface ChamaMember {
@@ -872,6 +1089,18 @@ export interface PosProduct {
   unit: string;
   authorOrBrand?: string;
   isbnOrCode?: string;
+  description?: string;
+  imageUrl?: string;
+  itemTrackingType?: 'QUANTITY_BASED' | 'UNIQUE_ITEM';
+  clothingAttributes?: ClothingAttributes;
+  variants?: ProductVariant[];
+  warehouseId?: string;
+  warehouseName?: string;
+  branchId?: string;
+  branchName?: string;
+  supplierId?: string;
+  supplierName?: string;
+  expiryDate?: string;
   status: 'ACTIVE' | 'OUT_OF_STOCK' | 'DISCONTINUED';
 }
 
@@ -880,10 +1109,16 @@ export interface PosSaleItem {
   productName: string;
   sku: string;
   unitPrice: number;
+  costPrice?: number;
   quantity: number;
   taxPercent?: number;
   discountAmount?: number;
   total: number;
+  notes?: string;
+  clothingItemCode?: string;
+  size?: string;
+  color?: string;
+  variantId?: string;
 }
 
 export interface PosSaleOrder {
@@ -895,15 +1130,31 @@ export interface PosSaleOrder {
   discount: number;
   tax: number;
   grandTotal: number;
-  paymentMethod: 'CASH' | 'MPESA' | 'CARD' | 'CREDIT' | 'BANK_TRANSFER';
+  paymentMethod: 'CASH' | 'MPESA' | 'CARD' | 'CREDIT' | 'BANK_TRANSFER' | 'SPLIT' | 'ROOM_CHARGE';
   paymentReference?: string;
+  splitPayments?: PosPaymentSplit[];
   cashierId: string;
   cashierName: string;
+  customerId?: string;
   customerName?: string;
   customerPhone?: string;
   date: string;
-  saleType: 'RETAIL' | 'WHOLESALE' | 'POS' | 'RESTAURANT' | 'BOOKSHOP';
+  saleType: 'RETAIL' | 'WHOLESALE' | 'POS' | 'RESTAURANT' | 'BOOKSHOP' | 'BAR' | 'HOTEL' | 'MITUMBA';
   tableOrRoomNo?: string;
+  tableId?: string;
+  roomNumber?: string;
+  guestId?: string;
+  waiterId?: string;
+  waiterName?: string;
+  tabId?: string;
+  shiftId?: string;
+  branchId?: string;
+  warehouseId?: string;
+  amountTendered?: number;
+  changeGiven?: number;
+  discountType?: 'PERCENT' | 'FIXED';
+  discountApprovedBy?: string;
+  notes?: string;
   status: 'COMPLETED' | 'HOLD' | 'CANCELLED';
 }
 
@@ -2157,5 +2408,580 @@ export interface MortuaryIntake {
   };
   status: 'INTAKE' | 'RELEASED';
 }
+
+// =========================================================================
+// UNIVERSAL POS & BUSINESS MANAGEMENT DATA MODELS
+// =========================================================================
+
+export type PosBusinessType = 
+  | 'GENERAL_RETAIL' 
+  | 'SUPERMARKET' 
+  | 'MITUMBA_CLOTHING' 
+  | 'BOUTIQUE' 
+  | 'BAR_LOUNGE' 
+  | 'RESTAURANT_CAFE' 
+  | 'HOTEL_LODGE' 
+  | 'ELECTRONICS' 
+  | 'HARDWARE' 
+  | 'PHARMACY' 
+  | 'WHOLESALE' 
+  | 'BOOKSHOP'
+  | 'MIXED';
+
+export interface PosEnabledFeatures {
+  retail: boolean;
+  wholesale: boolean;
+  mitumbaClothing: boolean;
+  inventory: boolean;
+  multiWarehouse: boolean;
+  multiBranch: boolean;
+  tables: boolean;
+  restaurant: boolean;
+  bar: boolean;
+  kitchenKds: boolean;
+  hotelRooms: boolean;
+  hotelGuests: boolean;
+  reservations: boolean;
+  roomService: boolean;
+  waiters: boolean;
+  tabs: boolean;
+  creditSales: boolean;
+  customerAccounts: boolean;
+  suppliers: boolean;
+  purchases: boolean;
+  stockTransfers: boolean;
+  barcodeScanning: boolean;
+  discounts: boolean;
+  returns: boolean;
+  expenses: boolean;
+  shifts: boolean;
+  allowOutOfStockSale: boolean;
+  maxDiscountPercentCashier: number;
+  maxDiscountPercentManager: number;
+}
+
+export type BusinessType = PosBusinessType;
+
+export interface PosSaleItem {
+  productId: string;
+  productName: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate?: number;
+  discount?: number;
+  total: number;
+  notes?: string;
+  size?: string;
+  color?: string;
+  variantId?: string;
+}
+
+export interface PosProduct {
+  id: string;
+  tenantId: string;
+  sku: string;
+  name: string;
+  category: string;
+  barcode?: string;
+  costPrice: number;
+  sellingPrice: number;
+  wholesalePrice?: number;
+  minWholesaleQty?: number;
+  quantityInStock: number;
+  minStockAlert: number;
+  unit: string;
+  size?: string;
+  color?: string;
+  gender?: 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
+  clothingCondition?: 'BRAND_NEW' | 'GRADE_1' | 'GRADE_2' | 'CREME';
+  baleNumber?: string;
+  batchNumber?: string;
+  expiryDate?: string;
+  warehouseId?: string;
+  branchId?: string;
+  taxRate?: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  clothingAttributes?: ClothingAttributes;
+  variants?: ProductVariant[];
+  description?: string;
+  imageUrl?: string;
+}
+
+export interface InventoryMovement {
+  id: string;
+  tenantId: string;
+  productId: string;
+  productName: string;
+  movementType: 'SALE' | 'RESTOCK' | 'ADJUSTMENT_ADD' | 'ADJUSTMENT_SUBTRACT' | 'DAMAGE' | 'EXPIRED' | 'RETURN' | 'TRANSFER';
+  quantityChanged: number;
+  balanceAfter: number;
+  warehouseId?: string;
+  recordedBy: string;
+  notes?: string;
+  date: string;
+}
+
+export interface PosSaleOrder {
+  id: string;
+  tenantId: string;
+  receiptNumber: string;
+  customerId?: string;
+  customerName: string;
+  cashierId: string;
+  cashierName: string;
+  branchId?: string;
+  warehouseId?: string;
+  tableNumber?: string;
+  shiftId?: string;
+  items: PosSaleItem[];
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paymentMethod: 'CASH' | 'MPESA' | 'CARD' | 'CREDIT' | 'SPLIT' | 'ROOM_CHARGE';
+  paymentReference?: string;
+  amountTendered?: number;
+  changeDue?: number;
+  status: 'COMPLETED' | 'HOLD' | 'CANCELLED' | 'REFUNDED';
+  notes?: string;
+  createdAt: string;
+}
+
+export type CustomerCreditTransaction = PosCustomerTransaction;
+export type KitchenTicket = KitchenOrderTicket;
+
+export interface PosTenantConfig {
+  id: string;
+  tenantId: string;
+  businessType: PosBusinessType;
+  businessName: string;
+  tagline?: string;
+  logoUrl?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxPin?: string;
+  vatRatePercent: number; // e.g. 16%
+  currency: string; // e.g. "KES"
+  currencySymbol: string; // e.g. "KSh"
+  receiptHeader?: string;
+  receiptFooter?: string;
+  termsAndConditions?: string;
+  enabledFeatures: PosEnabledFeatures;
+  defaultWarehouseId?: string;
+  defaultBranchId?: string;
+  updatedAt: string;
+}
+
+export interface ClothingAttributes {
+  size?: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL' | 'Free Size' | string;
+  color?: string;
+  gender?: 'Men' | 'Women' | 'Unisex' | 'Kids' | 'Baby';
+  condition?: 'Grade A (Like New)' | 'Grade B (Good)' | 'Grade C (Economy)' | 'Brand New' | string;
+  material?: string;
+  itemCode?: string; // Unique piece tracking code e.g. "JKT-0045"
+  baleNumber?: string;
+  isSold?: boolean;
+}
+
+export interface ProductVariant {
+  id: string;
+  name: string; // e.g. "Size 42 - Blue"
+  sku: string;
+  barcode?: string;
+  sellingPrice: number;
+  wholesalePrice?: number;
+  costPrice: number;
+  stockQuantity: number;
+  attributes: Record<string, string>;
+}
+
+export interface Warehouse {
+  id: string;
+  tenantId: string;
+  name: string;
+  code: string; // e.g. "WH-MAIN"
+  location: string;
+  managerName?: string;
+  phone?: string;
+  isDefault: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface Branch {
+  id: string;
+  tenantId: string;
+  name: string;
+  code: string; // e.g. "BR-CBD"
+  location: string;
+  phone?: string;
+  email?: string;
+  isMainBranch: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface PosCustomer {
+  id: string;
+  tenantId: string;
+  customerNo: string; // e.g. "CUST-001"
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  customerType: 'RETAIL' | 'WHOLESALE' | 'VIP' | 'CORPORATE';
+  creditLimit: number;
+  currentBalance: number; // outstanding debt
+  loyaltyPoints: number;
+  totalSpent: number;
+  taxPin?: string;
+  notes?: string;
+  status: 'ACTIVE' | 'BLOCKED';
+  createdAt: string;
+}
+
+export interface PosCustomerTransaction {
+  id: string;
+  tenantId: string;
+  customerId: string;
+  customerName: string;
+  type: 'CREDIT_SALE' | 'PAYMENT' | 'REFUND' | 'ADJUSTMENT';
+  amount: number;
+  balanceAfter: number;
+  saleReceiptNo?: string;
+  paymentMethod?: string;
+  reference?: string;
+  notes?: string;
+  date: string;
+  recordedBy: string;
+}
+
+export interface PosSupplier {
+  id: string;
+  tenantId: string;
+  supplierNo: string; // e.g. "SUP-001"
+  name: string;
+  contactPerson?: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  taxPin?: string;
+  currentBalance: number; // money owed to supplier
+  paymentTerms?: string;
+  category?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+}
+
+export interface PurchaseOrderItem {
+  productId: string;
+  productName: string;
+  sku: string;
+  quantityOrdered: number;
+  quantityReceived: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  tenantId: string;
+  poNumber: string; // e.g. "PO-2026-0001"
+  supplierId: string;
+  supplierName: string;
+  warehouseId?: string;
+  warehouseName?: string;
+  items: PurchaseOrderItem[];
+  subtotal: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: 'DRAFT' | 'ORDERED' | 'PARTIAL_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+  orderedDate: string;
+  expectedDeliveryDate?: string;
+  notes?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface GoodsReceivedItem {
+  productId: string;
+  productName: string;
+  quantityReceived: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+export interface GoodsReceivedNote {
+  id: string;
+  tenantId: string;
+  grnNumber: string; // e.g. "GRN-2026-0001"
+  poId?: string;
+  poNumber?: string;
+  supplierId: string;
+  supplierName: string;
+  warehouseId: string;
+  warehouseName: string;
+  items: GoodsReceivedItem[];
+  totalAmount: number;
+  supplierInvoiceNo?: string;
+  receivedDate: string;
+  receivedBy: string;
+  notes?: string;
+}
+
+export interface SupplierPayment {
+  id: string;
+  tenantId: string;
+  paymentNumber: string;
+  supplierId: string;
+  supplierName: string;
+  amount: number;
+  paymentMethod: 'MPESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CASH';
+  reference: string;
+  date: string;
+  paidBy: string;
+  notes?: string;
+}
+
+export interface PosPaymentSplit {
+  method: 'CASH' | 'MPESA' | 'CARD' | 'BANK_TRANSFER' | 'CREDIT' | 'ROOM_CHARGE';
+  amount: number;
+  reference?: string;
+}
+
+export interface PosSaleReturnItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  refundAmount: number;
+  condition: 'RESTOCKABLE' | 'DAMAGED' | 'EXPIRED';
+}
+
+export interface PosSaleReturn {
+  id: string;
+  tenantId: string;
+  returnNumber: string; // e.g. "RET-2026-0001"
+  originalSaleId: string;
+  originalReceiptNo: string;
+  items: PosSaleReturnItem[];
+  totalRefundAmount: number;
+  refundMethod: 'CASH' | 'MPESA' | 'STORE_CREDIT';
+  reason: string;
+  customerName?: string;
+  returnedByStaff: string;
+  approvedByStaff?: string;
+  date: string;
+}
+
+export interface CashierShift {
+  id: string;
+  tenantId: string;
+  shiftNumber: string; // e.g. "SHF-2026-001"
+  cashierId: string;
+  cashierName: string;
+  branchId?: string;
+  branchName?: string;
+  startTime: string;
+  endTime?: string;
+  openingCashFloat: number;
+  cashSales: number;
+  mpesaSales: number;
+  cardSales: number;
+  creditSales: number;
+  roomChargeSales: number;
+  totalSales: number;
+  cashIn: number;
+  cashOut: number;
+  expensesTotal: number;
+  expectedCashInDrawer: number;
+  actualCashCount?: number;
+  cashVariance?: number; // (actual - expected)
+  status: 'OPEN' | 'CLOSED';
+  closingNotes?: string;
+}
+
+export interface PosExpense {
+  id: string;
+  tenantId: string;
+  expenseNumber: string;
+  category: 'RENT' | 'TRANSPORT' | 'UTILITIES' | 'SALARIES' | 'SUPPLIES' | 'MAINTENANCE' | 'MEALS' | 'OTHER';
+  description: string;
+  amount: number;
+  paymentMethod: 'CASH' | 'MPESA' | 'BANK_TRANSFER';
+  shiftId?: string;
+  branchId?: string;
+  recordedBy: string;
+  approvedBy?: string;
+  receiptNumber?: string;
+  date: string;
+}
+
+export interface BarTab {
+  id: string;
+  tenantId: string;
+  tabNumber: string; // e.g. "TAB-014"
+  tabName: string; // e.g. "Table 4 - John", "VIP Lounge - Alex"
+  tableId?: string;
+  tableName?: string;
+  waiterId: string;
+  waiterName: string;
+  status: 'OPEN' | 'TRANSFERRED' | 'CLOSED';
+  items: PosSaleItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  openedAt: string;
+  closedAt?: string;
+}
+
+export interface KitchenTicketItem {
+  id: string;
+  name: string;
+  quantity: number;
+  notes?: string;
+  station: 'KITCHEN' | 'BAR' | 'GRILL' | 'DESSERT';
+  status: 'PENDING' | 'PREPARING' | 'READY' | 'SERVED';
+}
+
+export interface KitchenOrderTicket {
+  id: string;
+  tenantId: string;
+  ticketNumber: string; // e.g. "KOT-104"
+  saleOrderId?: string;
+  tableId?: string;
+  tableName?: string;
+  roomNumber?: string;
+  waiterName: string;
+  orderType: 'DINE_IN' | 'TAKEAWAY' | 'ROOM_SERVICE' | 'BAR';
+  station: 'KITCHEN' | 'BAR' | 'GRILL' | 'DESSERT';
+  items: KitchenTicketItem[];
+  specialInstructions?: string;
+  status: 'NEW' | 'PREPARING' | 'READY' | 'SERVED' | 'CANCELLED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HotelRoomType {
+  id: string;
+  tenantId: string;
+  name: string; // e.g. "Executive Deluxe Suite", "Standard Single"
+  code: string;
+  basePricePerNight: number;
+  hourlyRate?: number;
+  maxAdults: number;
+  maxChildren: number;
+  amenities: string[];
+  description: string;
+}
+
+export interface HotelRoom {
+  id: string;
+  tenantId: string;
+  roomNumber: string; // e.g. "101", "Villa 4"
+  roomTypeId: string;
+  roomTypeName: string;
+  floor: string;
+  pricePerNight: number;
+  status: 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'CLEANING' | 'MAINTENANCE' | 'OUT_OF_SERVICE';
+  currentGuestId?: string;
+  currentGuestName?: string;
+  currentReservationId?: string;
+  keyCardNumber?: string;
+}
+
+export interface HotelGuest {
+  id: string;
+  tenantId: string;
+  guestNumber: string; // e.g. "GST-2026-001"
+  fullName: string;
+  nationalIdOrPassport: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  nationality?: string;
+  totalStays: number;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface HotelFolioCharge {
+  id: string;
+  date: string;
+  category: 'ROOM_STAY' | 'RESTAURANT' | 'BAR' | 'ROOM_SERVICE' | 'LAUNDRY' | 'SPA' | 'OTHER';
+  description: string;
+  amount: number;
+  referenceNo?: string;
+  servedBy?: string;
+}
+
+export interface HotelReservation {
+  id: string;
+  tenantId: string;
+  reservationNumber: string; // e.g. "RSV-2026-0001"
+  guestId: string;
+  guestName: string;
+  guestPhone: string;
+  guestIdPassport?: string;
+  roomId: string;
+  roomNumber: string;
+  roomTypeName: string;
+  checkInDate: string;
+  checkOutDate: string;
+  actualCheckInTime?: string;
+  actualCheckOutTime?: string;
+  numAdults: number;
+  numChildren: number;
+  nightlyRate: number;
+  totalNights: number;
+  roomCharges: number;
+  otherCharges: number;
+  totalBill: number;
+  amountPaid: number;
+  balance: number;
+  folioCharges: HotelFolioCharge[];
+  status: 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED' | 'NO_SHOW';
+  specialRequests?: string;
+  createdAt: string;
+}
+
+export type PosPermission =
+  | 'pos.dashboard.view'
+  | 'pos.sales.view'
+  | 'pos.sales.create'
+  | 'pos.sales.edit'
+  | 'pos.sales.cancel'
+  | 'pos.products.view'
+  | 'pos.products.create'
+  | 'pos.products.edit'
+  | 'pos.products.delete'
+  | 'pos.inventory.view'
+  | 'pos.inventory.adjust'
+  | 'pos.inventory.transfer'
+  | 'pos.purchases.view'
+  | 'pos.purchases.create'
+  | 'pos.purchases.approve'
+  | 'pos.customers.view'
+  | 'pos.customers.create'
+  | 'pos.customers.edit'
+  | 'pos.suppliers.view'
+  | 'pos.suppliers.manage'
+  | 'pos.credit.view'
+  | 'pos.credit.manage'
+  | 'pos.discounts.apply'
+  | 'pos.discounts.approve'
+  | 'pos.returns.create'
+  | 'pos.returns.approve'
+  | 'pos.cashier.open_shift'
+  | 'pos.cashier.close_shift'
+  | 'pos.reports.view'
+  | 'pos.settings.manage'
+  | 'pos.tables.manage'
+  | 'pos.orders.manage'
+  | 'pos.kitchen.manage'
+  | 'pos.hotel.rooms.manage'
+  | 'pos.hotel.reservations.manage'
+  | 'pos.hotel.billing.manage';
+
 
 

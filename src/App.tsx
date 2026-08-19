@@ -24,6 +24,7 @@ import { RestaurantBarDashboard } from './views/tenant/restaurant/RestaurantBarD
 import { ChurchDashboard } from './views/tenant/church/ChurchDashboard';
 import { HealthcareDashboard } from './views/tenant/healthcare/HealthcareDashboard';
 import { CoreEnterpriseDashboard } from './views/tenant/enterprise/CoreEnterpriseDashboard';
+import { PublicDocumentVerification } from './views/public/PublicDocumentVerification';
 import { AccessDeniedGuard } from './components/common/AccessDeniedGuard';
 import { TenantMismatchGuard } from './components/common/TenantMismatchGuard';
 import { resolveHostname, ResolvedDomain } from './lib/domainResolver';
@@ -156,6 +157,13 @@ function MainAppContent() {
     );
   }
 
+  // 0.0 PUBLIC DOCUMENT VERIFICATION ROUTE (/verify-document or /verify-document/*)
+  if (currentRoute.startsWith('/verify-document') || (typeof window !== 'undefined' && window.location.pathname.startsWith('/verify-document'))) {
+    const codeMatch = currentRoute.match(/\/verify-document\/(.+)/) || (typeof window !== 'undefined' ? window.location.pathname.match(/\/verify-document\/(.+)/) : null);
+    const initialCode = codeMatch ? codeMatch[1] : undefined;
+    return <PublicDocumentVerification initialCode={initialCode} />;
+  }
+
   // 0.1 PUBLIC WEBSITE ROUTE (/ or /public or /public/*)
   if (currentRoute === '/' || currentRoute === '/public' || currentRoute === '/public/' || currentRoute.startsWith('/public/')) {
     const slug = activeTenantSlug;
@@ -231,7 +239,7 @@ function MainAppContent() {
         <PlatformLayout currentTab={platformTab} onSelectTab={navigatePlatformTab}>
           {platformTab === 'dashboard' && <PlatformDashboard onNavigateTab={navigatePlatformTab} />}
           {platformTab === 'tenants' && <PlatformTenants initialTab="tenants" onInspectNavigate={() => navigateTo('/app/dashboard')} />}
-          {platformTab === 'domains' && <PlatformDomains />}
+          {platformTab === 'domains' && <PlatformDomains onInspectNavigate={() => navigateTo('/app/dashboard')} />}
           {platformTab === 'users' && <PlatformTenants initialTab="users" onInspectNavigate={() => navigateTo('/app/dashboard')} />}
           {platformTab === 'audit-logs' && <PlatformAuditLogs />}
           {platformTab === 'plans' && <PlatformPlans />}
@@ -318,16 +326,9 @@ function MainAppContent() {
           )
         )}
 
-        {/* Dedicated Direct Domains & Routing Path */}
+        {/* Direct Domains & Routing Path Redirected to Public Website Info */}
         {currentRoute === '/app/domains' && (
-          user.role === 'TENANT_USER' ? (
-            <AccessDeniedGuard
-              reason="Domain and routing configurations are restricted to Tenant Administrators."
-              onNavigateDashboard={() => navigateTo('/app/dashboard')}
-            />
-          ) : (
-            <TenantSettings initialTab="domains" />
-          )
+          <TenantSettings initialTab="public_website" />
         )}
 
         {/* Production-Ready Industry-Specific & Enterprise ERP Module Views */}

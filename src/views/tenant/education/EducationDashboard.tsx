@@ -6,7 +6,7 @@ import {
 import {
   GraduationCap, Users, BookOpen, Calendar, DollarSign, Building, Building2,
   Plus, Layers, Award, ArrowUpRight, TrendingUp,
-  FileSpreadsheet, CheckCircle2, Clock
+  FileSpreadsheet, CheckCircle2, Clock, QrCode, FileText, Sparkles, ShieldCheck
 } from 'lucide-react';
 import { StudentManagement } from './StudentManagement';
 import { FacultyManagement } from './FacultyManagement';
@@ -16,10 +16,18 @@ import { ClassManagement } from './ClassManagement';
 import { FeesFinanceManagement } from './FeesFinanceManagement';
 import { TimetableAttendance } from './TimetableAttendance';
 import { ExamGradingManagement } from './ExamGradingManagement';
+import { StudentPortal } from './portals/StudentPortal';
+import { TeacherPortal } from './portals/TeacherPortal';
+import { TranscriptsCertificatesManager } from './documents/TranscriptsCertificatesManager';
+import { QrAttendanceScannerModal } from './components/QrAttendanceScannerModal';
 
 export const EducationDashboard: React.FC = () => {
-  const { tenant } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const { user, tenant } = useAuth();
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    if (user?.role === 'STUDENT') return 'student_portal';
+    if (user?.role === 'TEACHER') return 'teacher_portal';
+    return 'overview';
+  });
 
   // Overview summary state
   const [summary, setSummary] = useState<any>(null);
@@ -29,6 +37,9 @@ export const EducationDashboard: React.FC = () => {
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // QR Scanner modal
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   // Institution Setup / Education Type State
   const [educationType, setEducationType] = useState<EducationType>(
@@ -187,6 +198,14 @@ export const EducationDashboard: React.FC = () => {
 
         <div className="flex items-center space-x-3">
           <button
+            onClick={() => setIsScannerOpen(true)}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer border border-slate-700"
+          >
+            <QrCode className="w-4 h-4 text-blue-400" />
+            <span>Scan QR Attendance</span>
+          </button>
+
+          <button
             onClick={() => setIsAdmitModalOpen(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
           >
@@ -208,6 +227,9 @@ export const EducationDashboard: React.FC = () => {
       <div className="flex overflow-x-auto border-b border-slate-200 bg-white px-3 rounded-xl shadow-2xs gap-1.5 py-1 text-xs font-medium text-slate-600">
         {[
           { id: 'overview', label: 'Overview', icon: Layers },
+          { id: 'student_portal', label: 'Student Portal', icon: Sparkles },
+          { id: 'teacher_portal', label: 'Teacher / Faculty Portal', icon: Award },
+          { id: 'documents', label: 'Transcripts & Certificates', icon: FileText },
           { id: 'students', label: 'Students & Admissions', icon: Users },
           { id: 'faculty', label: 'Lecturers & Staff', icon: Award },
           { id: 'departments', label: 'Departments', icon: Building2 },
@@ -283,6 +305,57 @@ export const EducationDashboard: React.FC = () => {
           </div>
 
           {/* Quick Shortcuts */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => setActiveSubTab('student_portal')}
+              className="p-5 bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl text-left transition-all hover:scale-[1.01] shadow-md group cursor-pointer border border-blue-900/50"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-blue-600/30 rounded-xl text-blue-300 border border-blue-500/30">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-blue-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </div>
+              <p className="font-bold text-sm text-white mt-3">Student Portal Experience</p>
+              <p className="text-xs text-blue-200/80 mt-0.5">
+                Dashboard, timetable, grades, fee receipts, QR check-in & transcript downloads.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('teacher_portal')}
+              className="p-5 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl text-left transition-all hover:scale-[1.01] shadow-md group cursor-pointer border border-slate-700"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-indigo-600/30 rounded-xl text-indigo-300 border border-indigo-500/30">
+                  <Award className="w-5 h-5" />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </div>
+              <p className="font-bold text-sm text-white mt-3">Faculty / Lecturer Portal</p>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Launch Live QR Attendance, track real-time attendees, and submit unit marksheets.
+              </p>
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('documents')}
+              className="p-5 bg-gradient-to-br from-slate-900 to-teal-950 text-white rounded-2xl text-left transition-all hover:scale-[1.01] shadow-md group cursor-pointer border border-teal-900/50"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-emerald-600/30 rounded-xl text-emerald-300 border border-emerald-500/30">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </div>
+              <p className="font-bold text-sm text-white mt-3">Transcripts & Certificates</p>
+              <p className="text-xs text-emerald-200/80 mt-0.5">
+                Generate tamper-proof academic transcripts, award certificates & QR verification.
+              </p>
+            </button>
+          </div>
+
+          {/* Sub Navigation Shortcuts */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button
               onClick={() => setActiveSubTab('students')}
@@ -446,6 +519,21 @@ export const EducationDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* SUBTAB: STUDENT PORTAL */}
+      {activeSubTab === 'student_portal' && (
+        <StudentPortal onBackToAdmin={() => setActiveSubTab('overview')} />
+      )}
+
+      {/* SUBTAB: TEACHER / FACULTY PORTAL */}
+      {activeSubTab === 'teacher_portal' && (
+        <TeacherPortal onBackToAdmin={() => setActiveSubTab('overview')} />
+      )}
+
+      {/* SUBTAB: TRANSCRIPTS & CERTIFICATES */}
+      {activeSubTab === 'documents' && (
+        <TranscriptsCertificatesManager />
       )}
 
       {/* SUBTAB 2: STUDENTS & ADMISSIONS */}
@@ -694,6 +782,14 @@ export const EducationDashboard: React.FC = () => {
           </form>
         </div>
       )}
+      {/* QR ATTENDANCE SCANNER MODAL */}
+      <QrAttendanceScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onSuccess={() => {
+          fetchOverviewData();
+        }}
+      />
     </div>
   );
 };
