@@ -1,9 +1,11 @@
 import { Tenant } from '../types';
+import { BROOKS_OF_LIFE_TENANT } from './brooksOfLifeInitialData';
 
 /**
- * Clean multi-tenant initialization:
- * No hardcoded customer organizations exist by default.
- * All customer institutions/organizations are dynamically provisioned by Platform Super Admins 
- * or self-registered via public signup flows.
+ * Multi-tenant initialization:
+ * Brooks of Life UK is provisioned as an independent theological education, TEMS examination & Christian media tenant.
  */
-export const INITIAL_TENANTS: Tenant[] = [];
+export const INITIAL_TENANTS: Tenant[] = [
+  BROOKS_OF_LIFE_TENANT
+];
+

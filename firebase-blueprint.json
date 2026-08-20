@@ -248,6 +248,69 @@
         "status": { "type": "string" }
       },
       "required": ["id", "tenantId", "tagNumber", "deceasedName"]
+    },
+    "printers": {
+      "title": "PrinterDevice",
+      "description": "Physical ESC/POS and network thermal printers configured per tenant station",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "stationTarget": { "type": "string" },
+        "interfaceType": { "type": "string" },
+        "paperWidth": { "type": "string" },
+        "isDefault": { "type": "boolean" },
+        "autoPrint": { "type": "boolean" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "name", "stationTarget"]
+    },
+    "universalReceipts": {
+      "title": "UniversalReceipt",
+      "description": "Cross-module standardized financial transaction receipts with cryptographic verification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "receiptNumber": { "type": "string" },
+        "sourceModule": { "type": "string" },
+        "customerName": { "type": "string" },
+        "grandTotal": { "type": "number" },
+        "currency": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "receiptNumber", "grandTotal"]
+    },
+    "printJobs": {
+      "title": "PrintJobRecord",
+      "description": "Thermal print queue with offline retry management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "receiptId": { "type": "string" },
+        "receiptNumber": { "type": "string" },
+        "printerId": { "type": "string" },
+        "status": { "type": "string" },
+        "attempts": { "type": "number" }
+      },
+      "required": ["id", "tenantId", "receiptId", "printerId", "status"]
+    },
+    "printerAuditLogs": {
+      "title": "PrinterAuditLog",
+      "description": "Security audit trail for receipt prints, reprints, and printer device alterations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "tenantId", "userId", "action", "timestamp"]
     }
   },
   "firestore": {
@@ -302,6 +365,22 @@
     "/healthcareMortuary/{recordId}": {
       "schema": "healthcareMortuary",
       "description": "Mortuary records"
+    },
+    "/printers/{printerId}": {
+      "schema": "printers",
+      "description": "Configured physical receipt and kitchen printers"
+    },
+    "/universalReceipts/{receiptId}": {
+      "schema": "universalReceipts",
+      "description": "Standardized receipts across modules"
+    },
+    "/printJobs/{jobId}": {
+      "schema": "printJobs",
+      "description": "Print queue and retry jobs"
+    },
+    "/printerAuditLogs/{logId}": {
+      "schema": "printerAuditLogs",
+      "description": "Printing security audit trail"
     }
   }
 }

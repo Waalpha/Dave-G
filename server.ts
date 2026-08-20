@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import net from 'net';
 import { createServer as createViteServer } from 'vite';
 import { dbStore, hashPassword } from './src/data/dbStore';
 import { ALL_ERP_MODULES, getModuleInfo } from './src/data/modulesCatalog';
@@ -4512,6 +4513,741 @@ async function startServer() {
   app.get('/api/app/wholesale/status', requireAuth, requireModule('wholesale'), (req, res) => {
     const tenant = (req as any).tenant;
     return res.json({ message: `Wholesale Trade module active for ${tenant.name}`, status: 'OK' });
+  });
+
+  // ==========================================================================
+  // BROOKS OF LIFE UK — TEMS & MEDIA API ENDPOINTS
+  // ==========================================================================
+
+  // Public institutional info
+  app.get('/api/tems/public-info', (req, res) => {
+    const tenantId = 'tenant_brooks_of_life';
+    const tenant = dbStore.getTenant(tenantId);
+    const programmes = dbStore.getTheologicalProgrammes(tenantId);
+    const sessions = dbStore.getExamSessions(tenantId);
+    const centres = dbStore.getExamCentres(tenantId);
+    const tvSchedule = dbStore.getTVSchedule(tenantId);
+    const media = dbStore.getMediaItems(tenantId);
+    const events = dbStore.getMinistryEvents(tenantId);
+    const articles = dbStore.getTheologicalArticles(tenantId);
+    const fees = dbStore.getTemsFeeSchedules(tenantId);
+
+    return res.json({
+      organization: 'Brooks of Life UK',
+      motto: 'Advancing Truth, Equipping Leaders, Broadcasting Faith',
+      mediaBrand: 'Brooks of Life TV — “For Your Christian Vibes”',
+      temsBrand: 'Brooks of Life UK — Theological Examination Management System (TEMS)',
+      tenant,
+      programmes,
+      sessions,
+      centres,
+      tvSchedule,
+      media,
+      events,
+      articles,
+      fees
+    });
+  });
+
+  // Candidates
+  app.get('/api/tems/candidates', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidates = dbStore.getCandidates(tenantId);
+    return res.json({ candidates });
+  });
+
+  app.get('/api/tems/candidates/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidate = dbStore.getCandidateById(tenantId, req.params.id);
+    if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+    return res.json({ candidate });
+  });
+
+  app.post('/api/tems/candidates', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveCandidate(tenantId, req.body, user);
+      return res.json({ success: true, candidate: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Programmes & Units & Departments
+  app.get('/api/tems/departments', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const departments = dbStore.getTheologicalDepartments(tenantId);
+    return res.json({ departments });
+  });
+
+  app.post('/api/tems/departments', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveTheologicalDepartment(tenantId, req.body);
+      return res.json({ success: true, department: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/programmes', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const programmes = dbStore.getTheologicalProgrammes(tenantId);
+    return res.json({ programmes });
+  });
+
+  app.post('/api/tems/programmes', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveTheologicalProgramme(tenantId, req.body);
+      return res.json({ success: true, programme: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/units', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const units = dbStore.getTheologicalUnits(tenantId);
+    return res.json({ units });
+  });
+
+  app.post('/api/tems/units', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveTheologicalUnit(tenantId, req.body);
+      return res.json({ success: true, unit: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Sessions & Centres
+  app.get('/api/tems/exam-sessions', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const sessions = dbStore.getExamSessions(tenantId);
+    return res.json({ sessions });
+  });
+
+  app.post('/api/tems/exam-sessions', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExamSession(tenantId, req.body);
+      return res.json({ success: true, session: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/exam-centres', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const centres = dbStore.getExamCentres(tenantId);
+    return res.json({ centres });
+  });
+
+  app.post('/api/tems/exam-centres', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExamCentre(tenantId, req.body);
+      return res.json({ success: true, centre: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Registrations
+  app.get('/api/tems/registrations', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const registrations = dbStore.getExamRegistrations(tenantId, candidateId);
+    return res.json({ registrations });
+  });
+
+  app.post('/api/tems/registrations', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExamRegistration(tenantId, req.body);
+      return res.json({ success: true, registration: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Question Bank & Exam Papers
+  app.get('/api/tems/question-bank', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const subjectCode = req.query.subjectCode as string | undefined;
+    const items = dbStore.getQuestionBank(tenantId, subjectCode);
+    return res.json({ items });
+  });
+
+  app.post('/api/tems/question-bank', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveQuestionBankItem(tenantId, req.body);
+      return res.json({ success: true, item: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/exam-papers', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const papers = dbStore.getExamPapers(tenantId);
+    return res.json({ papers });
+  });
+
+  app.get('/api/tems/exam-papers/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const paper = dbStore.getExamPaperById(tenantId, req.params.id);
+    if (!paper) return res.status(404).json({ error: 'Paper not found' });
+    return res.json({ paper });
+  });
+
+  app.post('/api/tems/exam-papers', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExamPaper(tenantId, req.body);
+      return res.json({ success: true, paper: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Online Exam Engine & Anti-Cheat
+  app.get('/api/tems/online-exam/attempts', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const attempts = dbStore.getOnlineExamAttempts(tenantId, candidateId);
+    return res.json({ attempts });
+  });
+
+  app.get('/api/tems/online-exam/attempts/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const attempt = dbStore.getOnlineExamAttempt(tenantId, req.params.id);
+    if (!attempt) return res.status(404).json({ error: 'Attempt not found' });
+    return res.json({ attempt });
+  });
+
+  app.post('/api/tems/online-exam/start', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const attempt = await dbStore.startOnlineExam(tenantId, req.body);
+      return res.json({ success: true, attempt });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/online-exam/answer', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { attemptId, questionId, answerText, timeRemainingSeconds } = req.body;
+      const attempt = await dbStore.saveOnlineExamAnswer(tenantId, attemptId, questionId, answerText, timeRemainingSeconds);
+      return res.json({ success: true, attempt });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/online-exam/anti-cheat', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { attemptId, eventType, details } = req.body;
+      const attempt = await dbStore.logOnlineExamAntiCheat(tenantId, attemptId, eventType, details);
+      return res.json({ success: true, attempt });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/online-exam/submit', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { attemptId } = req.body;
+      const result = await dbStore.submitOnlineExam(tenantId, attemptId);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Examiners & Scripts Marking / Moderation
+  app.get('/api/tems/examiners', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const examiners = dbStore.getExaminers(tenantId);
+    return res.json({ examiners });
+  });
+
+  app.post('/api/tems/examiners', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExaminerProfile(tenantId, req.body);
+      return res.json({ success: true, examiner: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/scripts', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const examinerId = req.query.examinerId as string | undefined;
+    const status = req.query.status as string | undefined;
+    const scripts = dbStore.getExamScripts(tenantId, examinerId, status);
+    return res.json({ scripts });
+  });
+
+  app.get('/api/tems/scripts/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const script = dbStore.getExamScriptById(tenantId, req.params.id);
+    if (!script) return res.status(404).json({ error: 'Script not found' });
+    return res.json({ script });
+  });
+
+  app.post('/api/tems/scripts/:id/grade', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const updated = await dbStore.gradeScript(tenantId, req.params.id, req.body);
+      return res.json({ success: true, script: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/scripts/:id/moderate', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const updated = await dbStore.moderateScript(tenantId, req.params.id, req.body);
+      return res.json({ success: true, script: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // RPL Applications
+  app.get('/api/tems/rpl', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const applications = dbStore.getRplApplications(tenantId, candidateId);
+    return res.json({ applications });
+  });
+
+  app.get('/api/tems/rpl/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const application = dbStore.getRplApplicationById(tenantId, req.params.id);
+    if (!application) return res.status(404).json({ error: 'RPL application not found' });
+    return res.json({ application });
+  });
+
+  app.post('/api/tems/rpl', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveRplApplication(tenantId, req.body);
+      return res.json({ success: true, application: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/rpl/:id/assess', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const updated = await dbStore.assessRplApplication(tenantId, req.params.id, req.body);
+      return res.json({ success: true, application: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Results, Transcripts & Certificates
+  app.get('/api/tems/results', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const results = dbStore.getExamResults(tenantId, candidateId);
+    return res.json({ results });
+  });
+
+  app.post('/api/tems/results', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveExamResult(tenantId, req.body);
+      return res.json({ success: true, result: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/transcripts', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const transcripts = dbStore.getOfficialTranscripts(tenantId, candidateId);
+    return res.json({ transcripts });
+  });
+
+  app.post('/api/tems/transcripts', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const issued = await dbStore.issueTranscript(tenantId, req.body);
+      return res.json({ success: true, transcript: issued });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/certificates', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const certificates = dbStore.getOfficialCertificates(tenantId, candidateId);
+    return res.json({ certificates });
+  });
+
+  app.post('/api/tems/certificates', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const issued = await dbStore.issueCertificate(tenantId, req.body);
+      return res.json({ success: true, certificate: issued });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Public Verification Endpoint
+  app.get('/api/tems/verify/:code', (req, res) => {
+    const verification = dbStore.verifyDocumentOrCertificate(req.params.code);
+    return res.json(verification);
+  });
+
+  // Media, TV Schedule, Events & Articles
+  app.get('/api/tems/media', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const category = req.query.category as string | undefined;
+    const media = dbStore.getMediaItems(tenantId, category);
+    return res.json({ media });
+  });
+
+  app.post('/api/tems/media', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveMediaItem(tenantId, req.body);
+      return res.json({ success: true, media: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/tv-schedule', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const schedule = dbStore.getTVSchedule(tenantId);
+    return res.json({ schedule });
+  });
+
+  app.post('/api/tems/tv-schedule', async (req, res) => {
+    try {
+      const saved = await dbStore.saveTVScheduleItem(req.body);
+      return res.json({ success: true, item: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/events', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const events = dbStore.getMinistryEvents(tenantId);
+    return res.json({ events });
+  });
+
+  app.post('/api/tems/events', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveMinistryEvent(tenantId, req.body);
+      return res.json({ success: true, event: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/articles', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const articles = dbStore.getTheologicalArticles(tenantId);
+    return res.json({ articles });
+  });
+
+  app.post('/api/tems/articles', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveTheologicalArticle(tenantId, req.body);
+      return res.json({ success: true, article: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Fees & Payments
+  app.get('/api/tems/fees', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const fees = dbStore.getTemsFeeSchedules(tenantId);
+    return res.json({ fees });
+  });
+
+  app.post('/api/tems/fees', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveTemsFeeSchedule(tenantId, req.body);
+      return res.json({ success: true, fee: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/tems/payments', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const candidateId = req.query.candidateId as string | undefined;
+    const payments = dbStore.getTemsPayments(tenantId, candidateId);
+    return res.json({ payments });
+  });
+
+  app.post('/api/tems/payments', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.recordTemsPayment(tenantId, req.body);
+      return res.json({ success: true, payment: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // =========================================================================
+  // CENTRALIZED PHYSICAL PRINTERS & UNIVERSAL RECEIPT ENDPOINTS
+  // =========================================================================
+
+  // Printers Management
+  app.get('/api/app/printers', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const printers = dbStore.getPrinters(tenantId);
+    return res.json({ printers });
+  });
+
+  app.post('/api/app/printers', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.savePrinter(tenantId, req.body, user);
+      return res.json({ success: true, printer: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/printers/:id', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const ok = await dbStore.deletePrinter(tenantId, req.params.id, user);
+      return res.json({ success: ok });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Direct TCP Raw Socket Proxy for Network LAN Receipt Printers
+  app.post('/api/app/printers/send-raw', async (req, res) => {
+    try {
+      const { ipAddress, port = 9100, rawBase64 } = req.body;
+      if (!ipAddress) {
+        return res.status(400).json({ error: 'IP address is required for LAN network printing' });
+      }
+      if (!rawBase64) {
+        return res.status(400).json({ error: 'Raw print data payload is missing' });
+      }
+
+      const buffer = Buffer.from(rawBase64, 'base64');
+      const socket = new net.Socket();
+
+      let isFinished = false;
+      const timeoutMs = 4000;
+
+      const finish = (err?: Error) => {
+        if (isFinished) return;
+        isFinished = true;
+        socket.destroy();
+        if (err) {
+          return res.status(502).json({ error: `Network printer communication failed: ${err.message}` });
+        } else {
+          return res.json({ success: true, message: `Dispatched ${buffer.length} bytes to ${ipAddress}:${port}` });
+        }
+      };
+
+      socket.setTimeout(timeoutMs);
+      socket.on('timeout', () => {
+        finish(new Error(`Connection to ${ipAddress}:${port} timed out after ${timeoutMs}ms`));
+      });
+      socket.on('error', (err) => {
+        finish(err);
+      });
+
+      socket.connect(port, ipAddress, () => {
+        socket.write(buffer, () => {
+          socket.end();
+          finish();
+        });
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Universal Receipts Query & Reprint Endpoints
+  app.get('/api/app/receipts', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const sourceModule = req.query.sourceModule as string | undefined;
+    const search = req.query.search as string | undefined;
+    const receipts = dbStore.getReceipts(tenantId, { sourceModule, search });
+    return res.json({ receipts });
+  });
+
+  app.get('/api/app/receipts/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const receipt = dbStore.getReceiptById(tenantId, req.params.id);
+    if (!receipt) return res.status(404).json({ error: 'Receipt not found' });
+    return res.json({ receipt });
+  });
+
+  app.post('/api/app/receipts/:id/reprint', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const receipt = dbStore.reprintReceipt(tenantId, req.params.id, user);
+      return res.json({ success: true, receipt });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Print Queue & Offline Retry Job Endpoints
+  app.get('/api/app/print-jobs', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const status = req.query.status as string | undefined;
+    const jobs = dbStore.getPrintJobs(tenantId, status);
+    return res.json({ jobs });
+  });
+
+  app.post('/api/app/print-jobs', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const job = dbStore.addPrintJob(tenantId, req.body);
+      return res.json({ success: true, job });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/print-jobs/:id', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const updated = dbStore.updatePrintJob(tenantId, req.params.id, req.body);
+      return res.json({ success: true, job: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/print-jobs/:id/retry', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const retried = dbStore.retryPrintJob(tenantId, req.params.id, user);
+      return res.json({ success: true, job: retried });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Printer Security & Configuration Audit Logs
+  app.get('/api/app/printers/audit-logs', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const logs = dbStore.getPrinterAuditLogs(tenantId);
+    return res.json({ logs });
+  });
+
+  app.post('/api/app/printers/audit-logs', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { action, details, printerName, receiptNumber } = req.body;
+      const log = dbStore.logPrinterAudit(
+        tenantId,
+        user.id,
+        user.name,
+        user.role,
+        action || 'PRINT_SUCCESS',
+        details || 'Printer activity logged',
+        printerName,
+        receiptNumber
+      );
+      return res.json({ success: true, log });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   });
 
   // Catch-all 404 for unhandled API requests to prevent returning HTML index for API calls

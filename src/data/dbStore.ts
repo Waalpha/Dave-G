@@ -12,7 +12,7 @@ import {
   AttendanceSession, AttendanceScanRecord, AcademicTranscript, TranscriptUnit,
   AcademicCertificate, AdmissionLetter, DocumentVerificationRecord,
   ChamaMember, ChamaContribution, ChamaLoan, ChamaRepayment, ChamaInvestment,
-  PosProduct, PosSaleOrder, RestaurantTable, RestaurantMenuItem,
+  PosProduct, PosSaleOrder, PosSaleItem, RestaurantTable, RestaurantMenuItem,
   InventoryMovement, AccountingLedgerEntry, EmployeeRecord, CrmLeadCustomer,
   ChurchMemberRecord, ChurchGivingRecord,
   PosBusinessType, PosEnabledFeatures, PosTenantConfig, ClothingAttributes, ProductVariant,
@@ -30,8 +30,28 @@ import {
   InsuranceProviderRecord, InsuranceClaimRecord, HealthcareSupplier, HealthcareInventoryItem,
   AmbulanceRecord, AmbulanceTripRecord, BloodDonorRecord, BloodUnitRecord,
   BloodTransfusionRecord, MortuaryRecord, StaffShiftRecord,
-  SaaSSubscriptionPlan
+  SaaSSubscriptionPlan,
+  TheologicalDepartment, TheologicalProgramme, TheologicalUnitSubject,
+  ExaminationSession, ExaminationCentre, CandidateExamRegistration,
+  QuestionBankItem, ExaminationPaper, OnlineExamAttempt, ExaminerProfile,
+  ExaminationScript, RplApplication, ExaminationResultRecord, OfficialTranscriptRecord,
+  OfficialCertificateRecord, CertificateVerificationLookupResult,
+  TVScheduleItem, MediaContentItem, MinistryEventRecord, TheologicalArticleRecord,
+  TemsFeeScheduleItem, TemsPaymentRecord, CandidateProfile,
+  PrinterDevice, UniversalReceipt, PrintJobRecord, PrinterAuditLog, ReceiptItem
 } from '../types';
+
+import {
+  BROOKS_OF_LIFE_TENANT, BROOKS_OF_LIFE_TENANT_ID, BROOKS_OF_LIFE_SLUG,
+  INITIAL_BROOKS_USERS, INITIAL_BROOKS_DEPARTMENTS, INITIAL_BROOKS_PROGRAMMES,
+  INITIAL_BROOKS_UNITS, INITIAL_BROOKS_EXAM_SESSIONS, INITIAL_BROOKS_EXAM_CENTRES,
+  INITIAL_BROOKS_QUESTION_BANK, INITIAL_BROOKS_EXAM_PAPERS, INITIAL_BROOKS_CANDIDATES,
+  INITIAL_BROOKS_EXAM_REGISTRATIONS, INITIAL_BROOKS_EXAMINERS, INITIAL_BROOKS_SCRIPTS,
+  INITIAL_BROOKS_RPL_APPLICATIONS, INITIAL_BROOKS_RESULTS, INITIAL_BROOKS_TRANSCRIPTS,
+  INITIAL_BROOKS_CERTIFICATES, INITIAL_BROOKS_TV_SCHEDULE, INITIAL_BROOKS_MEDIA,
+  INITIAL_BROOKS_EVENTS, INITIAL_BROOKS_ARTICLES, INITIAL_BROOKS_FEE_SCHEDULE,
+  INITIAL_BROOKS_PAYMENTS
+} from './brooksOfLifeInitialData';
 
 export function hashPassword(password: string, userId: string = 'global_salt'): string {
   return crypto.pbkdf2Sync(password, `salt_${userId}`, 10000, 64, 'sha256').toString('hex');
@@ -40,7 +60,8 @@ export function hashPassword(password: string, userId: string = 'global_salt'): 
 // In-Memory Database Store with Strict Tenant Isolation Enforcers
 
 import { INITIAL_TENANTS } from './initialTenants';
-export { INITIAL_TENANTS };
+export { INITIAL_TENANTS, BROOKS_OF_LIFE_TENANT_ID, BROOKS_OF_LIFE_SLUG };
+
 
 export const INITIAL_SUBSCRIPTION_PLANS: SaaSSubscriptionPlan[] = [
   {
@@ -147,6 +168,7 @@ export const INITIAL_DEPARTMENTS: Department[] = [];
 export const INITIAL_PROGRAMS: Program[] = [];
 
 export const INITIAL_USERS: User[] = [
+  ...INITIAL_BROOKS_USERS,
   {
     id: 'user_super_admin',
     tenantId: 'platform_super_admin',
@@ -528,6 +550,34 @@ class DatabaseStore {
   private bloodTransfusions: BloodTransfusionRecord[] = [];
   private mortuaryRecords: MortuaryRecord[] = [];
   private subscriptionPlans: SaaSSubscriptionPlan[] = [...INITIAL_SUBSCRIPTION_PLANS];
+  // Brooks of Life UK — TEMS & Media State Collections
+  private candidateProfiles: CandidateProfile[] = [...INITIAL_BROOKS_CANDIDATES];
+  private theologicalDepartments: TheologicalDepartment[] = [...INITIAL_BROOKS_DEPARTMENTS];
+  private theologicalProgrammes: TheologicalProgramme[] = [...INITIAL_BROOKS_PROGRAMMES];
+  private theologicalUnits: TheologicalUnitSubject[] = [...INITIAL_BROOKS_UNITS];
+  private examinationSessions: ExaminationSession[] = [...INITIAL_BROOKS_EXAM_SESSIONS];
+  private examinationCentres: ExaminationCentre[] = [...INITIAL_BROOKS_EXAM_CENTRES];
+  private questionBank: QuestionBankItem[] = [...INITIAL_BROOKS_QUESTION_BANK];
+  private examinationPapers: ExaminationPaper[] = [...INITIAL_BROOKS_EXAM_PAPERS];
+  private candidateExamRegistrations: CandidateExamRegistration[] = [...INITIAL_BROOKS_EXAM_REGISTRATIONS];
+  private examinerProfiles: ExaminerProfile[] = [...INITIAL_BROOKS_EXAMINERS];
+  private examinationScripts: ExaminationScript[] = [...INITIAL_BROOKS_SCRIPTS];
+  private onlineExamAttempts: OnlineExamAttempt[] = [];
+  private rplApplications: RplApplication[] = [...INITIAL_BROOKS_RPL_APPLICATIONS];
+  private examinationResults: ExaminationResultRecord[] = [...INITIAL_BROOKS_RESULTS];
+  private officialTranscripts: OfficialTranscriptRecord[] = [...INITIAL_BROOKS_TRANSCRIPTS];
+  private officialCertificates: OfficialCertificateRecord[] = [...INITIAL_BROOKS_CERTIFICATES];
+  private tvsSchedule: TVScheduleItem[] = [...INITIAL_BROOKS_TV_SCHEDULE];
+  private mediaContents: MediaContentItem[] = [...INITIAL_BROOKS_MEDIA];
+  private ministryEvents: MinistryEventRecord[] = [...INITIAL_BROOKS_EVENTS];
+  private theologicalArticles: TheologicalArticleRecord[] = [...INITIAL_BROOKS_ARTICLES];
+  private temsFeeSchedules: TemsFeeScheduleItem[] = [...INITIAL_BROOKS_FEE_SCHEDULE];
+  private temsPayments: TemsPaymentRecord[] = [...INITIAL_BROOKS_PAYMENTS];
+  private printers: PrinterDevice[] = [];
+  private universalReceipts: UniversalReceipt[] = [];
+  private printJobs: PrintJobRecord[] = [];
+  private printerAuditLogs: PrinterAuditLog[] = [];
+
   private platformSettings: PlatformSettings = {
     platformName: 'DAVETECH',
     tagline: 'Davetech Solutions',
@@ -548,6 +598,7 @@ class DatabaseStore {
   constructor() {
     this.loadFromDiskBackup();
     this.ensureDefaultTenant();
+    this.ensureBrooksOfLifeTenant();
     // Hash passwords for initial root super admin accounts securely with PBKDF2
     this.users.forEach(u => {
       if (!u.passwordHash) {
@@ -557,6 +608,24 @@ class DatabaseStore {
     // Trigger initial async sync from Firestore
     this.syncFromFirestore().catch(err => console.error('[DatabaseStore] Initial sync failed:', err));
   }
+
+  public ensureBrooksOfLifeTenant(): void {
+    const existing = this.tenants.find(t => t.id === BROOKS_OF_LIFE_TENANT_ID || t.slug === BROOKS_OF_LIFE_SLUG);
+    if (!existing) {
+      this.tenants.push(BROOKS_OF_LIFE_TENANT);
+    }
+    // Ensure initial users for Brooks of Life UK
+    INITIAL_BROOKS_USERS.forEach(bu => {
+      const uExists = this.users.find(u => u.id === bu.id || u.email.toLowerCase() === bu.email.toLowerCase());
+      if (!uExists) {
+        this.users.push({
+          ...bu,
+          passwordHash: hashPassword('password123', bu.id)
+        });
+      }
+    });
+  }
+
 
   private getDiskBackupPath(): string {
     return path.join(process.cwd(), 'data_store_cache.json');
@@ -657,7 +726,29 @@ class DatabaseStore {
         bloodUnits: this.bloodUnits,
         bloodTransfusions: this.bloodTransfusions,
         mortuaryRecords: this.mortuaryRecords,
-        subscriptionPlans: this.subscriptionPlans
+        subscriptionPlans: this.subscriptionPlans,
+        candidateProfiles: this.candidateProfiles,
+        theologicalDepartments: this.theologicalDepartments,
+        theologicalProgrammes: this.theologicalProgrammes,
+        theologicalUnits: this.theologicalUnits,
+        examinationSessions: this.examinationSessions,
+        examinationCentres: this.examinationCentres,
+        questionBank: this.questionBank,
+        examinationPapers: this.examinationPapers,
+        candidateExamRegistrations: this.candidateExamRegistrations,
+        examinerProfiles: this.examinerProfiles,
+        examinationScripts: this.examinationScripts,
+        onlineExamAttempts: this.onlineExamAttempts,
+        rplApplications: this.rplApplications,
+        examinationResults: this.examinationResults,
+        officialTranscripts: this.officialTranscripts,
+        officialCertificates: this.officialCertificates,
+        tvsSchedule: this.tvsSchedule,
+        mediaContents: this.mediaContents,
+        ministryEvents: this.ministryEvents,
+        theologicalArticles: this.theologicalArticles,
+        temsFeeSchedules: this.temsFeeSchedules,
+        temsPayments: this.temsPayments
       };
       fs.writeFileSync(this.getDiskBackupPath(), JSON.stringify(data, null, 2), 'utf8');
     } catch (err) {
@@ -784,6 +875,28 @@ class DatabaseStore {
         if (Array.isArray(data.subscriptionPlans) && data.subscriptionPlans.length > 0) {
           this.subscriptionPlans = data.subscriptionPlans;
         }
+        if (Array.isArray(data.candidateProfiles)) this.candidateProfiles = data.candidateProfiles;
+        if (Array.isArray(data.theologicalDepartments)) this.theologicalDepartments = data.theologicalDepartments;
+        if (Array.isArray(data.theologicalProgrammes)) this.theologicalProgrammes = data.theologicalProgrammes;
+        if (Array.isArray(data.theologicalUnits)) this.theologicalUnits = data.theologicalUnits;
+        if (Array.isArray(data.examinationSessions)) this.examinationSessions = data.examinationSessions;
+        if (Array.isArray(data.examinationCentres)) this.examinationCentres = data.examinationCentres;
+        if (Array.isArray(data.questionBank)) this.questionBank = data.questionBank;
+        if (Array.isArray(data.examinationPapers)) this.examinationPapers = data.examinationPapers;
+        if (Array.isArray(data.candidateExamRegistrations)) this.candidateExamRegistrations = data.candidateExamRegistrations;
+        if (Array.isArray(data.examinerProfiles)) this.examinerProfiles = data.examinerProfiles;
+        if (Array.isArray(data.examinationScripts)) this.examinationScripts = data.examinationScripts;
+        if (Array.isArray(data.onlineExamAttempts)) this.onlineExamAttempts = data.onlineExamAttempts;
+        if (Array.isArray(data.rplApplications)) this.rplApplications = data.rplApplications;
+        if (Array.isArray(data.examinationResults)) this.examinationResults = data.examinationResults;
+        if (Array.isArray(data.officialTranscripts)) this.officialTranscripts = data.officialTranscripts;
+        if (Array.isArray(data.officialCertificates)) this.officialCertificates = data.officialCertificates;
+        if (Array.isArray(data.tvsSchedule)) this.tvsSchedule = data.tvsSchedule;
+        if (Array.isArray(data.mediaContents)) this.mediaContents = data.mediaContents;
+        if (Array.isArray(data.ministryEvents)) this.ministryEvents = data.ministryEvents;
+        if (Array.isArray(data.theologicalArticles)) this.theologicalArticles = data.theologicalArticles;
+        if (Array.isArray(data.temsFeeSchedules)) this.temsFeeSchedules = data.temsFeeSchedules;
+        if (Array.isArray(data.temsPayments)) this.temsPayments = data.temsPayments;
         console.log('[DatabaseStore] Successfully loaded cache from disk');
       }
     } catch (err) {
@@ -3938,6 +4051,50 @@ class DatabaseStore {
     saveDocToFirestore('feePayments', payment.id, payment).catch(() => {});
     saveDocToFirestore('students', student.id, student).catch(() => {});
 
+    // Generate Universal Receipt for centralized printing
+    try {
+      const pmMap: Record<string, any> = {
+        'M-PESA': 'M-PESA',
+        'CARD': 'CREDIT_CARD',
+        'BANK_TRANSFER': 'BANK_TRANSFER',
+        'CHEQUE': 'CHEQUE',
+        'CASH': 'CASH'
+      };
+      const t = this.getTenant(tenantId);
+      this.createUniversalReceipt(tenantId, {
+        sourceModule: 'EDUCATION_FEES',
+        sourceReferenceId: payment.id,
+        receiptNumber: payment.receiptNo,
+        businessName: t?.branding?.companyName || t?.name || 'Academic Institution',
+        customerName: student.fullName,
+        studentAdmissionNo: student.admissionNo,
+        currency: 'KES',
+        currencySymbol: 'KSh',
+        items: [{
+          name: `Tuition & School Fee Payment - ${payment.invoiceNo || 'Fee Account'}`,
+          quantity: 1,
+          unitPrice: paymentAmount,
+          total: paymentAmount,
+          notes: payment.notes
+        }],
+        subtotal: paymentAmount,
+        discountAmount: 0,
+        taxAmount: 0,
+        grandTotal: paymentAmount,
+        paymentMethod: pmMap[payment.paymentMethod] || 'CASH',
+        paymentReference: payment.referenceNo,
+        cashierId: createdBy.id,
+        cashierName: payment.receivedBy || createdBy.name,
+        balanceRemaining: student.feeBalance,
+        issuedAt: payment.paidAt,
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED'
+      }, createdBy);
+    } catch (e) {
+      console.warn('Could not mirror Fee UniversalReceipt:', e);
+    }
+
     this.logAction(
       tenantId,
       createdBy.id,
@@ -4705,13 +4862,60 @@ class DatabaseStore {
     const record = this.documentVerifications.find(
       v => v.verificationCode.toUpperCase() === code || v.documentNumber.toUpperCase() === code
     );
-    if (!record) return null;
+    if (record) {
+      record.verifiedCount = (record.verifiedCount || 0) + 1;
+      record.lastVerifiedAt = new Date().toISOString();
+      saveDocToFirestore('documentVerifications', record.id, record).catch(() => {});
+      return record;
+    }
 
-    record.verifiedCount = (record.verifiedCount || 0) + 1;
-    record.lastVerifiedAt = new Date().toISOString();
-    saveDocToFirestore('documentVerifications', record.id, record).catch(() => {});
+    // Check Brooks of Life TEMS Official Certificates
+    const cert = this.officialCertificates.find(
+      c => c.verificationCode.toUpperCase() === code || c.certificateNumber.toUpperCase() === code
+    );
+    if (cert) {
+      const maskedName = cert.candidateName.split(' ').map((p, i) => i === 0 ? p : p.charAt(0) + '***').join(' ');
+      return {
+        id: cert.id,
+        tenantId: cert.tenantId,
+        verificationCode: cert.verificationCode,
+        documentType: 'CERTIFICATE',
+        documentNumber: cert.certificateNumber,
+        studentNameMasked: maskedName,
+        admissionNo: cert.candidateNumber,
+        programName: `${cert.qualificationTitle} (${cert.honorsClassification})`,
+        institutionName: 'Brooks of Life UK — Theological Examination Management System (TEMS)',
+        issueDate: cert.conferralDate,
+        status: 'OFFICIAL_VERIFIED',
+        verifiedCount: 1,
+        lastVerifiedAt: new Date().toISOString()
+      };
+    }
 
-    return record;
+    // Check Brooks of Life TEMS Official Transcripts
+    const tr = this.officialTranscripts.find(
+      t => t.verificationCode.toUpperCase() === code || t.transcriptNumber.toUpperCase() === code
+    );
+    if (tr) {
+      const maskedName = tr.candidateName.split(' ').map((p, i) => i === 0 ? p : p.charAt(0) + '***').join(' ');
+      return {
+        id: tr.id,
+        tenantId: tr.tenantId,
+        verificationCode: tr.verificationCode,
+        documentType: 'TRANSCRIPT',
+        documentNumber: tr.transcriptNumber,
+        studentNameMasked: maskedName,
+        admissionNo: tr.candidateNumber,
+        programName: `${tr.programmeName} (GPA: ${tr.cumulativeGpa.toFixed(2)})`,
+        institutionName: 'Brooks of Life UK — Theological Examination Management System (TEMS)',
+        issueDate: tr.issueDate,
+        status: 'OFFICIAL_VERIFIED',
+        verifiedCount: 1,
+        lastVerifiedAt: new Date().toISOString()
+      };
+    }
+
+    return null;
   }
 
   public getDocumentVerifications(tenantId?: string): DocumentVerificationRecord[] {
@@ -6055,6 +6259,54 @@ class DatabaseStore {
     this.posSales.unshift(sale);
     saveDocToFirestore('posSales', sale.id, sale).catch(() => {});
     this.logAction(tenantId, actorId, actorName, actorRole, 'POS_SALE_COMPLETED', 'PosSaleOrder', `Processed sale ${sale.receiptNo} of KES ${sale.grandTotal} (${sale.paymentMethod})`, sale.id);
+
+    // Generate Universal Receipt for centralized printing across the platform
+    try {
+      const pmMap: Record<string, any> = {
+        'CASH': 'CASH',
+        'MPESA': 'M-PESA',
+        'CARD': 'CREDIT_CARD',
+        'CREDIT': 'CREDIT',
+        'ROOM_CHARGE': 'ROOM_CHARGE',
+        'SPLIT': 'OTHER'
+      };
+      const t = this.getTenant(tenantId);
+      this.createUniversalReceipt(tenantId, {
+        sourceModule: sale.saleType === 'BAR' ? 'HOSPITALITY_BAR' : sale.saleType === 'RESTAURANT' ? 'HOSPITALITY_RESTAURANT' : 'POS_RETAIL',
+        sourceReferenceId: sale.id,
+        receiptNumber: sale.receiptNo,
+        businessName: t?.branding?.companyName || t?.name || 'Retail & Hospitality Store',
+        customerName: sale.customerName || 'Walk-in Customer',
+        customerPhone: sale.customerPhone,
+        currency: 'KES',
+        currencySymbol: 'KSh',
+        items: sale.items.map(i => ({
+          name: i.productName || 'Item',
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          total: i.total,
+          code: i.sku
+        })),
+        subtotal: sale.subtotal,
+        discountAmount: sale.discountAmount || 0,
+        taxAmount: sale.taxAmount || 0,
+        grandTotal: sale.grandTotal,
+        paymentMethod: pmMap[sale.paymentMethod] || 'CASH',
+        paymentReference: sale.paymentReference,
+        amountTendered: sale.amountTendered,
+        changeGiven: sale.changeGiven,
+        cashierId: actorId,
+        cashierName: actorName,
+        roomOrTableNumber: sale.roomNumber || (sale.tableId ? `Table ${sale.tableId}` : undefined),
+        issuedAt: sale.date,
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED'
+      }, createdBy);
+    } catch (rcptErr) {
+      console.warn('Could not generate mirror UniversalReceipt:', rcptErr);
+    }
+
     return sale;
   }
 
@@ -7658,6 +7910,51 @@ class DatabaseStore {
 
     this.medicalPayments.unshift(pmt);
     this.persistDoc('healthcarePayments', pmt.id, pmt);
+
+    // Generate Universal Receipt for centralized printing
+    try {
+      const pmMap: Record<string, any> = {
+        'CASH': 'CASH',
+        'MPESA': 'M-PESA',
+        'INSURANCE': 'OTHER',
+        'CARD': 'CREDIT_CARD',
+        'BANK_TRANSFER': 'BANK_TRANSFER'
+      };
+      const t = this.getTenant(tenantId);
+      this.createUniversalReceipt(tenantId, {
+        sourceModule: 'HEALTHCARE_BILLING',
+        sourceReferenceId: pmt.id,
+        receiptNumber: pmt.paymentNumber,
+        businessName: t?.branding?.companyName || t?.name || 'Healthcare Hospital',
+        customerName: pmt.patientName || 'Patient',
+        patientId: pmt.patientId,
+        currency: 'KES',
+        currencySymbol: 'KSh',
+        items: [{
+          name: `Medical Consultation / Treatment Billing - ${pmt.invoiceNumber || 'Medical Invoice'}`,
+          quantity: 1,
+          unitPrice: pmt.amount,
+          total: pmt.amount,
+          notes: pmt.notes
+        }],
+        subtotal: pmt.amount,
+        discountAmount: 0,
+        taxAmount: 0,
+        grandTotal: pmt.amount,
+        paymentMethod: pmMap[pmt.paymentMethod] || 'CASH',
+        paymentReference: pmt.transactionReference,
+        cashierId: createdBy?.id,
+        cashierName: createdBy?.name || 'Cashier',
+        balanceRemaining: inv?.balanceDue,
+        issuedAt: pmt.receivedAt,
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED'
+      }, createdBy);
+    } catch (e) {
+      console.warn('Could not mirror Healthcare UniversalReceipt:', e);
+    }
+
     return pmt;
   }
 
@@ -8260,6 +8557,1365 @@ class DatabaseStore {
       plan
     };
   }
+
+  // ==========================================================================
+  // BROOKS OF LIFE UK — THEOLOGICAL EXAMINATION MANAGEMENT SYSTEM (TEMS) METHODS
+  // ==========================================================================
+
+  // Candidates
+  public getCandidates(tenantId: string): CandidateProfile[] {
+    return this.candidateProfiles.filter(c => c.tenantId === tenantId);
+  }
+
+  public getCandidateById(tenantId: string, id: string): CandidateProfile | undefined {
+    return this.candidateProfiles.find(c => c.tenantId === tenantId && (c.id === id || c.candidateNumber === id || c.userId === id));
+  }
+
+  public async saveCandidate(tenantId: string, candidate: CandidateProfile, requestingUser?: User): Promise<CandidateProfile> {
+    const existingIndex = this.candidateProfiles.findIndex(c => c.tenantId === tenantId && c.id === candidate.id);
+    if (existingIndex >= 0) {
+      this.candidateProfiles[existingIndex] = { ...this.candidateProfiles[existingIndex], ...candidate, updatedAt: new Date().toISOString() };
+      await this.persistDoc('candidateProfiles', candidate.id, this.candidateProfiles[existingIndex]);
+      return this.candidateProfiles[existingIndex];
+    } else {
+      const newCand: CandidateProfile = {
+        ...candidate,
+        id: candidate.id || `cand_${Date.now()}`,
+        tenantId,
+        candidateNumber: candidate.candidateNumber || `BOL/THEO/${new Date().getFullYear()}/${String(this.candidateProfiles.filter(c => c.tenantId === tenantId).length + 1).padStart(3, '0')}`,
+        registrationStatus: candidate.registrationStatus || 'APPROVED',
+        registrationDate: candidate.registrationDate || new Date().toISOString().split('T')[0],
+        academicHistory: candidate.academicHistory || [],
+        examinationHistory: candidate.examinationHistory || [],
+        rplHistoryIds: candidate.rplHistoryIds || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.candidateProfiles.push(newCand);
+      await this.persistDoc('candidateProfiles', newCand.id, newCand);
+      return newCand;
+    }
+  }
+
+  // Departments & Programmes & Units
+  public getTheologicalDepartments(tenantId: string): TheologicalDepartment[] {
+    return this.theologicalDepartments.filter(d => d.tenantId === tenantId);
+  }
+
+  public async saveTheologicalDepartment(tenantId: string, dept: TheologicalDepartment): Promise<TheologicalDepartment> {
+    const idx = this.theologicalDepartments.findIndex(d => d.tenantId === tenantId && d.id === dept.id);
+    if (idx >= 0) {
+      this.theologicalDepartments[idx] = { ...this.theologicalDepartments[idx], ...dept };
+      await this.persistDoc('theologicalDepartments', dept.id, this.theologicalDepartments[idx]);
+      return this.theologicalDepartments[idx];
+    } else {
+      const newDept = { ...dept, id: dept.id || `dept_${Date.now()}`, tenantId };
+      this.theologicalDepartments.push(newDept);
+      await this.persistDoc('theologicalDepartments', newDept.id, newDept);
+      return newDept;
+    }
+  }
+
+  public getTheologicalProgrammes(tenantId: string): TheologicalProgramme[] {
+    return this.theologicalProgrammes.filter(p => p.tenantId === tenantId);
+  }
+
+  public getTheologicalProgrammeById(tenantId: string, id: string): TheologicalProgramme | undefined {
+    return this.theologicalProgrammes.find(p => p.tenantId === tenantId && (p.id === id || p.code === id));
+  }
+
+  public async saveTheologicalProgramme(tenantId: string, prog: TheologicalProgramme): Promise<TheologicalProgramme> {
+    const idx = this.theologicalProgrammes.findIndex(p => p.tenantId === tenantId && p.id === prog.id);
+    if (idx >= 0) {
+      this.theologicalProgrammes[idx] = { ...this.theologicalProgrammes[idx], ...prog, updatedAt: new Date().toISOString() };
+      await this.persistDoc('theologicalProgrammes', prog.id, this.theologicalProgrammes[idx]);
+      return this.theologicalProgrammes[idx];
+    } else {
+      const newProg: TheologicalProgramme = {
+        ...prog,
+        id: prog.id || `prog_${Date.now()}`,
+        tenantId,
+        units: prog.units || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.theologicalProgrammes.push(newProg);
+      await this.persistDoc('theologicalProgrammes', newProg.id, newProg);
+      return newProg;
+    }
+  }
+
+  public getTheologicalUnits(tenantId: string): TheologicalUnitSubject[] {
+    return this.theologicalUnits.filter(u => u.tenantId === tenantId);
+  }
+
+  public async saveTheologicalUnit(tenantId: string, unit: TheologicalUnitSubject): Promise<TheologicalUnitSubject> {
+    const idx = this.theologicalUnits.findIndex(u => u.tenantId === tenantId && u.id === unit.id);
+    if (idx >= 0) {
+      this.theologicalUnits[idx] = { ...this.theologicalUnits[idx], ...unit };
+      await this.persistDoc('theologicalUnits', unit.id, this.theologicalUnits[idx]);
+      return this.theologicalUnits[idx];
+    } else {
+      const newUnit: TheologicalUnitSubject = {
+        ...unit,
+        id: unit.id || `unit_${Date.now()}`,
+        tenantId,
+        createdAt: new Date().toISOString()
+      };
+      this.theologicalUnits.push(newUnit);
+      await this.persistDoc('theologicalUnits', newUnit.id, newUnit);
+      return newUnit;
+    }
+  }
+
+  // Examination Sessions & Centres
+  public getExamSessions(tenantId: string): ExaminationSession[] {
+    return this.examinationSessions.filter(s => s.tenantId === tenantId);
+  }
+
+  public async saveExamSession(tenantId: string, session: ExaminationSession): Promise<ExaminationSession> {
+    const idx = this.examinationSessions.findIndex(s => s.tenantId === tenantId && s.id === session.id);
+    if (idx >= 0) {
+      this.examinationSessions[idx] = { ...this.examinationSessions[idx], ...session };
+      await this.persistDoc('examinationSessions', session.id, this.examinationSessions[idx]);
+      return this.examinationSessions[idx];
+    } else {
+      const newSess: ExaminationSession = {
+        ...session,
+        id: session.id || `session_${Date.now()}`,
+        tenantId,
+        createdAt: new Date().toISOString()
+      };
+      this.examinationSessions.push(newSess);
+      await this.persistDoc('examinationSessions', newSess.id, newSess);
+      return newSess;
+    }
+  }
+
+  public getExamCentres(tenantId: string): ExaminationCentre[] {
+    return this.examinationCentres.filter(c => c.tenantId === tenantId);
+  }
+
+  public async saveExamCentre(tenantId: string, centre: ExaminationCentre): Promise<ExaminationCentre> {
+    const idx = this.examinationCentres.findIndex(c => c.tenantId === tenantId && c.id === centre.id);
+    if (idx >= 0) {
+      this.examinationCentres[idx] = { ...this.examinationCentres[idx], ...centre };
+      await this.persistDoc('examinationCentres', centre.id, this.examinationCentres[idx]);
+      return this.examinationCentres[idx];
+    } else {
+      const newCentre: ExaminationCentre = {
+        ...centre,
+        id: centre.id || `centre_${Date.now()}`,
+        tenantId,
+        currentAllocated: centre.currentAllocated || 0,
+        createdAt: new Date().toISOString()
+      };
+      this.examinationCentres.push(newCentre);
+      await this.persistDoc('examinationCentres', newCentre.id, newCentre);
+      return newCentre;
+    }
+  }
+
+  // Candidate Exam Registrations & Slips
+  public getExamRegistrations(tenantId: string, candidateId?: string): CandidateExamRegistration[] {
+    return this.candidateExamRegistrations.filter(r => 
+      r.tenantId === tenantId && (!candidateId || r.candidateId === candidateId || r.candidateNumber === candidateId)
+    );
+  }
+
+  public async saveExamRegistration(tenantId: string, reg: CandidateExamRegistration): Promise<CandidateExamRegistration> {
+    const idx = this.candidateExamRegistrations.findIndex(r => r.tenantId === tenantId && r.id === reg.id);
+    if (idx >= 0) {
+      this.candidateExamRegistrations[idx] = { ...this.candidateExamRegistrations[idx], ...reg, updatedAt: new Date().toISOString() };
+      await this.persistDoc('candidateExamRegistrations', reg.id, this.candidateExamRegistrations[idx]);
+      return this.candidateExamRegistrations[idx];
+    } else {
+      const regNum = reg.registrationNumber || `REG-BOL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newReg: CandidateExamRegistration = {
+        ...reg,
+        id: reg.id || `reg_${Date.now()}`,
+        tenantId,
+        registrationNumber: regNum,
+        slipGenerated: true,
+        slipVerificationQr: `https://brooksoflife.org.uk/verify-document/${regNum}`,
+        status: reg.status || 'APPROVED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.candidateExamRegistrations.push(newReg);
+      await this.persistDoc('candidateExamRegistrations', newReg.id, newReg);
+      return newReg;
+    }
+  }
+
+  // Question Bank & Examination Papers
+  public getQuestionBank(tenantId: string, subjectCode?: string): QuestionBankItem[] {
+    return this.questionBank.filter(q => q.tenantId === tenantId && (!subjectCode || q.subjectCode === subjectCode));
+  }
+
+  public async saveQuestionBankItem(tenantId: string, item: QuestionBankItem): Promise<QuestionBankItem> {
+    const idx = this.questionBank.findIndex(q => q.tenantId === tenantId && q.id === item.id);
+    if (idx >= 0) {
+      this.questionBank[idx] = { ...this.questionBank[idx], ...item, updatedAt: new Date().toISOString() };
+      await this.persistDoc('questionBank', item.id, this.questionBank[idx]);
+      return this.questionBank[idx];
+    } else {
+      const newItem: QuestionBankItem = {
+        ...item,
+        id: item.id || `qb_${Date.now()}`,
+        tenantId,
+        version: item.version || 1,
+        status: item.status || 'ACTIVE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.questionBank.push(newItem);
+      await this.persistDoc('questionBank', newItem.id, newItem);
+      return newItem;
+    }
+  }
+
+  public getExamPapers(tenantId: string): ExaminationPaper[] {
+    return this.examinationPapers.filter(p => p.tenantId === tenantId);
+  }
+
+  public getExamPaperById(tenantId: string, id: string): ExaminationPaper | undefined {
+    return this.examinationPapers.find(p => p.tenantId === tenantId && (p.id === id || p.paperCode === id));
+  }
+
+  public async saveExamPaper(tenantId: string, paper: ExaminationPaper): Promise<ExaminationPaper> {
+    const idx = this.examinationPapers.findIndex(p => p.tenantId === tenantId && p.id === paper.id);
+    if (idx >= 0) {
+      this.examinationPapers[idx] = { ...this.examinationPapers[idx], ...paper, updatedAt: new Date().toISOString() };
+      await this.persistDoc('examinationPapers', paper.id, this.examinationPapers[idx]);
+      return this.examinationPapers[idx];
+    } else {
+      const newPaper: ExaminationPaper = {
+        ...paper,
+        id: paper.id || `paper_${Date.now()}`,
+        tenantId,
+        version: paper.version || '1.0',
+        status: paper.status || 'PUBLISHED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.examinationPapers.push(newPaper);
+      await this.persistDoc('examinationPapers', newPaper.id, newPaper);
+      return newPaper;
+    }
+  }
+
+  // Online Examination Engine & Anti-Cheat
+  public getOnlineExamAttempts(tenantId: string, candidateId?: string): OnlineExamAttempt[] {
+    return this.onlineExamAttempts.filter(a => 
+      a.tenantId === tenantId && (!candidateId || a.candidateId === candidateId || a.candidateNumber === candidateId)
+    );
+  }
+
+  public getOnlineExamAttempt(tenantId: string, attemptId: string): OnlineExamAttempt | undefined {
+    return this.onlineExamAttempts.find(a => a.tenantId === tenantId && a.id === attemptId);
+  }
+
+  public async startOnlineExam(tenantId: string, payload: { paperId: string; candidateId: string; candidateNumber: string; candidateName: string; candidateEmail: string; examSessionId: string }): Promise<OnlineExamAttempt> {
+    const paper = this.getExamPaperById(tenantId, payload.paperId);
+    if (!paper) throw new Error('Examination paper not found');
+
+    // Check if attempt already exists
+    let existing = this.onlineExamAttempts.find(a => 
+      a.tenantId === tenantId && a.paperId === payload.paperId && a.candidateId === payload.candidateId && a.status === 'IN_PROGRESS'
+    );
+    if (existing) return existing;
+
+    const initialAnswers: Record<string, any> = {};
+    paper.questions.forEach(q => {
+      initialAnswers[q.id] = {
+        questionId: q.id,
+        questionPrompt: q.prompt,
+        questionType: q.questionType,
+        allocatedMarks: q.allocatedMarks || q.marks,
+        candidateAnswerText: '',
+        isAutoGraded: q.questionType === 'MCQ' || q.questionType === 'TRUE_FALSE'
+      };
+    });
+
+    const newAttempt: OnlineExamAttempt = {
+      id: `attempt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      tenantId,
+      paperId: paper.id,
+      paperCode: paper.paperCode,
+      paperTitle: paper.title,
+      subjectCode: paper.subjectCode,
+      subjectTitle: paper.subjectTitle,
+      candidateId: payload.candidateId,
+      candidateNumber: payload.candidateNumber,
+      candidateName: payload.candidateName,
+      candidateEmail: payload.candidateEmail,
+      examSessionId: payload.examSessionId,
+      startedAt: new Date().toISOString(),
+      durationMinutes: paper.durationMinutes,
+      timeRemainingSeconds: paper.durationMinutes * 60,
+      status: 'IN_PROGRESS',
+      answers: initialAnswers,
+      antiCheatLogs: [
+        {
+          id: `log_${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          eventType: 'DEVICE_CHECK',
+          details: 'Candidate initiated online exam room session. Fullscreen and anti-cheat monitors activated.'
+        }
+      ],
+      tabSwitchCount: 0,
+      autoGradedScore: 0,
+      maxScore: paper.totalMarks,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.onlineExamAttempts.push(newAttempt);
+    await this.persistDoc('onlineExamAttempts', newAttempt.id, newAttempt);
+    return newAttempt;
+  }
+
+  public async saveOnlineExamAnswer(tenantId: string, attemptId: string, questionId: string, answerText: string, timeRemainingSeconds?: number): Promise<OnlineExamAttempt> {
+    const attempt = this.getOnlineExamAttempt(tenantId, attemptId);
+    if (!attempt) throw new Error('Attempt not found');
+    if (attempt.status !== 'IN_PROGRESS') throw new Error('Exam already submitted');
+
+    if (!attempt.answers[questionId]) {
+      attempt.answers[questionId] = {
+        questionId,
+        questionPrompt: '',
+        questionType: 'SHORT_ANSWER',
+        allocatedMarks: 10,
+        candidateAnswerText: answerText
+      };
+    } else {
+      attempt.answers[questionId].candidateAnswerText = answerText;
+    }
+
+    if (typeof timeRemainingSeconds === 'number') {
+      attempt.timeRemainingSeconds = timeRemainingSeconds;
+    }
+    attempt.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('onlineExamAttempts', attempt.id, attempt);
+    return attempt;
+  }
+
+  public async logOnlineExamAntiCheat(tenantId: string, attemptId: string, eventType: any, details: string): Promise<OnlineExamAttempt> {
+    const attempt = this.getOnlineExamAttempt(tenantId, attemptId);
+    if (!attempt) throw new Error('Attempt not found');
+
+    attempt.antiCheatLogs.push({
+      id: `log_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      eventType,
+      details
+    });
+
+    if (eventType === 'TAB_SWITCH' || eventType === 'FULLSCREEN_EXIT' || eventType === 'FOCUS_LOST') {
+      attempt.tabSwitchCount = (attempt.tabSwitchCount || 0) + 1;
+    }
+
+    attempt.updatedAt = new Date().toISOString();
+    await this.persistDoc('onlineExamAttempts', attempt.id, attempt);
+    return attempt;
+  }
+
+  public async submitOnlineExam(tenantId: string, attemptId: string): Promise<{ attempt: OnlineExamAttempt; script: ExaminationScript }> {
+    const attempt = this.getOnlineExamAttempt(tenantId, attemptId);
+    if (!attempt) throw new Error('Attempt not found');
+
+    const paper = this.getExamPaperById(tenantId, attempt.paperId);
+    let autoScore = 0;
+
+    // Evaluate auto-score for MCQs and True/False
+    if (paper) {
+      paper.questions.forEach(q => {
+        const ans = attempt.answers[q.id];
+        if (ans && (q.questionType === 'MCQ' || q.questionType === 'TRUE_FALSE')) {
+          if (q.correctAnswer && ans.candidateAnswerText.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase()) {
+            ans.autoScore = q.allocatedMarks || q.marks;
+            autoScore += ans.autoScore;
+          } else {
+            ans.autoScore = 0;
+          }
+        }
+      });
+    }
+
+    attempt.autoGradedScore = autoScore;
+    attempt.status = 'SUBMITTED';
+    attempt.submittedAt = new Date().toISOString();
+    attempt.updatedAt = new Date().toISOString();
+    await this.persistDoc('onlineExamAttempts', attempt.id, attempt);
+
+    // Create an Examination Script in the Marking Queue
+    const scriptQuestions = Object.values(attempt.answers);
+    const newScript: ExaminationScript = {
+      id: `script_${Date.now()}`,
+      tenantId,
+      paperId: attempt.paperId,
+      paperCode: attempt.paperCode,
+      paperTitle: attempt.paperTitle,
+      subjectCode: attempt.subjectCode,
+      subjectTitle: attempt.subjectTitle,
+      candidateId: attempt.candidateId,
+      candidateNumber: attempt.candidateNumber,
+      candidateName: attempt.candidateName,
+      examSessionId: attempt.examSessionId,
+      sessionTitle: paper?.sessionTitle || 'August / September 2026 Theological Examination Diet',
+      examMode: 'ONLINE',
+      status: 'SUBMITTED',
+      attemptId: attempt.id,
+      questionsMarked: scriptQuestions,
+      rawTotalScore: autoScore,
+      finalApprovedScore: autoScore,
+      maxPossibleScore: paper?.totalMarks || 100,
+      percentageScore: Math.round((autoScore / (paper?.totalMarks || 100)) * 100),
+      calculatedGrade: autoScore >= 70 ? 'A' : autoScore >= 60 ? 'B' : autoScore >= 50 ? 'C' : 'F',
+      auditTrail: [
+        {
+          action: 'ONLINE_EXAM_SUBMITTED',
+          performedBy: attempt.candidateName,
+          role: 'CANDIDATE',
+          timestamp: new Date().toISOString(),
+          details: `Candidate completed online examination with ${attempt.tabSwitchCount || 0} anti-cheat security events.`
+        }
+      ],
+      submittedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // Auto-assign first matching examiner if available
+    const matchingExaminer = this.examinerProfiles.find(e => e.tenantId === tenantId && e.assignedSubjectCodes.includes(attempt.subjectCode));
+    if (matchingExaminer) {
+      newScript.assignedExaminerId = matchingExaminer.id;
+      newScript.assignedExaminerName = matchingExaminer.name;
+      newScript.status = 'ASSIGNED';
+    }
+
+    this.examinationScripts.push(newScript);
+    await this.persistDoc('examinationScripts', newScript.id, newScript);
+
+    return { attempt, script: newScript };
+  }
+
+  // Examiners & Script Marking / Moderation
+  public getExaminers(tenantId: string): ExaminerProfile[] {
+    return this.examinerProfiles.filter(e => e.tenantId === tenantId);
+  }
+
+  public async saveExaminerProfile(tenantId: string, examiner: ExaminerProfile): Promise<ExaminerProfile> {
+    const idx = this.examinerProfiles.findIndex(e => e.tenantId === tenantId && e.id === examiner.id);
+    if (idx >= 0) {
+      this.examinerProfiles[idx] = { ...this.examinerProfiles[idx], ...examiner };
+      await this.persistDoc('examinerProfiles', examiner.id, this.examinerProfiles[idx]);
+      return this.examinerProfiles[idx];
+    } else {
+      const newExaminer: ExaminerProfile = {
+        ...examiner,
+        id: examiner.id || `exam_prof_${Date.now()}`,
+        tenantId,
+        totalScriptsAssigned: 0,
+        totalScriptsMarked: 0,
+        totalModerated: 0,
+        createdAt: new Date().toISOString()
+      };
+      this.examinerProfiles.push(newExaminer);
+      await this.persistDoc('examinerProfiles', newExaminer.id, newExaminer);
+      return newExaminer;
+    }
+  }
+
+  public getExamScripts(tenantId: string, examinerId?: string, status?: string): ExaminationScript[] {
+    return this.examinationScripts.filter(s => 
+      s.tenantId === tenantId &&
+      (!examinerId || s.assignedExaminerId === examinerId || s.assignedModeratorId === examinerId) &&
+      (!status || s.status === status)
+    );
+  }
+
+  public getExamScriptById(tenantId: string, scriptId: string): ExaminationScript | undefined {
+    return this.examinationScripts.find(s => s.tenantId === tenantId && s.id === scriptId);
+  }
+
+  public async gradeScript(tenantId: string, scriptId: string, payload: {
+    examinerId: string;
+    examinerName: string;
+    questionScores: { questionId: string; score: number; comments?: string }[];
+    generalFeedback?: string;
+  }): Promise<ExaminationScript> {
+    const script = this.getExamScriptById(tenantId, scriptId);
+    if (!script) throw new Error('Script not found');
+
+    let totalRaw = 0;
+    script.questionsMarked.forEach(q => {
+      const update = payload.questionScores.find(qs => qs.questionId === q.questionId);
+      if (update) {
+        q.examinerScore = update.score;
+        q.examinerComments = update.comments;
+      }
+      totalRaw += (typeof q.examinerScore === 'number' ? q.examinerScore : (q.autoScore || 0));
+    });
+
+    script.rawTotalScore = totalRaw;
+    script.finalApprovedScore = totalRaw;
+    script.percentageScore = Math.round((totalRaw / (script.maxPossibleScore || 100)) * 100);
+    script.calculatedGrade = totalRaw >= 70 ? 'A (Distinction)' : totalRaw >= 60 ? 'B (Merit)' : totalRaw >= 50 ? 'C (Pass)' : 'F (Fail)';
+    script.examinerGeneralFeedback = payload.generalFeedback;
+    script.assignedExaminerId = payload.examinerId;
+    script.assignedExaminerName = payload.examinerName;
+    script.markedAt = new Date().toISOString();
+    script.status = 'MARKED';
+    script.updatedAt = new Date().toISOString();
+
+    script.auditTrail.push({
+      action: 'EXAMINER_MARKED',
+      performedBy: payload.examinerName,
+      role: 'EXAMINER',
+      timestamp: new Date().toISOString(),
+      details: `Examiner marked script. Total score awarded: ${totalRaw} / ${script.maxPossibleScore}.`,
+      newScore: totalRaw
+    });
+
+    await this.persistDoc('examinationScripts', script.id, script);
+    return script;
+  }
+
+  public async moderateScript(tenantId: string, scriptId: string, payload: {
+    moderatorId: string;
+    moderatorName: string;
+    questionModeration?: { questionId: string; moderatedScore: number; comments?: string }[];
+    adjustedTotalScore?: number;
+    moderatorFeedback?: string;
+    approved: boolean;
+  }): Promise<ExaminationScript> {
+    const script = this.getExamScriptById(tenantId, scriptId);
+    if (!script) throw new Error('Script not found');
+
+    if (payload.questionModeration) {
+      payload.questionModeration.forEach(qm => {
+        const q = script.questionsMarked.find(item => item.questionId === qm.questionId);
+        if (q) {
+          q.moderatorScore = qm.moderatedScore;
+          q.moderatorComments = qm.comments;
+        }
+      });
+    }
+
+    const finalScore = typeof payload.adjustedTotalScore === 'number' ? payload.adjustedTotalScore : script.rawTotalScore;
+    script.moderatedTotalScore = finalScore;
+    script.finalApprovedScore = finalScore;
+    script.percentageScore = Math.round((finalScore / (script.maxPossibleScore || 100)) * 100);
+    script.calculatedGrade = finalScore >= 70 ? 'A (Distinction)' : finalScore >= 60 ? 'B (Merit)' : finalScore >= 50 ? 'C (Pass)' : 'F (Fail)';
+    script.moderatorGeneralFeedback = payload.moderatorFeedback;
+    script.assignedModeratorId = payload.moderatorId;
+    script.assignedModeratorName = payload.moderatorName;
+    script.moderatedAt = new Date().toISOString();
+    script.status = payload.approved ? 'APPROVED' : 'MODERATION';
+    if (payload.approved) {
+      script.approvedAt = new Date().toISOString();
+    }
+    script.updatedAt = new Date().toISOString();
+
+    script.auditTrail.push({
+      action: payload.approved ? 'MODERATOR_APPROVED' : 'MODERATION_ADJUSTED',
+      performedBy: payload.moderatorName,
+      role: 'MODERATOR',
+      timestamp: new Date().toISOString(),
+      details: payload.approved 
+        ? `External Moderator approved final score of ${finalScore} / ${script.maxPossibleScore}.`
+        : `Moderator requested revision / adjusted score to ${finalScore}.`,
+      oldScore: script.rawTotalScore,
+      newScore: finalScore
+    });
+
+    await this.persistDoc('examinationScripts', script.id, script);
+    return script;
+  }
+
+  // Recognition of Prior Learning (RPL)
+  public getRplApplications(tenantId: string, candidateId?: string): RplApplication[] {
+    return this.rplApplications.filter(r => 
+      r.tenantId === tenantId && (!candidateId || r.candidateId === candidateId || r.candidateNumber === candidateId)
+    );
+  }
+
+  public getRplApplicationById(tenantId: string, id: string): RplApplication | undefined {
+    return this.rplApplications.find(r => r.tenantId === tenantId && (r.id === id || r.applicationNumber === id));
+  }
+
+  public async saveRplApplication(tenantId: string, rpl: RplApplication): Promise<RplApplication> {
+    const idx = this.rplApplications.findIndex(r => r.tenantId === tenantId && r.id === rpl.id);
+    if (idx >= 0) {
+      this.rplApplications[idx] = { ...this.rplApplications[idx], ...rpl, updatedAt: new Date().toISOString() };
+      await this.persistDoc('rplApplications', rpl.id, this.rplApplications[idx]);
+      return this.rplApplications[idx];
+    } else {
+      const appNum = rpl.applicationNumber || `RPL-BOL-${new Date().getFullYear()}-${String(this.rplApplications.length + 1).padStart(4, '0')}`;
+      const newRpl: RplApplication = {
+        ...rpl,
+        id: rpl.id || `rpl_${Date.now()}`,
+        tenantId,
+        applicationNumber: appNum,
+        status: rpl.status || 'SUBMITTED',
+        awardedCredits: rpl.awardedCredits || [],
+        totalCreditsAwarded: rpl.totalCreditsAwarded || 0,
+        feePaid: rpl.feePaid ?? true,
+        submittedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.rplApplications.push(newRpl);
+      await this.persistDoc('rplApplications', newRpl.id, newRpl);
+      return newRpl;
+    }
+  }
+
+  public async assessRplApplication(tenantId: string, id: string, payload: {
+    assessorId: string;
+    assessorName: string;
+    status: any;
+    assessorNotes?: string;
+    awardedCredits?: { unitCode: string; unitTitle: string; credits: number; justification: string }[];
+    decisionOutcome?: any;
+    rejectionReason?: string;
+  }): Promise<RplApplication> {
+    const rpl = this.getRplApplicationById(tenantId, id);
+    if (!rpl) throw new Error('RPL Application not found');
+
+    rpl.assignedAssessorId = payload.assessorId;
+    rpl.assignedAssessorName = payload.assessorName;
+    rpl.status = payload.status;
+    rpl.assessorNotes = payload.assessorNotes;
+    if (payload.awardedCredits) {
+      rpl.awardedCredits = payload.awardedCredits;
+      rpl.totalCreditsAwarded = payload.awardedCredits.reduce((acc, c) => acc + (c.credits || 0), 0);
+    }
+    rpl.decisionOutcome = payload.decisionOutcome;
+    rpl.rejectionReason = payload.rejectionReason;
+    rpl.assessedAt = new Date().toISOString();
+    if (payload.status === 'APPROVED') {
+      rpl.approvedAt = new Date().toISOString();
+    }
+    rpl.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('rplApplications', rpl.id, rpl);
+    return rpl;
+  }
+
+  // Examination Results, Transcripts & Certificates
+  public getExamResults(tenantId: string, candidateId?: string): ExaminationResultRecord[] {
+    return this.examinationResults.filter(r => 
+      r.tenantId === tenantId && (!candidateId || r.candidateId === candidateId || r.candidateNumber === candidateId)
+    );
+  }
+
+  public async saveExamResult(tenantId: string, res: ExaminationResultRecord): Promise<ExaminationResultRecord> {
+    const idx = this.examinationResults.findIndex(r => r.tenantId === tenantId && r.id === res.id);
+    if (idx >= 0) {
+      this.examinationResults[idx] = { ...this.examinationResults[idx], ...res, updatedAt: new Date().toISOString() };
+      await this.persistDoc('examinationResults', res.id, this.examinationResults[idx]);
+      return this.examinationResults[idx];
+    } else {
+      const newRes: ExaminationResultRecord = {
+        ...res,
+        id: res.id || `res_${Date.now()}`,
+        tenantId,
+        status: res.status || 'PUBLISHED',
+        publishedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.examinationResults.push(newRes);
+      await this.persistDoc('examinationResults', newRes.id, newRes);
+      return newRes;
+    }
+  }
+
+  public getOfficialTranscripts(tenantId: string, candidateId?: string): OfficialTranscriptRecord[] {
+    return this.officialTranscripts.filter(t => 
+      t.tenantId === tenantId && (!candidateId || t.candidateId === candidateId || t.candidateNumber === candidateId)
+    );
+  }
+
+  public async issueTranscript(tenantId: string, transcript: OfficialTranscriptRecord): Promise<OfficialTranscriptRecord> {
+    const idx = this.officialTranscripts.findIndex(t => t.tenantId === tenantId && t.id === transcript.id);
+    if (idx >= 0) {
+      this.officialTranscripts[idx] = { ...this.officialTranscripts[idx], ...transcript };
+      await this.persistDoc('officialTranscripts', transcript.id, this.officialTranscripts[idx]);
+      return this.officialTranscripts[idx];
+    } else {
+      const trNum = transcript.transcriptNumber || `TR-BOL-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const vrfCode = transcript.verificationCode || `BOL-TR-${Math.floor(10000 + Math.random() * 90000)}`;
+      const newTr: OfficialTranscriptRecord = {
+        ...transcript,
+        id: transcript.id || `tr_${Date.now()}`,
+        tenantId,
+        transcriptNumber: trNum,
+        verificationCode: vrfCode,
+        verificationUrl: `https://brooksoflife.org.uk/verify-document/${vrfCode}`,
+        qrCodeData: `https://brooksoflife.org.uk/verify-document/${vrfCode}`,
+        status: 'VALID',
+        createdAt: new Date().toISOString()
+      };
+      this.officialTranscripts.push(newTr);
+      await this.persistDoc('officialTranscripts', newTr.id, newTr);
+      return newTr;
+    }
+  }
+
+  public getOfficialCertificates(tenantId: string, candidateId?: string): OfficialCertificateRecord[] {
+    return this.officialCertificates.filter(c => 
+      c.tenantId === tenantId && (!candidateId || c.candidateId === candidateId || c.candidateNumber === candidateId)
+    );
+  }
+
+  public async issueCertificate(tenantId: string, certificate: OfficialCertificateRecord): Promise<OfficialCertificateRecord> {
+    const idx = this.officialCertificates.findIndex(c => c.tenantId === tenantId && c.id === certificate.id);
+    if (idx >= 0) {
+      this.officialCertificates[idx] = { ...this.officialCertificates[idx], ...certificate };
+      await this.persistDoc('officialCertificates', certificate.id, this.officialCertificates[idx]);
+      return this.officialCertificates[idx];
+    } else {
+      const certNum = certificate.certificateNumber || `BOL-CERT-${new Date().getFullYear()}-${String(this.officialCertificates.length + 1).padStart(4, '0')}`;
+      const vrfCode = certificate.verificationCode || `BOL-VRF-${Math.floor(10000 + Math.random() * 90000)}`;
+      const newCert: OfficialCertificateRecord = {
+        ...certificate,
+        id: certificate.id || `cert_${Date.now()}`,
+        tenantId,
+        certificateNumber: certNum,
+        verificationCode: vrfCode,
+        verificationUrl: `https://brooksoflife.org.uk/verify-document/${vrfCode}`,
+        qrCodeData: `https://brooksoflife.org.uk/verify-document/${vrfCode}`,
+        status: 'VALID',
+        createdAt: new Date().toISOString()
+      };
+      this.officialCertificates.push(newCert);
+      await this.persistDoc('officialCertificates', newCert.id, newCert);
+      return newCert;
+    }
+  }
+
+  // Document & Certificate Public Verification Engine
+  public verifyDocumentOrCertificate(codeOrNumber: string): CertificateVerificationLookupResult {
+    const cleanCode = codeOrNumber.trim().toUpperCase();
+
+    // 1. Check Certificates
+    const cert = this.officialCertificates.find(c => 
+      c.verificationCode?.toUpperCase() === cleanCode || c.certificateNumber?.toUpperCase() === cleanCode
+    );
+    if (cert) {
+      return {
+        verified: cert.status === 'VALID',
+        status: cert.status,
+        documentType: 'CERTIFICATE',
+        documentNumber: cert.certificateNumber,
+        verificationCode: cert.verificationCode,
+        candidateName: cert.candidateName,
+        candidateNumberMasked: cert.candidateNumber ? cert.candidateNumber.replace(/\/[^/]+$/, '/***') : undefined,
+        qualificationTitle: cert.qualificationTitle,
+        programmeName: cert.programmeName,
+        issueDate: cert.issueDate,
+        conferralDate: cert.conferralDate,
+        honorsClassification: cert.honorsClassification,
+        institutionName: 'Brooks of Life UK',
+        verificationTimestamp: new Date().toISOString(),
+        officialSealUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=200&h=200&q=80',
+        remarks: cert.status === 'VALID' 
+          ? 'Authentic Brooks of Life UK Theological Certificate confirmed.'
+          : `Certificate status: ${cert.status}. Reason: ${cert.revocationReason || 'Administrative hold'}`
+      };
+    }
+
+    // 2. Check Transcripts
+    const tr = this.officialTranscripts.find(t => 
+      t.verificationCode?.toUpperCase() === cleanCode || t.transcriptNumber?.toUpperCase() === cleanCode
+    );
+    if (tr) {
+      return {
+        verified: tr.status === 'VALID',
+        status: tr.status,
+        documentType: 'TRANSCRIPT',
+        documentNumber: tr.transcriptNumber,
+        verificationCode: tr.verificationCode,
+        candidateName: tr.candidateName,
+        candidateNumberMasked: tr.candidateNumber ? tr.candidateNumber.replace(/\/[^/]+$/, '/***') : undefined,
+        qualificationTitle: tr.awardTitle,
+        programmeName: tr.programmeName,
+        issueDate: tr.issueDate,
+        conferralDate: tr.completionDate,
+        honorsClassification: tr.overallClassification,
+        institutionName: 'Brooks of Life UK',
+        verificationTimestamp: new Date().toISOString(),
+        officialSealUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=200&h=200&q=80',
+        remarks: 'Official Brooks of Life UK Academic Transcript record verified.'
+      };
+    }
+
+    // 3. Check Exam Registration Slips
+    const slip = this.candidateExamRegistrations.find(r => 
+      r.registrationNumber?.toUpperCase() === cleanCode || r.slipVerificationQr?.toUpperCase().includes(cleanCode)
+    );
+    if (slip) {
+      return {
+        verified: slip.status === 'APPROVED' || slip.status === 'CONFIRMED',
+        status: (slip.status === 'APPROVED' || slip.status === 'CONFIRMED') ? 'VALID' : 'SUSPENDED',
+        documentType: 'EXAM_SLIP',
+        documentNumber: slip.registrationNumber,
+        candidateName: slip.candidateName,
+        candidateNumberMasked: slip.candidateNumber ? slip.candidateNumber.replace(/\/[^/]+$/, '/***') : undefined,
+        programmeName: slip.programmeName,
+        issueDate: slip.createdAt?.split('T')[0],
+        institutionName: 'Brooks of Life UK',
+        verificationTimestamp: new Date().toISOString(),
+        remarks: `Official TEMS Examination Slip for ${slip.sessionTitle}. Candidate Centre: ${slip.centreName}.`
+      };
+    }
+
+    return {
+      verified: false,
+      status: 'NOT_FOUND',
+      documentType: 'CERTIFICATE',
+      institutionName: 'Brooks of Life UK',
+      verificationTimestamp: new Date().toISOString(),
+      remarks: 'No record matching this certificate number or verification code was found in the official Brooks of Life registry.'
+    };
+  }
+
+  // Brooks of Life TV & Media Platform
+  public getMediaItems(tenantId: string, category?: string): MediaContentItem[] {
+    return this.mediaContents.filter(m => 
+      m.tenantId === tenantId && (!category || m.category === category || category === 'ALL')
+    );
+  }
+
+  public async saveMediaItem(tenantId: string, media: MediaContentItem): Promise<MediaContentItem> {
+    const idx = this.mediaContents.findIndex(m => m.tenantId === tenantId && m.id === media.id);
+    if (idx >= 0) {
+      this.mediaContents[idx] = { ...this.mediaContents[idx], ...media };
+      await this.persistDoc('mediaContents', media.id, this.mediaContents[idx]);
+      return this.mediaContents[idx];
+    } else {
+      const newMedia: MediaContentItem = {
+        ...media,
+        id: media.id || `media_${Date.now()}`,
+        tenantId,
+        viewsCount: media.viewsCount || 0,
+        likesCount: media.likesCount || 0,
+        status: media.status || 'PUBLISHED',
+        publishedAt: media.publishedAt || new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+      this.mediaContents.push(newMedia);
+      await this.persistDoc('mediaContents', newMedia.id, newMedia);
+      return newMedia;
+    }
+  }
+
+  public getTVSchedule(tenantId?: string): TVScheduleItem[] {
+    return this.tvsSchedule;
+  }
+
+  public async saveTVScheduleItem(item: TVScheduleItem): Promise<TVScheduleItem> {
+    const idx = this.tvsSchedule.findIndex(s => s.id === item.id);
+    if (idx >= 0) {
+      this.tvsSchedule[idx] = { ...this.tvsSchedule[idx], ...item };
+      this.saveToDiskBackup();
+      return this.tvsSchedule[idx];
+    } else {
+      const newItem: TVScheduleItem = {
+        ...item,
+        id: item.id || `sched_${Date.now()}`
+      };
+      this.tvsSchedule.push(newItem);
+      this.saveToDiskBackup();
+      return newItem;
+    }
+  }
+
+  public getMinistryEvents(tenantId: string): MinistryEventRecord[] {
+    return this.ministryEvents.filter(e => e.tenantId === tenantId);
+  }
+
+  public async saveMinistryEvent(tenantId: string, event: MinistryEventRecord): Promise<MinistryEventRecord> {
+    const idx = this.ministryEvents.findIndex(e => e.tenantId === tenantId && e.id === event.id);
+    if (idx >= 0) {
+      this.ministryEvents[idx] = { ...this.ministryEvents[idx], ...event };
+      await this.persistDoc('ministryEvents', event.id, this.ministryEvents[idx]);
+      return this.ministryEvents[idx];
+    } else {
+      const newEv: MinistryEventRecord = {
+        ...event,
+        id: event.id || `ev_${Date.now()}`,
+        tenantId,
+        registeredAttendeesCount: event.registeredAttendeesCount || 0,
+        status: event.status || 'UPCOMING',
+        createdAt: new Date().toISOString()
+      };
+      this.ministryEvents.push(newEv);
+      await this.persistDoc('ministryEvents', newEv.id, newEv);
+      return newEv;
+    }
+  }
+
+  public getTheologicalArticles(tenantId: string): TheologicalArticleRecord[] {
+    return this.theologicalArticles.filter(a => a.tenantId === tenantId);
+  }
+
+  public async saveTheologicalArticle(tenantId: string, article: TheologicalArticleRecord): Promise<TheologicalArticleRecord> {
+    const idx = this.theologicalArticles.findIndex(a => a.tenantId === tenantId && a.id === article.id);
+    if (idx >= 0) {
+      this.theologicalArticles[idx] = { ...this.theologicalArticles[idx], ...article };
+      await this.persistDoc('theologicalArticles', article.id, this.theologicalArticles[idx]);
+      return this.theologicalArticles[idx];
+    } else {
+      const newArt: TheologicalArticleRecord = {
+        ...article,
+        id: article.id || `art_${Date.now()}`,
+        tenantId,
+        viewsCount: 0,
+        status: article.status || 'PUBLISHED',
+        createdAt: new Date().toISOString()
+      };
+      this.theologicalArticles.push(newArt);
+      await this.persistDoc('theologicalArticles', newArt.id, newArt);
+      return newArt;
+    }
+  }
+
+  // Fees & Payments
+  public getTemsFeeSchedules(tenantId: string): TemsFeeScheduleItem[] {
+    return this.temsFeeSchedules.filter(f => f.tenantId === tenantId);
+  }
+
+  public async saveTemsFeeSchedule(tenantId: string, fee: TemsFeeScheduleItem): Promise<TemsFeeScheduleItem> {
+    const idx = this.temsFeeSchedules.findIndex(f => f.tenantId === tenantId && f.id === fee.id);
+    if (idx >= 0) {
+      this.temsFeeSchedules[idx] = { ...this.temsFeeSchedules[idx], ...fee };
+      await this.persistDoc('temsFeeSchedules', fee.id, this.temsFeeSchedules[idx]);
+      return this.temsFeeSchedules[idx];
+    } else {
+      const newFee: TemsFeeScheduleItem = {
+        ...fee,
+        id: fee.id || `fee_${Date.now()}`,
+        tenantId,
+        currency: fee.currency || 'GBP',
+        currencySymbol: fee.currencySymbol || '£',
+        createdAt: new Date().toISOString()
+      };
+      this.temsFeeSchedules.push(newFee);
+      await this.persistDoc('temsFeeSchedules', newFee.id, newFee);
+      return newFee;
+    }
+  }
+
+  public getTemsPayments(tenantId: string, candidateId?: string): TemsPaymentRecord[] {
+    return this.temsPayments.filter(p => 
+      p.tenantId === tenantId && (!candidateId || p.candidateId === candidateId || p.candidateNumber === candidateId)
+    );
+  }
+
+  public async recordTemsPayment(tenantId: string, payment: TemsPaymentRecord): Promise<TemsPaymentRecord> {
+    const receiptNum = payment.receiptNumber || `RCP-BOL-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const newPay: TemsPaymentRecord = {
+      ...payment,
+      id: payment.id || `pay_${Date.now()}`,
+      tenantId,
+      receiptNumber: receiptNum,
+      status: payment.status || 'PAID',
+      paidAt: payment.paidAt || new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    this.temsPayments.push(newPay);
+    await this.persistDoc('temsPayments', newPay.id, newPay);
+
+    // Also generate universal receipt
+    try {
+      const t = this.getTenant(tenantId);
+      this.createUniversalReceipt(tenantId, {
+        sourceModule: 'THEOLOGY_TEMS',
+        sourceReferenceId: newPay.id,
+        receiptNumber: newPay.receiptNumber,
+        businessName: t?.branding?.companyName || t?.name || 'Brooks of Life UK — TEMS',
+        customerName: newPay.candidateName || 'Candidate',
+        candidateNumber: newPay.candidateNumber,
+        currency: newPay.currency || 'GBP',
+        currencySymbol: newPay.currencySymbol || '£',
+        items: [{
+          name: `${newPay.feeCategoryName || 'Examination Assessment'} - Exam Session`,
+          quantity: 1,
+          unitPrice: newPay.amount,
+          total: newPay.amount,
+          notes: newPay.notes
+        }],
+        subtotal: newPay.amount,
+        discountAmount: 0,
+        taxAmount: 0,
+        grandTotal: newPay.amount,
+        paymentMethod: newPay.paymentMethod as any,
+        paymentReference: newPay.transactionReference,
+        cashierId: 'sys_tems',
+        cashierName: 'Bursar & Exam Council',
+        issuedAt: newPay.paidAt,
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED'
+      });
+    } catch (e) {
+      console.warn('Could not mirror TEMS receipt:', e);
+    }
+
+    return newPay;
+  }
+
+  // ==========================================
+  // Centralized Physical Printers & Hardware
+  // ==========================================
+
+  public getPrinters(tenantId: string): PrinterDevice[] {
+    return this.printers.filter(p => p.tenantId === tenantId);
+  }
+
+  public getPrinterById(tenantId: string, id: string): PrinterDevice | null {
+    return this.printers.find(p => p.tenantId === tenantId && p.id === id) || null;
+  }
+
+  public async savePrinter(tenantId: string, data: Partial<PrinterDevice>, actor?: User): Promise<PrinterDevice> {
+    const existingIdx = this.printers.findIndex(p => p.tenantId === tenantId && p.id === data.id);
+    if (data.isDefault) {
+      this.printers.forEach(p => {
+        if (p.tenantId === tenantId) p.isDefault = false;
+      });
+    }
+
+    if (existingIdx >= 0) {
+      const updated: PrinterDevice = {
+        ...this.printers[existingIdx],
+        ...data,
+        updatedAt: new Date().toISOString()
+      };
+      this.printers[existingIdx] = updated;
+      await this.persistDoc('printers', updated.id, updated);
+      if (actor) {
+        this.logPrinterAudit(
+          tenantId,
+          actor.id,
+          actor.name,
+          actor.role,
+          'PRINTER_UPDATED',
+          `Updated printer "${updated.name}" (${updated.interfaceType}, ${updated.paperWidth}, Target: ${updated.stationTarget})`,
+          updated.name
+        );
+      }
+      return updated;
+    } else {
+      const isFirst = this.printers.filter(p => p.tenantId === tenantId).length === 0;
+      const newPrinter: PrinterDevice = {
+        id: data.id || `prn_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        name: data.name || 'Main Counter Thermal Printer',
+        branchId: data.branchId,
+        branchName: data.branchName,
+        workstationName: data.workstationName,
+        stationTarget: data.stationTarget || 'CASHIER',
+        interfaceType: data.interfaceType || 'SYSTEM_DEFAULT',
+        paperWidth: data.paperWidth || '80mm',
+        isDefault: data.isDefault ?? isFirst,
+        autoPrint: data.autoPrint ?? true,
+        kickCashDrawer: data.kickCashDrawer ?? false,
+        cutPaper: data.cutPaper ?? true,
+        copies: data.copies || 1,
+        ipAddress: data.ipAddress,
+        port: data.port || 9100,
+        bridgeUrl: data.bridgeUrl,
+        usbVendorId: data.usbVendorId,
+        usbProductId: data.usbProductId,
+        serialBaudRate: data.serialBaudRate,
+        customHeader: data.customHeader,
+        customFooter: data.customFooter,
+        status: data.status || 'ONLINE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.printers.push(newPrinter);
+      await this.persistDoc('printers', newPrinter.id, newPrinter);
+      if (actor) {
+        this.logPrinterAudit(
+          tenantId,
+          actor.id,
+          actor.name,
+          actor.role,
+          'PRINTER_CREATED',
+          `Configured new printer "${newPrinter.name}" (${newPrinter.interfaceType}, ${newPrinter.paperWidth}, Target: ${newPrinter.stationTarget})`,
+          newPrinter.name
+        );
+      }
+      return newPrinter;
+    }
+  }
+
+  public async deletePrinter(tenantId: string, id: string, actor?: User): Promise<boolean> {
+    const idx = this.printers.findIndex(p => p.tenantId === tenantId && p.id === id);
+    if (idx === -1) return false;
+    const deleted = this.printers[idx];
+    this.printers.splice(idx, 1);
+    await deleteDocFromFirestore('printers', id).catch(() => {});
+    if (actor) {
+      this.logPrinterAudit(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'PRINTER_DELETED',
+        `Deleted printer "${deleted.name}"`,
+        deleted.name
+      );
+    }
+    return true;
+  }
+
+  // ==========================================
+  // Centralized Universal Receipts
+  // ==========================================
+
+  public getReceipts(
+    tenantId: string,
+    filters?: { sourceModule?: string; search?: string; startDate?: string; endDate?: string }
+  ): UniversalReceipt[] {
+    let list = this.universalReceipts.filter(r => r.tenantId === tenantId);
+    if (filters?.sourceModule) {
+      list = list.filter(r => r.sourceModule === filters.sourceModule);
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(r => 
+        r.receiptNumber.toLowerCase().includes(q) ||
+        r.customerName.toLowerCase().includes(q) ||
+        (r.paymentReference && r.paymentReference.toLowerCase().includes(q)) ||
+        (r.verificationCode && r.verificationCode.toLowerCase().includes(q))
+      );
+    }
+    return list.sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+  }
+
+  public getReceiptById(tenantId: string, id: string): UniversalReceipt | null {
+    return this.universalReceipts.find(r => r.tenantId === tenantId && (r.id === id || r.receiptNumber === id)) || null;
+  }
+
+  public generateReceiptNumber(tenantId: string, prefix: string = 'RCT'): string {
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const code = tenant?.slug?.substring(0, 4).toUpperCase() || 'TX';
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const seq = this.universalReceipts.filter(r => r.tenantId === tenantId).length + 1;
+    return `${prefix}-${code}-${dateStr}-${String(seq).padStart(4, '0')}`;
+  }
+
+  public createUniversalReceipt(
+    tenantId: string,
+    data: Omit<UniversalReceipt, 'id' | 'tenantId' | 'receiptNumber' | 'verificationCode' | 'createdAt'> & { receiptNumber?: string },
+    actor?: User
+  ): UniversalReceipt {
+    const tenant = this.tenants.find(t => t.id === tenantId);
+    const tenantName = tenant?.branding?.companyName || tenant?.name || 'Organization';
+    const tradingName = tenant?.branding?.companyName || tenant?.name;
+    const logoUrl = tenant?.branding?.logoUrl || '';
+    const address = tenant?.branding?.address || '';
+    const phone = tenant?.branding?.contactPhone || '';
+    const email = tenant?.branding?.contactEmail || '';
+    const taxReg = tenant?.branding?.taxRegistrationNumber || '';
+
+    const receiptNum = data.receiptNumber || this.generateReceiptNumber(tenantId, 'RCT');
+    const verCode = `VER-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+    const receipt: UniversalReceipt = {
+      ...data,
+      id: `rcpt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      receiptNumber: receiptNum,
+      businessName: data.businessName || tenantName,
+      tradingName: data.tradingName || tradingName,
+      logoUrl: data.logoUrl || logoUrl,
+      address: data.address || address,
+      phone: data.phone || phone,
+      email: data.email || email,
+      taxRegistrationNumber: data.taxRegistrationNumber || taxReg,
+      verificationCode: verCode,
+      isReprint: false,
+      reprintCount: 0,
+      status: 'ISSUED',
+      issuedAt: data.issuedAt || new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    };
+
+    this.universalReceipts.unshift(receipt);
+    this.persistDoc('universalReceipts', receipt.id, receipt);
+
+    if (actor) {
+      this.logPrinterAudit(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'PRINT_SUCCESS',
+        `Generated unique receipt ${receipt.receiptNumber} (${receipt.sourceModule}) for ${receipt.customerName} - Total: ${receipt.currencySymbol} ${receipt.grandTotal}`,
+        undefined,
+        receipt.receiptNumber
+      );
+    }
+
+    return receipt;
+  }
+
+  public reprintReceipt(tenantId: string, id: string, actor?: User): UniversalReceipt {
+    const receipt = this.universalReceipts.find(r => r.tenantId === tenantId && (r.id === id || r.receiptNumber === id));
+    if (!receipt) throw new Error('Receipt not found');
+
+    receipt.isReprint = true;
+    receipt.reprintCount = (receipt.reprintCount || 0) + 1;
+    receipt.lastReprintedAt = new Date().toISOString();
+
+    this.persistDoc('universalReceipts', receipt.id, receipt);
+
+    if (actor) {
+      this.logPrinterAudit(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'REPRINT_ISSUED',
+        `Reprinted copy #${receipt.reprintCount} for receipt ${receipt.receiptNumber} by ${actor.name} (${actor.role})`,
+        undefined,
+        receipt.receiptNumber
+      );
+    }
+
+    return receipt;
+  }
+
+  // ==========================================
+  // Print Job Queue & Retry Engine
+  // ==========================================
+
+  public getPrintJobs(tenantId: string, status?: string): PrintJobRecord[] {
+    let list = this.printJobs.filter(j => j.tenantId === tenantId);
+    if (status) {
+      list = list.filter(j => j.status === status);
+    }
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public addPrintJob(tenantId: string, jobData: Partial<PrintJobRecord>): PrintJobRecord {
+    const job: PrintJobRecord = {
+      id: jobData.id || `job_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      receiptId: jobData.receiptId || '',
+      receiptNumber: jobData.receiptNumber || '',
+      printerId: jobData.printerId || '',
+      printerName: jobData.printerName || 'Receipt Printer',
+      stationTarget: jobData.stationTarget || 'CASHIER',
+      interfaceType: jobData.interfaceType || 'SYSTEM_DEFAULT',
+      paperWidth: jobData.paperWidth || '80mm',
+      copies: jobData.copies || 1,
+      status: jobData.status || 'PRINTING',
+      attempts: jobData.attempts || 1,
+      maxAttempts: jobData.maxAttempts || 5,
+      lastError: jobData.lastError,
+      isAutoTriggered: jobData.isAutoTriggered ?? true,
+      isReprint: jobData.isReprint ?? false,
+      rawEscPosHex: jobData.rawEscPosHex,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      completedAt: jobData.status === 'COMPLETED' ? new Date().toISOString() : undefined
+    };
+
+    this.printJobs.unshift(job);
+    this.persistDoc('printJobs', job.id, job);
+    return job;
+  }
+
+  public updatePrintJob(tenantId: string, id: string, updates: Partial<PrintJobRecord>): PrintJobRecord {
+    const idx = this.printJobs.findIndex(j => j.tenantId === tenantId && j.id === id);
+    if (idx === -1) throw new Error('Print job not found');
+
+    const updated: PrintJobRecord = {
+      ...this.printJobs[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+      completedAt: updates.status === 'COMPLETED' ? new Date().toISOString() : this.printJobs[idx].completedAt
+    };
+    this.printJobs[idx] = updated;
+    this.persistDoc('printJobs', updated.id, updated);
+    return updated;
+  }
+
+  public retryPrintJob(tenantId: string, id: string, actor?: User): PrintJobRecord {
+    const idx = this.printJobs.findIndex(j => j.tenantId === tenantId && j.id === id);
+    if (idx === -1) throw new Error('Print job not found');
+
+    const job = this.printJobs[idx];
+    job.attempts += 1;
+    job.status = 'PRINTING';
+    job.updatedAt = new Date().toISOString();
+
+    this.persistDoc('printJobs', job.id, job);
+
+    if (actor) {
+      this.logPrinterAudit(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'PRINT_RETRY',
+        `Retried print job ${job.id} for receipt ${job.receiptNumber} (Attempt ${job.attempts}/${job.maxAttempts})`,
+        job.printerName,
+        job.receiptNumber
+      );
+    }
+
+    return job;
+  }
+
+  // ==========================================
+  // Printer Security Audit Logs
+  // ==========================================
+
+  public getPrinterAuditLogs(tenantId: string): PrinterAuditLog[] {
+    return this.printerAuditLogs
+      .filter(l => l.tenantId === tenantId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  public logPrinterAudit(
+    tenantId: string,
+    userId: string,
+    userName: string,
+    userRole: string,
+    action: PrinterAuditLog['action'],
+    details: string,
+    printerName?: string,
+    receiptNumber?: string
+  ): PrinterAuditLog {
+    const log: PrinterAuditLog = {
+      id: `pal_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      userId,
+      userName,
+      userRole,
+      action,
+      details,
+      printerName,
+      receiptNumber,
+      timestamp: new Date().toISOString()
+    };
+    this.printerAuditLogs.unshift(log);
+    this.persistDoc('printerAuditLogs', log.id, log);
+    return log;
+  }
+
 }
 
 export const dbStore = new DatabaseStore();

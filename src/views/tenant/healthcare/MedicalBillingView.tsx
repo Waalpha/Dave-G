@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { MedicalInvoice, InsuranceClaim, Patient, MedicalInvoiceItem } from '../../../types';
+import { MedicalInvoice, InsuranceClaim, Patient, MedicalInvoiceItem, UniversalReceipt } from '../../../types';
 import {
   DollarSign, Plus, Search, Filter, CheckCircle2, Clock, AlertTriangle,
-  FileSpreadsheet, Shield, CreditCard, XCircle, Printer, ArrowRight
+  FileSpreadsheet, Shield, CreditCard, XCircle, Printer, ArrowRight, Eye, Receipt
 } from 'lucide-react';
+import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
+import { printService } from '../../../lib/printService';
 
 export const MedicalBillingView: React.FC = () => {
   const { user, tenant } = useAuth();
@@ -13,6 +15,10 @@ export const MedicalBillingView: React.FC = () => {
   const [claims, setClaims] = useState<InsuranceClaim[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Universal Receipt Modal State
+  const [selectedReceipt, setSelectedReceipt] = useState<UniversalReceipt | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
   // New Invoice Modal State
   const [isNewInvoiceOpen, setIsNewInvoiceOpen] = useState(false);
@@ -153,16 +159,88 @@ export const MedicalBillingView: React.FC = () => {
       });
 
       if (res.ok) {
+        const paymentData = await res.json();
+        const currentInv = activeInvoiceForPayment;
         setActiveInvoiceForPayment(null);
         setPaymentAmount('');
         setPaymentRef('');
         fetchData();
+
+        // Fetch or create UniversalReceipt for thermal print dispatch
+        try {
+          const rcptRes = await fetch(`/api/app/receipts?search=${paymentData.payment?.referenceNumber || paymentData.receipt?.receiptNumber || currentInv.invoiceNumber}`, {
+            headers: getHeaders()
+          });
+          if (rcptRes.ok) {
+            const rd = await rcptRes.json();
+            const r = rd.receipts?.[0];
+            if (r) {
+              setSelectedReceipt(r);
+              setIsReceiptModalOpen(true);
+              printService.printReceipt(r).catch(() => {});
+            }
+          }
+        } catch {
+          // Fallback receipt
+          if (currentInv) {
+            openReceiptForInvoice(currentInv, amount);
+          }
+        }
       }
     } catch (err) {
       console.error('Error recording payment:', err);
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const openReceiptForInvoice = async (inv: MedicalInvoice, amountPaid?: number) => {
+    try {
+      const res = await fetch(`/api/app/receipts?search=${inv.invoiceNumber}`, { headers: getHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        const r = d.receipts?.[0];
+        if (r) {
+          setSelectedReceipt(r);
+          setIsReceiptModalOpen(true);
+          return;
+        }
+      }
+    } catch {}
+
+    const pat = patients.find(p => p.id === inv.patientId);
+    const fb: UniversalReceipt = {
+      id: `rcpt_med_${inv.id}`,
+      tenantId: tenant?.id || '',
+      sourceModule: 'HEALTHCARE_BILLING',
+      sourceReferenceId: inv.id,
+      receiptNumber: `MED-RCT-${inv.invoiceNumber}`,
+      businessName: tenant?.branding?.companyName || tenant?.name || 'Healthcare Center & Hospital',
+      currency: 'USD',
+      currencySymbol: '$',
+      customerName: pat?.fullName || inv.patientName || 'Walk-in Patient',
+      patientMrn: pat?.mrn || inv.mrn,
+      items: inv.items.map(i => ({
+        name: i.description,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        total: i.totalPrice
+      })),
+      subtotal: inv.totalAmount,
+      discountAmount: 0,
+      taxAmount: 0,
+      grandTotal: amountPaid || inv.amountPaid || inv.totalAmount,
+      paymentMethod: (inv.paymentType === 'INSURANCE' ? 'OTHER' : 'CASH'),
+      paymentReference: inv.invoiceNumber,
+      cashierName: user?.name || 'Medical Cashier',
+      issuedAt: inv.createdAt,
+      isReprint: false,
+      reprintCount: 0,
+      status: 'ISSUED',
+      createdAt: inv.createdAt || new Date().toISOString()
+    };
+    setSelectedReceipt(fb);
+    setIsReceiptModalOpen(true);
   };
 
   const handleFileClaim = async (e: React.FormEvent) => {
@@ -335,20 +413,40 @@ export const MedicalBillingView: React.FC = () => {
                       </td>
                       <td className="px-5 py-3.5 text-right">
                         {inv.status !== 'PAID' ? (
-                          <button
-                            onClick={() => {
-                              setActiveInvoiceForPayment(inv);
-                              setPaymentAmount(inv.balanceDue.toString());
-                            }}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-                          >
-                            Receive Payment
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {inv.amountPaid > 0 && (
+                              <button
+                                onClick={() => openReceiptForInvoice(inv)}
+                                className="px-2.5 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-semibold flex items-center gap-1"
+                              >
+                                <Receipt className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Slip</span>
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setActiveInvoiceForPayment(inv);
+                                setPaymentAmount(inv.balanceDue.toString());
+                              }}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                              Receive Payment
+                            </button>
+                          </div>
                         ) : (
-                          <span className="text-[11px] text-emerald-600 font-bold flex items-center justify-end gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Settled</span>
-                          </span>
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Settled</span>
+                            </span>
+                            <button
+                              onClick={() => openReceiptForInvoice(inv)}
+                              className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Print Receipt</span>
+                            </button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -725,6 +823,19 @@ export const MedicalBillingView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* UNIVERSAL RECEIPT & THERMAL PRINT MODAL */}
+      <UniversalReceiptModal
+        isOpen={isReceiptModalOpen}
+        receipt={selectedReceipt}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setSelectedReceipt(null);
+        }}
+        onReprint={(updated) => {
+          setSelectedReceipt(updated);
+        }}
+      />
     </div>
   );
 };

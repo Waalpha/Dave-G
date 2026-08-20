@@ -404,6 +404,25 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    // ==========================================
+    // Centralized Printers & Receipts Collections
+    // ==========================================
+    match /printers/{printerId} {
+      allow read, write: if true;
+    }
+
+    match /universalReceipts/{receiptId} {
+      allow read, write: if true;
+    }
+
+    match /printJobs/{jobId} {
+      allow read, write: if true;
+    }
+
+    match /printerAuditLogs/{logId} {
+      allow read, write: if true;
+    }
+
     // Default safety net for unmapped paths
     match /{document=**} {
       allow read, write: if false;

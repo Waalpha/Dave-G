@@ -4,7 +4,7 @@ import {
   Hotel, Save, CheckCircle2, ShieldAlert, Sliders,
   Receipt, Building, Smartphone, FileText, Check
 } from 'lucide-react';
-import { PosTenantConfig, BusinessType } from '../../../types';
+import { PosTenantConfig, PosBusinessType, BusinessType } from '../../../types';
 
 interface PosSettingsManagerProps {
   config: PosTenantConfig | null;
@@ -60,13 +60,13 @@ export const PosSettingsManager: React.FC<PosSettingsManagerProps> = ({
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   const businessTypePresets: {
-    type: BusinessType;
+    type: PosBusinessType;
     label: string;
     description: string;
-    features: PosTenantConfig['enabledFeatures'];
-  } = [
+    features: any;
+  }[] = [
     {
-      type: 'RETAIL',
+      type: 'GENERAL_RETAIL',
       label: 'General Retail / Minimart',
       description: 'Standard retail counter with barcode scanning, quick keys and M-Pesa checkout',
       features: {
@@ -123,7 +123,7 @@ export const PosSettingsManager: React.FC<PosSettingsManagerProps> = ({
       }
     },
     {
-      type: 'RESTAURANT',
+      type: 'RESTAURANT_CAFE',
       label: 'Restaurant & Cafe',
       description: 'Floor dining tables, Kitchen Display System (KDS), waiter station orders & split bills',
       features: {
@@ -142,7 +142,7 @@ export const PosSettingsManager: React.FC<PosSettingsManagerProps> = ({
       }
     },
     {
-      type: 'BAR',
+      type: 'BAR_LOUNGE',
       label: 'Bar, Lounge & Club',
       description: 'Open customer drink tabs, fast drinks counter, bottle/tot measurements and night shift cash floats',
       features: {
@@ -161,7 +161,7 @@ export const PosSettingsManager: React.FC<PosSettingsManagerProps> = ({
       }
     },
     {
-      type: 'HOTEL',
+      type: 'HOTEL_LODGE',
       label: 'Hotel, Resort & Lodging',
       description: 'Room check-in/out, night rates, restaurant/bar folio charges billed to room accounts',
       features: {

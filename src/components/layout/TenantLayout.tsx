@@ -8,7 +8,7 @@ import {
   Coins, Wine, Briefcase, Calculator, Users, Package, UserCheck,
   LayoutDashboard, FileBarChart, Settings, LogOut, ChevronRight,
   Building2, Search, ShieldCheck, ChevronDown, User as UserIcon,
-  Menu, X, Globe
+  Menu, X, Globe, Tv, Award, FileCheck, Scale
 } from 'lucide-react';
 import { ModuleId } from '../../types';
 
@@ -32,7 +32,11 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Calculator,
   Users,
   Package,
-  UserCheck
+  UserCheck,
+  Tv,
+  Award,
+  FileCheck,
+  Scale
 };
 
 export const TenantLayout: React.FC<TenantLayoutProps> = ({

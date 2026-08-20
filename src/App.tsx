@@ -25,6 +25,8 @@ import { ChurchDashboard } from './views/tenant/church/ChurchDashboard';
 import { HealthcareDashboard } from './views/tenant/healthcare/HealthcareDashboard';
 import { CoreEnterpriseDashboard } from './views/tenant/enterprise/CoreEnterpriseDashboard';
 import { PublicDocumentVerification } from './views/public/PublicDocumentVerification';
+import { TemsHubView } from './views/tenant/tems/TemsHubView';
+import { BrooksOfLifePublicWebsite } from './views/public/brooks/BrooksOfLifePublicWebsite';
 import { AccessDeniedGuard } from './components/common/AccessDeniedGuard';
 import { TenantMismatchGuard } from './components/common/TenantMismatchGuard';
 import { resolveHostname, ResolvedDomain } from './lib/domainResolver';
@@ -314,6 +316,26 @@ function MainAppContent() {
         {currentRoute === '/app/dashboard' && <TenantDashboard onNavigate={navigateTo} />}
         {currentRoute === '/app/education' && <EducationDashboard />}
         
+        {/* Brooks of Life UK - Theological Examination Management System (TEMS) & Media Hub */}
+        {(currentRoute === '/app/theology' || currentRoute === '/app/tems') && (
+          <TemsHubView initialRoleView="admin" />
+        )}
+        {currentRoute === '/app/candidate-portal' && (
+          <TemsHubView initialRoleView="candidate" />
+        )}
+        {currentRoute === '/app/examiner-portal' && (
+          <TemsHubView initialRoleView="examiner" />
+        )}
+        {currentRoute === '/app/moderator-portal' && (
+          <TemsHubView initialRoleView="moderator" />
+        )}
+        {currentRoute === '/app/rpl-portal' && (
+          <TemsHubView initialRoleView="rpl" />
+        )}
+        {currentRoute === '/app/media' && (
+          <TemsHubView initialRoleView="media" />
+        )}
+
         {/* Settings Guard: TENANT_USER cannot access Organization Settings */}
         {currentRoute === '/app/settings' && (
           user.role === 'TENANT_USER' ? (

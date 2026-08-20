@@ -74,6 +74,22 @@ export const ALL_ERP_MODULES: ErpModuleInfo[] = [
     defaultPath: '/app/bookshop'
   },
   {
+    id: 'theology',
+    name: 'TEMS & Theological Board',
+    description: 'Brooks of Life UK Theological Examination Management System, candidate registry, online exams, RPL, marking, and certification.',
+    category: 'Industry Specific',
+    icon: 'GraduationCap',
+    defaultPath: '/app/theology'
+  },
+  {
+    id: 'media',
+    name: 'Brooks of Life TV & Media',
+    description: '24/7 TV Schedule broadcast guide, Christian Vibes on-demand library, ministry events, and publications.',
+    category: 'Industry Specific',
+    icon: 'Tv',
+    defaultPath: '/app/media'
+  },
+  {
     id: 'general_erp',
     name: 'General ERP',
     description: 'Universal business process automation, task management, workflows, and document vault.',

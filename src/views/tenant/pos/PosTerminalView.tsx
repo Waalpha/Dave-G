@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { 
   ShoppingCart, Search, Plus, Trash2, CreditCard, 
   Banknote, Receipt, User, DollarSign, Package, 
-  AlertTriangle, RefreshCw, Barcode, CheckCircle2
+  AlertTriangle, RefreshCw, Barcode, CheckCircle2,
+  Printer, RotateCw, Eye
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
-import { PosProduct, PosSaleItem, PosSaleOrder } from '../../../types';
+import { PosProduct, PosSaleItem, PosSaleOrder, UniversalReceipt } from '../../../types';
+import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
+import { printService } from '../../../lib/printService';
 
 interface PosTerminalProps {
   saleType?: 'POS' | 'RETAIL' | 'WHOLESALE' | 'RESTAURANT' | 'BOOKSHOP';
@@ -18,7 +21,7 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
   title = 'Point of Sale (POS) Terminal',
   subtitle = 'Fast counter billing, barcode scanning, M-Pesa & cash checkout'
 }) => {
-  const { currentTenant, token } = useAuth();
+  const { currentTenant, token, user } = useAuth();
   const [products, setProducts] = useState<PosProduct[]>([]);
   const [salesHistory, setSalesHistory] = useState<PosSaleOrder[]>([]);
   const [cart, setCart] = useState<PosSaleItem[]>([]);
@@ -26,6 +29,10 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+
+  // Universal Receipt Modal state
+  const [selectedReceipt, setSelectedReceipt] = useState<UniversalReceipt | null>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
 
   // Checkout modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -172,14 +179,87 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
       });
 
       if (res.ok) {
+        const data = await res.json();
         setCart([]);
         setShowCheckoutModal(false);
         setDiscountAmount(0);
         setPaymentRef(`REF-${Date.now().toString(36).toUpperCase()}`);
         fetchProductsAndSales();
+
+        // Fetch the generated Universal Receipt & open modal/dispatch print
+        try {
+          const rcptRes = await fetch(`/api/app/receipts?search=${payload.receiptNo}`, { headers: authHeaders });
+          if (rcptRes.ok) {
+            const rcptData = await rcptRes.json();
+            const r = rcptData.receipts?.[0];
+            if (r) {
+              setSelectedReceipt(r);
+              setIsReceiptModalOpen(true);
+              // Auto-dispatch physical thermal printer
+              printService.printReceipt(r).catch(() => {});
+            }
+          }
+        } catch {
+          // Silent catch for receipt pop
+        }
       }
     } catch (err) {
       console.error('Checkout error:', err);
+    }
+  };
+
+  const openReceiptForSale = async (sale: PosSaleOrder) => {
+    try {
+      const res = await fetch(`/api/app/receipts?search=${sale.receiptNo}`, { headers: authHeaders });
+      if (res.ok) {
+        const d = await res.json();
+        const r = d.receipts?.[0];
+        if (r) {
+          setSelectedReceipt(r);
+          setIsReceiptModalOpen(true);
+          return;
+        }
+      }
+      // Fallback build UniversalReceipt from PosSaleOrder
+      const fallbackReceipt: UniversalReceipt = {
+        id: `rcpt_${sale.id}`,
+        tenantId: currentTenant?.id || '',
+        sourceModule: 'POS_RETAIL',
+        sourceReferenceId: sale.id,
+        receiptNumber: sale.receiptNo,
+        businessName: currentTenant?.branding?.companyName || currentTenant?.name || 'Retail Store',
+        tradingName: currentTenant?.name,
+        address: currentTenant?.branding?.address,
+        phone: currentTenant?.branding?.contactPhone,
+        email: currentTenant?.branding?.contactEmail,
+        currency: currentTenant?.branding?.currency || 'KES',
+        currencySymbol: currencySymbol,
+        customerName: sale.customerName || 'Walk-in Customer',
+        customerPhone: sale.customerPhone,
+        items: sale.items.map(i => ({
+          name: i.productName || 'Item',
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          total: i.total || (i.quantity * i.unitPrice)
+        })),
+        subtotal: sale.subtotal,
+        discountAmount: sale.discount || 0,
+        taxAmount: sale.tax || 0,
+        grandTotal: sale.grandTotal,
+        paymentMethod: (sale.paymentMethod === 'MPESA' ? 'M-PESA' : sale.paymentMethod === 'CARD' ? 'CREDIT_CARD' : 'CASH'),
+        paymentReference: sale.paymentReference,
+        cashierId: sale.cashierId || user?.id,
+        cashierName: sale.cashierName || user?.name || 'Cashier',
+        issuedAt: sale.date || new Date().toISOString(),
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED',
+        createdAt: sale.date || new Date().toISOString()
+      };
+      setSelectedReceipt(fallbackReceipt);
+      setIsReceiptModalOpen(true);
+    } catch (err) {
+      console.error('Failed to open receipt:', err);
     }
   };
 
@@ -430,6 +510,87 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
         </div>
       </div>
 
+      {/* RECENT REGISTER SALES & UNIVERSAL RECEIPT CENTER */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-bold text-gray-900 text-base">Recent Register Sales &amp; Thermal Receipts</h3>
+          </div>
+          <span className="text-xs text-gray-500 font-medium">
+            Click any receipt to preview, print directly to ESC/POS thermal printer, or issue official reprint
+          </span>
+        </div>
+
+        {salesHistory.length === 0 ? (
+          <div className="py-8 text-center text-gray-400 text-xs">
+            No completed sales in this session yet. Completed transactions generate receipts automatically.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-gray-100 bg-gray-50/70 text-gray-600 font-medium">
+                <tr>
+                  <th className="p-3">Receipt No</th>
+                  <th className="p-3">Date &amp; Time</th>
+                  <th className="p-3">Customer</th>
+                  <th className="p-3">Items Sold</th>
+                  <th className="p-3">Method</th>
+                  <th className="p-3">Total Amount</th>
+                  <th className="p-3 text-right">Receipt Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {salesHistory.slice(0, 10).map((sale) => (
+                  <tr key={sale.id} className="hover:bg-gray-50/60 transition-colors">
+                    <td className="p-3 font-mono font-bold text-emerald-700">
+                      <button
+                        onClick={() => openReceiptForSale(sale)}
+                        className="hover:underline flex items-center gap-1.5"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>{sale.receiptNo}</span>
+                      </button>
+                    </td>
+                    <td className="p-3 text-gray-500">{new Date(sale.date || sale.createdAt).toLocaleTimeString()}</td>
+                    <td className="p-3 text-gray-800 font-medium">{sale.customerName || 'Walk-in'}</td>
+                    <td className="p-3 text-gray-600">
+                      {sale.items.length} item(s) ({sale.items.reduce((s, i) => s + i.quantity, 0)} units)
+                    </td>
+                    <td className="p-3">
+                      <span className="inline-flex rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+                        {sale.paymentMethod}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold text-gray-900">
+                      {currencySymbol} {sale.grandTotal.toLocaleString()}
+                    </td>
+                    <td className="p-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => openReceiptForSale(sale)}
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50 shadow-2xs"
+                        >
+                          <Eye className="w-3 h-3 text-sky-600" />
+                          <span>View Slip</span>
+                        </button>
+                        <button
+                          onClick={() => openReceiptForSale(sale)}
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          <Printer className="w-3 h-3 text-emerald-600" />
+                          <span>Print</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* CHECKOUT MODAL */}
       {showCheckoutModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
@@ -668,6 +829,19 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
           </div>
         </div>
       )}
+
+      {/* UNIVERSAL RECEIPT & THERMAL PRINT MODAL */}
+      <UniversalReceiptModal
+        isOpen={isReceiptModalOpen}
+        receipt={selectedReceipt}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setSelectedReceipt(null);
+        }}
+        onReprint={(updatedReceipt) => {
+          setSelectedReceipt(updatedReceipt);
+        }}
+      />
     </div>
   );
 };

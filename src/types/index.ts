@@ -7,9 +7,15 @@ export type UserRole =
   | 'TENANT_ADMIN' 
   | 'TENANT_USER'
   | 'STUDENT'
+  | 'CANDIDATE'
   | 'TEACHER'
+  | 'EXAMINER'
+  | 'MODERATOR'
+  | 'RPL_ASSESSOR'
+  | 'EXAMINATION_OFFICER'
   | 'REGISTRAR'
   | 'ACADEMIC_ADMIN'
+  | 'MEDIA_ADMIN'
   | 'FINANCE_OFFICER';
 
 export type FacilityType = 
@@ -59,7 +65,9 @@ export type ModuleId =
   | 'inventory'
   | 'crm'
   | 'bookshop'
-  | 'restaurant';
+  | 'restaurant'
+  | 'theology'
+  | 'media';
 
 export interface ErpModuleInfo {
   id: ModuleId;
@@ -1084,9 +1092,17 @@ export interface PosProduct {
   costPrice: number;
   sellingPrice: number;
   wholesalePrice?: number;
+  minWholesaleQty?: number;
   quantityInStock: number;
   minStockAlert: number;
   unit: string;
+  size?: string;
+  color?: string;
+  gender?: 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX' | string;
+  clothingCondition?: 'BRAND_NEW' | 'GRADE_1' | 'GRADE_2' | 'CREME' | string;
+  baleNumber?: string;
+  batchNumber?: string;
+  taxRate?: number;
   authorOrBrand?: string;
   isbnOrCode?: string;
   description?: string;
@@ -1101,18 +1117,20 @@ export interface PosProduct {
   supplierId?: string;
   supplierName?: string;
   expiryDate?: string;
-  status: 'ACTIVE' | 'OUT_OF_STOCK' | 'DISCONTINUED';
+  status: 'ACTIVE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'INACTIVE';
 }
 
 export interface PosSaleItem {
   productId: string;
   productName: string;
-  sku: string;
+  sku?: string;
   unitPrice: number;
   costPrice?: number;
   quantity: number;
   taxPercent?: number;
+  taxRate?: number;
   discountAmount?: number;
+  discount?: number;
   total: number;
   notes?: string;
   clothingItemCode?: string;
@@ -1125,11 +1143,15 @@ export interface PosSaleOrder {
   id: string;
   tenantId: string;
   receiptNo: string;
+  receiptNumber?: string;
   items: PosSaleItem[];
   subtotal: number;
   discount: number;
+  discountAmount?: number;
   tax: number;
+  taxAmount?: number;
   grandTotal: number;
+  totalAmount?: number;
   paymentMethod: 'CASH' | 'MPESA' | 'CARD' | 'CREDIT' | 'BANK_TRANSFER' | 'SPLIT' | 'ROOM_CHARGE';
   paymentReference?: string;
   splitPayments?: PosPaymentSplit[];
@@ -1139,8 +1161,10 @@ export interface PosSaleOrder {
   customerName?: string;
   customerPhone?: string;
   date: string;
+  createdAt?: string;
   saleType: 'RETAIL' | 'WHOLESALE' | 'POS' | 'RESTAURANT' | 'BOOKSHOP' | 'BAR' | 'HOTEL' | 'MITUMBA';
   tableOrRoomNo?: string;
+  tableNumber?: string;
   tableId?: string;
   roomNumber?: string;
   guestId?: string;
@@ -1152,10 +1176,11 @@ export interface PosSaleOrder {
   warehouseId?: string;
   amountTendered?: number;
   changeGiven?: number;
+  changeDue?: number;
   discountType?: 'PERCENT' | 'FIXED';
   discountApprovedBy?: string;
   notes?: string;
-  status: 'COMPLETED' | 'HOLD' | 'CANCELLED';
+  status: 'COMPLETED' | 'HOLD' | 'CANCELLED' | 'REFUNDED';
 }
 
 // ==========================================
@@ -1192,9 +1217,10 @@ export interface InventoryMovement {
   tenantId: string;
   productId: string;
   productName: string;
-  movementType: 'RESTOCK' | 'SALE' | 'ADJUSTMENT' | 'DAMAGE_WASTE' | 'TRANSFER';
+  movementType: 'RESTOCK' | 'SALE' | 'ADJUSTMENT' | 'ADJUSTMENT_ADD' | 'ADJUSTMENT_SUBTRACT' | 'DAMAGE' | 'DAMAGE_WASTE' | 'EXPIRED' | 'RETURN' | 'TRANSFER';
   quantityChanged: number;
   balanceAfter: number;
+  warehouseId?: string;
   recordedBy: string;
   date: string;
   notes?: string;
@@ -2461,93 +2487,6 @@ export interface PosEnabledFeatures {
 }
 
 export type BusinessType = PosBusinessType;
-
-export interface PosSaleItem {
-  productId: string;
-  productName: string;
-  sku?: string;
-  quantity: number;
-  unitPrice: number;
-  taxRate?: number;
-  discount?: number;
-  total: number;
-  notes?: string;
-  size?: string;
-  color?: string;
-  variantId?: string;
-}
-
-export interface PosProduct {
-  id: string;
-  tenantId: string;
-  sku: string;
-  name: string;
-  category: string;
-  barcode?: string;
-  costPrice: number;
-  sellingPrice: number;
-  wholesalePrice?: number;
-  minWholesaleQty?: number;
-  quantityInStock: number;
-  minStockAlert: number;
-  unit: string;
-  size?: string;
-  color?: string;
-  gender?: 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
-  clothingCondition?: 'BRAND_NEW' | 'GRADE_1' | 'GRADE_2' | 'CREME';
-  baleNumber?: string;
-  batchNumber?: string;
-  expiryDate?: string;
-  warehouseId?: string;
-  branchId?: string;
-  taxRate?: number;
-  status: 'ACTIVE' | 'INACTIVE';
-  clothingAttributes?: ClothingAttributes;
-  variants?: ProductVariant[];
-  description?: string;
-  imageUrl?: string;
-}
-
-export interface InventoryMovement {
-  id: string;
-  tenantId: string;
-  productId: string;
-  productName: string;
-  movementType: 'SALE' | 'RESTOCK' | 'ADJUSTMENT_ADD' | 'ADJUSTMENT_SUBTRACT' | 'DAMAGE' | 'EXPIRED' | 'RETURN' | 'TRANSFER';
-  quantityChanged: number;
-  balanceAfter: number;
-  warehouseId?: string;
-  recordedBy: string;
-  notes?: string;
-  date: string;
-}
-
-export interface PosSaleOrder {
-  id: string;
-  tenantId: string;
-  receiptNumber: string;
-  customerId?: string;
-  customerName: string;
-  cashierId: string;
-  cashierName: string;
-  branchId?: string;
-  warehouseId?: string;
-  tableNumber?: string;
-  shiftId?: string;
-  items: PosSaleItem[];
-  subtotal: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
-  paymentMethod: 'CASH' | 'MPESA' | 'CARD' | 'CREDIT' | 'SPLIT' | 'ROOM_CHARGE';
-  paymentReference?: string;
-  amountTendered?: number;
-  changeDue?: number;
-  status: 'COMPLETED' | 'HOLD' | 'CANCELLED' | 'REFUNDED';
-  notes?: string;
-  createdAt: string;
-}
-
 export type CustomerCreditTransaction = PosCustomerTransaction;
 export type KitchenTicket = KitchenOrderTicket;
 
@@ -2982,6 +2921,1011 @@ export type PosPermission =
   | 'pos.hotel.rooms.manage'
   | 'pos.hotel.reservations.manage'
   | 'pos.hotel.billing.manage';
+
+/**
+ * ============================================================================
+ * BROOKS OF LIFE UK — THEOLOGICAL EXAMINATION MANAGEMENT SYSTEM (TEMS)
+ * & BROOKS OF LIFE TV / CHRISTIAN MEDIA ECOSYSTEM INTERFACES
+ * ============================================================================
+ */
+
+export type QualificationType = 
+  | 'CERTIFICATE'
+  | 'DIPLOMA'
+  | 'HIGHER_DIPLOMA'
+  | 'BACHELOR'
+  | 'POSTGRADUATE_DIPLOMA'
+  | 'MASTERS'
+  | 'DOCTORATE'
+  | 'MINISTERIAL_CREDENTIAL'
+  | 'CONTINUING_MINISTRY_EDUCATION';
+
+export type CandidateRegistrationStatus = 
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'SUSPENDED'
+  | 'ALUMNI'
+  | 'WITHDRAWN';
+
+export interface CandidateAcademicHistoryItem {
+  institution: string;
+  qualification: string;
+  yearCompleted: string;
+  gradeAwarded?: string;
+  certificateRef?: string;
+}
+
+export interface CandidateExaminationHistoryItem {
+  examSessionId: string;
+  sessionCode: string;
+  examDate: string;
+  unitsRegistered: string[];
+  totalScore?: number;
+  averageGrade?: string;
+  status: 'REGISTERED' | 'ATTENDED' | 'ABSENT' | 'COMPLETED';
+}
+
+export interface CandidateProfile {
+  id: string;
+  tenantId: string;
+  candidateNumber: string; // e.g. "BOL/THEO/2026/001"
+  userId?: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  dateOfBirth: string;
+  nationalIdOrPassport: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+  postalCode?: string;
+  photoUrl?: string;
+  programmeId: string;
+  programmeName: string;
+  qualificationType: QualificationType;
+  level: string; // e.g. "Level 1", "Level 2", "Level 3", "Final Year"
+  intake: string; // e.g. "September 2026", "January 2027"
+  academicYear: string; // e.g. "2026/2027"
+  registrationStatus: CandidateRegistrationStatus;
+  registrationDate: string;
+  denominationAffiliation?: string;
+  homeChurch?: string;
+  pastorReferenceName?: string;
+  pastorReferenceContact?: string;
+  academicHistory: CandidateAcademicHistoryItem[];
+  examinationHistory: CandidateExaminationHistoryItem[];
+  rplHistoryIds: string[];
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TheologicalDepartment {
+  id: string;
+  tenantId: string;
+  code: string; // e.g. "BIBL", "THEO", "PAST", "APOL", "LEAD"
+  name: string;
+  headOfDepartment: string;
+  description: string;
+  status: 'ACTIVE' | 'INACTIVE';
+}
+
+export interface TheologicalUnitSubject {
+  id: string;
+  tenantId: string;
+  programmeId: string;
+  departmentId?: string;
+  code: string; // e.g. "THEO-101", "BIBL-201"
+  title: string;
+  description: string;
+  credits: number;
+  level: string;
+  semesterTerm: string;
+  syllabusTopics: string[];
+  maxMarks: number;
+  passingMarks: number;
+  hasOnlineExam: boolean;
+  hasConventionalExam: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+}
+
+export interface TheologicalProgramme {
+  id: string;
+  tenantId: string;
+  code: string; // e.g. "DIP-PAST-THEO", "B-DIV", "CERT-BIBL"
+  name: string;
+  awardTitle: string; // e.g. "Diploma in Pastoral Theology & Biblical Studies"
+  qualificationType: QualificationType;
+  departmentId: string;
+  departmentName?: string;
+  durationMonths: number;
+  totalCreditsRequired: number;
+  description: string;
+  admissionRequirements: string[];
+  careerAndMinistryOutcomes: string[];
+  units: TheologicalUnitSubject[];
+  status: 'ACTIVE' | 'INACTIVE';
+  isRplEligible: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExaminationSession {
+  id: string;
+  tenantId: string;
+  sessionCode: string; // e.g. "EXAM-2026-AUG", "EXAM-2026-DEC"
+  title: string;
+  academicYear: string;
+  termSemester: string;
+  startDate: string;
+  endDate: string;
+  registrationStartDate: string;
+  registrationDeadline: string;
+  moderationDeadline?: string;
+  resultsReleaseDate?: string;
+  status: 'UPCOMING' | 'REGISTRATION_OPEN' | 'IN_PROGRESS' | 'MARKING' | 'MODERATION' | 'RESULTS_PUBLISHED' | 'CLOSED';
+  allowedProgrammeIds: string[];
+  examinationCentreIds: string[];
+  instructions?: string;
+  createdAt: string;
+}
+
+export interface ExaminationCentre {
+  id: string;
+  tenantId: string;
+  centreCode: string; // e.g. "LON-MAIN-01", "BIR-CTR-02", "ONLINE-GLOBAL"
+  name: string;
+  location: string;
+  address: string;
+  city: string;
+  country: string;
+  contactPerson: string;
+  contactEmail: string;
+  contactPhone: string;
+  capacity: number;
+  currentAllocated: number;
+  isOnlineCentre: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt: string;
+}
+
+export interface RegisteredUnitSelection {
+  unitId: string;
+  unitCode: string;
+  unitTitle: string;
+  examDate: string;
+  examStartTime: string;
+  examEndTime: string;
+  venueOrRoom?: string;
+  seatNumber?: string;
+}
+
+export interface CandidateExamRegistration {
+  id: string;
+  tenantId: string;
+  registrationNumber: string; // e.g. "REG-BOL-2026-8821"
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhotoUrl?: string;
+  programmeId: string;
+  programmeName: string;
+  level: string;
+  examinationSessionId: string;
+  sessionCode: string;
+  sessionTitle: string;
+  examinationCentreId: string;
+  centreName: string;
+  registeredUnits: RegisteredUnitSelection[];
+  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'CONFIRMED' | 'CANCELLED';
+  rejectionReason?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  feeAmount: number;
+  feePaid: boolean;
+  paymentReceiptNumber?: string;
+  slipGenerated: boolean;
+  slipDownloadUrl?: string;
+  slipVerificationQr: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type QuestionDifficulty = 'FOUNDATIONAL' | 'INTERMEDIATE' | 'ADVANCED' | 'MASTERY';
+export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'ESSAY';
+
+export interface QuestionBankItem {
+  id: string;
+  tenantId: string;
+  subjectId?: string;
+  subjectCode: string;
+  subjectTitle: string;
+  questionType: QuestionType;
+  difficulty: QuestionDifficulty;
+  marks: number;
+  prompt: string;
+  scriptureReference?: string;
+  options?: string[]; // For MCQ: array of 4 options
+  correctAnswer?: string; // For MCQ/TF: correct choice; For Essay: answer key guide
+  rubricOrGradingNotes?: string;
+  instructions?: string;
+  authorName?: string;
+  version: number;
+  status: 'ACTIVE' | 'ARCHIVED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExaminationPaperQuestion extends QuestionBankItem {
+  orderIndex: number;
+  allocatedMarks: number;
+}
+
+export interface ExaminationPaper {
+  id: string;
+  tenantId: string;
+  paperCode: string; // e.g. "BOL-THEO-201-2026-V1"
+  title: string;
+  subjectId?: string;
+  subjectCode: string;
+  subjectTitle: string;
+  programmeId?: string;
+  programmeName?: string;
+  examinationSessionId: string;
+  sessionTitle?: string;
+  durationMinutes: number;
+  totalMarks: number;
+  passingMarks: number;
+  examMode: 'ONLINE' | 'CONVENTIONAL';
+  instructions: string[];
+  questions: ExaminationPaperQuestion[];
+  version: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OnlineExamAntiCheatLog {
+  id: string;
+  timestamp: string;
+  eventType: 'TAB_SWITCH' | 'FULLSCREEN_EXIT' | 'FOCUS_LOST' | 'COPY_PASTE_ATTEMPT' | 'DEVICE_CHECK';
+  details: string;
+}
+
+export interface CandidateAnswerPayload {
+  questionId: string;
+  questionPrompt: string;
+  questionType: QuestionType;
+  allocatedMarks: number;
+  candidateAnswerText: string;
+  autoScore?: number;
+  examinerScore?: number;
+  moderatorScore?: number;
+  examinerComments?: string;
+  moderatorComments?: string;
+  isAutoGraded?: boolean;
+}
+
+export interface OnlineExamAttempt {
+  id: string;
+  tenantId: string;
+  paperId: string;
+  paperCode: string;
+  paperTitle: string;
+  subjectCode: string;
+  subjectTitle: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  candidateEmail: string;
+  examSessionId: string;
+  startedAt: string;
+  submittedAt?: string;
+  durationMinutes: number;
+  timeRemainingSeconds: number;
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'AUTO_SUBMITTED' | 'MARKED' | 'MODERATED';
+  answers: Record<string, CandidateAnswerPayload>;
+  antiCheatLogs: OnlineExamAntiCheatLog[];
+  tabSwitchCount: number;
+  autoGradedScore: number;
+  manualGradedScore?: number;
+  totalScore?: number;
+  maxScore: number;
+  percentage?: number;
+  grade?: string;
+  examinerId?: string;
+  moderatorId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExaminerProfile {
+  id: string;
+  tenantId: string;
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  qualifications: string;
+  theologicalSpecialization: string;
+  assignedSubjectCodes: string[];
+  assignedSessionIds: string[];
+  status: 'ACTIVE' | 'INACTIVE';
+  totalScriptsAssigned: number;
+  totalScriptsMarked: number;
+  totalModerated: number;
+  createdAt: string;
+}
+
+export type ScriptStatus = 
+  | 'SUBMITTED' 
+  | 'ASSIGNED' 
+  | 'MARKING' 
+  | 'MARKED' 
+  | 'MODERATION' 
+  | 'APPROVED';
+
+export interface MarkingAuditTrailEntry {
+  action: string;
+  performedBy: string;
+  role: string;
+  timestamp: string;
+  details: string;
+  oldScore?: number;
+  newScore?: number;
+}
+
+export interface ExaminationScript {
+  id: string;
+  tenantId: string;
+  paperId: string;
+  paperCode: string;
+  paperTitle: string;
+  subjectCode: string;
+  subjectTitle: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  examSessionId: string;
+  sessionTitle: string;
+  examMode: 'ONLINE' | 'CONVENTIONAL';
+  status: ScriptStatus;
+  assignedExaminerId?: string;
+  assignedExaminerName?: string;
+  assignedModeratorId?: string;
+  assignedModeratorName?: string;
+  attemptId?: string;
+  questionsMarked: CandidateAnswerPayload[];
+  rawTotalScore: number;
+  moderatedTotalScore?: number;
+  finalApprovedScore: number;
+  maxPossibleScore: number;
+  percentageScore: number;
+  calculatedGrade: string;
+  examinerGeneralFeedback?: string;
+  moderatorGeneralFeedback?: string;
+  scoreAdjustmentReason?: string;
+  auditTrail: MarkingAuditTrailEntry[];
+  submittedAt: string;
+  markedAt?: string;
+  moderatedAt?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RplStatus = 
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'EVIDENCE_REQUESTED'
+  | 'ASSESSMENT_IN_PROGRESS'
+  | 'MODERATION'
+  | 'APPROVED'
+  | 'REJECTED';
+
+export interface RplPriorQualification {
+  id: string;
+  institutionName: string;
+  qualificationTitle: string;
+  yearAwarded: string;
+  documentProofUrl?: string;
+  verified: boolean;
+}
+
+export interface RplMinistryExperience {
+  id: string;
+  churchOrOrganization: string;
+  ministryRole: string;
+  startYear: string;
+  endYear: string;
+  isCurrent: boolean;
+  responsibilities: string;
+  referenceContact?: string;
+}
+
+export interface RplPortfolioDocument {
+  id: string;
+  documentTitle: string;
+  category: 'CERTIFICATE' | 'MINISTRY_PORTFOLIO' | 'TESTIMONIAL' | 'PUBLICATION' | 'CURRICULUM_VITAE' | 'OTHER';
+  fileUrl: string;
+  uploadDate: string;
+  notes?: string;
+}
+
+export interface RplAwardedCredit {
+  unitCode: string;
+  unitTitle: string;
+  credits: number;
+  justification: string;
+}
+
+export interface RplApplication {
+  id: string;
+  tenantId: string;
+  applicationNumber: string; // e.g. "RPL-BOL-2026-0041"
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  candidateEmail: string;
+  candidatePhone: string;
+  targetProgrammeId: string;
+  targetProgrammeName: string;
+  targetUnitCodes: string[];
+  personalStatement: string;
+  priorQualifications: RplPriorQualification[];
+  ministryExperience: RplMinistryExperience[];
+  portfolioDocuments: RplPortfolioDocument[];
+  status: RplStatus;
+  assignedAssessorId?: string;
+  assignedAssessorName?: string;
+  evidenceRequestNotes?: string;
+  assessorNotes?: string;
+  moderatorNotes?: string;
+  awardedCredits: RplAwardedCredit[];
+  totalCreditsAwarded: number;
+  decisionOutcome?: 'FULL_EXEMPTION' | 'PARTIAL_CREDIT' | 'DIRECT_ENTRY' | 'REJECTED';
+  rejectionReason?: string;
+  feePaid: boolean;
+  paymentRef?: string;
+  submittedAt: string;
+  assessedAt?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UnitResultItem {
+  unitCode: string;
+  unitTitle: string;
+  credits: number;
+  rawScore: number;
+  moderatedScore: number;
+  finalScore: number;
+  grade: string;
+  gradePoints: number;
+  remarks: 'DISTINCTION' | 'CREDIT' | 'PASS' | 'SUBSIDIARY_PASS' | 'FAIL';
+  assessmentType: 'EXAMINATION' | 'RPL_CREDIT_TRANSFER' | 'COURSEWORK_EXAM';
+}
+
+export interface ExaminationResultRecord {
+  id: string;
+  tenantId: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  candidateEmail: string;
+  programmeId: string;
+  programmeName: string;
+  examSessionId: string;
+  sessionTitle: string;
+  academicYear: string;
+  unitResults: UnitResultItem[];
+  totalCreditsEarned: number;
+  gpa: number;
+  averageScore: number;
+  overallAwardStatus: 'PASS_WITH_DISTINCTION' | 'PASS_WITH_MERIT' | 'PASS' | 'RE_SIT_REQUIRED' | 'PROCEED' | 'FAIL';
+  status: 'DRAFT' | 'MODERATED' | 'APPROVED' | 'PUBLISHED';
+  approvedBy?: string;
+  approvedAt?: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OfficialTranscriptRecord {
+  id: string;
+  tenantId: string;
+  transcriptNumber: string; // e.g. "TR-BOL-2026-0923"
+  verificationCode: string; // e.g. "BOL-TR-78219"
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  nationalIdOrPassport: string;
+  dateOfBirth: string;
+  programmeName: string;
+  awardTitle: string;
+  admissionDate: string;
+  completionDate?: string;
+  issueDate: string;
+  academicStanding: string;
+  cumulativeCredits: number;
+  cumulativeGpa: number;
+  overallClassification: string;
+  unitsCompleted: {
+    academicYear: string;
+    semester: string;
+    unitCode: string;
+    unitTitle: string;
+    credits: number;
+    score: number;
+    grade: string;
+    gradePoints: number;
+    remarks: string;
+  }[];
+  registrarName: string;
+  academicDeanName: string;
+  qrCodeData: string;
+  verificationUrl: string;
+  status: 'VALID' | 'REVOKED';
+  createdAt: string;
+}
+
+export interface OfficialCertificateRecord {
+  id: string;
+  tenantId: string;
+  certificateNumber: string; // e.g. "BOL-CERT-2026-0042"
+  verificationCode: string; // e.g. "BOL-VRF-88421"
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  qualificationTitle: string;
+  programmeName: string;
+  honorsClassification?: string;
+  conferralDate: string;
+  issueDate: string;
+  signatories: {
+    name: string;
+    title: string;
+    signatureImage?: string;
+  }[];
+  qrCodeData: string;
+  verificationUrl: string;
+  status: 'VALID' | 'REVOKED' | 'SUSPENDED';
+  revocationReason?: string;
+  createdAt: string;
+}
+
+export interface CertificateVerificationLookupResult {
+  verified: boolean;
+  status: 'VALID' | 'REVOKED' | 'SUSPENDED' | 'NOT_FOUND';
+  documentType: 'CERTIFICATE' | 'TRANSCRIPT' | 'EXAM_SLIP';
+  documentNumber?: string;
+  verificationCode?: string;
+  candidateName?: string;
+  candidateNumberMasked?: string; // e.g. "BOL/THEO/2026/***"
+  qualificationTitle?: string;
+  programmeName?: string;
+  issueDate?: string;
+  conferralDate?: string;
+  honorsClassification?: string;
+  institutionName: string;
+  verificationTimestamp: string;
+  officialSealUrl?: string;
+  remarks?: string;
+}
+
+export type MediaItemType = 
+  | 'LIVE_STREAM'
+  | 'VIDEO'
+  | 'AUDIO'
+  | 'SERMON'
+  | 'PODCAST'
+  | 'MUSIC'
+  | 'DOCUMENTARY'
+  | 'INTERVIEW'
+  | 'BIBLE_TEACHING';
+
+export interface TVScheduleItem {
+  id: string;
+  programmeTitle: string;
+  category: string;
+  speakerOrHost: string;
+  startTime: string; // e.g. "08:00 AM"
+  endTime: string; // e.g. "09:30 AM"
+  dayOfWeek: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday' | 'Daily';
+  isLiveBroadcast: boolean;
+  description: string;
+  streamUrl?: string;
+}
+
+export interface MediaContentItem {
+  id: string;
+  tenantId: string;
+  title: string;
+  slug: string;
+  type: MediaItemType;
+  category: 'Sermons' | 'Bible Teaching' | 'Interviews' | 'Christian Programmes' | 'Documentaries' | 'Podcasts' | 'Christian Music' | 'Christian Radio' | 'Live TV';
+  speakerOrArtist: string;
+  duration: string; // e.g. "45 mins", "1 hr 12 mins"
+  mediaUrl: string; // Video streaming or mp4 link
+  audioUrl?: string; // Direct mp3 audio link
+  thumbnailUrl: string;
+  description: string;
+  scriptureReferences: string[];
+  isFeatured: boolean;
+  isLiveNow?: boolean;
+  viewsCount: number;
+  likesCount: number;
+  publishedAt: string;
+  status: 'PUBLISHED' | 'DRAFT' | 'ARCHIVED';
+  createdAt: string;
+}
+
+export interface MinistryEventRecord {
+  id: string;
+  tenantId: string;
+  title: string;
+  slug: string;
+  category: 'CONFERENCE' | 'SEMINAR' | 'EXAM_BRIEFING' | 'WORSHIP_NIGHT' | 'GRADUATION' | 'PRAYER_VIGIL' | 'WEBINAR';
+  date: string;
+  time: string;
+  location: string;
+  isOnline: boolean;
+  meetingLink?: string;
+  speaker: string;
+  description: string;
+  bannerUrl: string;
+  registrationRequired: boolean;
+  registeredAttendeesCount: number;
+  capacity?: number;
+  status: 'UPCOMING' | 'ONGOING' | 'PAST';
+  createdAt: string;
+}
+
+export interface TheologicalArticleRecord {
+  id: string;
+  tenantId: string;
+  title: string;
+  slug: string;
+  category: 'BIBLE_STUDY' | 'THEOLOGY' | 'APOLOGETICS' | 'MINISTRY_LEADERSHIP' | 'DEVOTIONAL' | 'NEWS_ANNOUNCEMENT';
+  author: string;
+  authorRole: string;
+  publishedDate: string;
+  summary: string;
+  content: string;
+  coverImageUrl: string;
+  scriptureAnchor?: string;
+  tags: string[];
+  readTimeMinutes: number;
+  viewsCount: number;
+  status: 'PUBLISHED' | 'DRAFT';
+  createdAt: string;
+}
+
+export interface TemsFeeScheduleItem {
+  id: string;
+  tenantId: string;
+  feeName: string;
+  category: 'CANDIDATE_REGISTRATION' | 'EXAM_REGISTRATION_PER_UNIT' | 'RPL_APPLICATION' | 'TRANSCRIPT_ISSUANCE' | 'CERTIFICATE_ISSUANCE' | 'RE_MARKING_FEE';
+  amount: number;
+  currency: string;
+  currencySymbol: string;
+  description: string;
+  isMandatory: boolean;
+  createdAt: string;
+}
+
+export interface TheologicalUnit {
+  id: string;
+  code: string;
+  title: string;
+  credits: number;
+  level: string;
+  semester: string;
+  description?: string;
+}
+
+export interface ExamPaperQuestion {
+  id: string;
+  paperId: string;
+  questionNumber: number;
+  prompt: string;
+  questionType: 'MCQ' | 'SHORT_ANSWER' | 'ESSAY' | 'EXEGESIS' | 'THEOLOGICAL_SYNTHESIS';
+  marks: number;
+  allocatedMarks?: number;
+  options?: string[];
+  correctOption?: string;
+  rubricCriteria?: string;
+}
+
+export interface ExamRegistration {
+  id: string;
+  tenantId: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  sessionId: string;
+  sessionTitle: string;
+  paperId: string;
+  paperCode: string;
+  subjectCode: string;
+  subjectTitle: string;
+  examDate: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  centreId: string;
+  centreName: string;
+  seatNumber?: string;
+  examSlipNumber: string;
+  attendanceStatus: 'REGISTERED' | 'PRESENT' | 'ABSENT' | 'COMPLETED';
+  status: 'CONFIRMED' | 'PENDING_APPROVAL' | 'CANCELLED';
+  createdAt: string;
+}
+
+export type ExamResultRecord = ExaminationResultRecord;
+export type OfficialTranscript = OfficialTranscriptRecord;
+export type OfficialCertificate = OfficialCertificateRecord;
+
+export interface RplApplicationRecord extends Partial<RplApplication> {
+  id: string;
+  tenantId: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  targetProgrammeId: string;
+  targetProgrammeName: string;
+  yearsMinistryExperience?: number;
+  ministryRole?: string;
+  portfolioSummary?: string;
+  assessmentStatus?: string;
+  grantedCreditUnits?: number;
+  assessorRemarks?: string;
+  submittedEvidenceDocs?: {
+    title: string;
+    documentType: string;
+    fileUrl: string;
+  }[];
+  createdAt?: string;
+}
+
+export interface ExamScriptRecord {
+  id: string;
+  tenantId: string;
+  scriptNumber: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  paperId: string;
+  paperCode: string;
+  subjectCode: string;
+  subjectTitle: string;
+  totalMaxMarks: number;
+  examinerMark?: number;
+  moderatorMark?: number;
+  firstExaminerId?: string;
+  firstExaminerName?: string;
+  moderatorId?: string;
+  moderatorName?: string;
+  examinerFeedback?: string;
+  moderatorNotes?: string;
+  submissionTimestamp?: string;
+  status: 'SUBMITTED' | 'ASSIGNED_TO_EXAMINER' | 'MARKED' | 'SUBMITTED_FOR_MODERATION' | 'APPROVED' | 'RE_MARK_REQUESTED';
+  responses: {
+    questionId: string;
+    questionNumber: number;
+    questionPrompt: string;
+    questionType: string;
+    allocatedMarks: number;
+    candidateAnswerText: string;
+    marksAwarded?: number;
+    examinerFeedback?: string;
+  }[];
+  createdAt: string;
+}
+
+export interface TemsPaymentRecord {
+  id: string;
+  tenantId: string;
+  receiptNumber: string;
+  candidateId: string;
+  candidateNumber: string;
+  candidateName: string;
+  feeCategoryId: string;
+  feeCategoryName: string;
+  amount: number;
+  currency: string;
+  currencySymbol: string;
+  paymentMethod: 'CARD' | 'BANK_TRANSFER' | 'M-PESA' | 'STRIPE_ONLINE' | 'CASH_RECEIPT';
+  transactionReference: string;
+  status: 'PAID' | 'PENDING' | 'REFUNDED';
+  paidAt: string;
+  notes?: string;
+  createdAt: string;
+}
+
+// ==========================================
+// Centralized Physical Printer & Receipt System
+// ==========================================
+
+export type PrinterInterfaceType = 'WEB_USB' | 'WEB_SERIAL' | 'NETWORK_LAN' | 'LOCAL_BRIDGE' | 'SYSTEM_DEFAULT';
+export type PrinterPaperWidth = '58mm' | '80mm';
+export type PrinterStationTarget = 
+  | 'ALL' 
+  | 'CASHIER' 
+  | 'KITCHEN' 
+  | 'BAR' 
+  | 'RECEPTION' 
+  | 'FINANCE' 
+  | 'DISPENSARY' 
+  | 'BOOKSHOP' 
+  | 'MAIN_GATE';
+
+export interface PrinterDevice {
+  id: string;
+  tenantId: string;
+  name: string;
+  branchId?: string;
+  branchName?: string;
+  workstationName?: string;
+  stationTarget: PrinterStationTarget;
+  interfaceType: PrinterInterfaceType;
+  paperWidth: PrinterPaperWidth;
+  isDefault: boolean;
+  autoPrint: boolean;
+  kickCashDrawer: boolean;
+  cutPaper: boolean;
+  copies: number;
+  
+  // Connectivity parameters
+  ipAddress?: string;
+  port?: number;
+  bridgeUrl?: string;
+  usbVendorId?: number;
+  usbProductId?: number;
+  serialBaudRate?: number;
+  
+  // Header / Footer Customization
+  customHeader?: string;
+  customFooter?: string;
+  status: 'ONLINE' | 'OFFLINE' | 'BUSY' | 'ERROR' | 'UNKNOWN';
+  lastTestedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ReceiptModuleSource = 
+  | 'POS_RETAIL' 
+  | 'EDUCATION_FEES' 
+  | 'HEALTHCARE_BILLING' 
+  | 'HOSPITALITY_RESTAURANT' 
+  | 'HOSPITALITY_BAR' 
+  | 'HOSPITALITY_HOTEL' 
+  | 'THEOLOGY_TEMS' 
+  | 'BOOKSHOP' 
+  | 'GENERAL_ERP';
+
+export interface ReceiptItem {
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  code?: string;
+  taxRate?: number;
+  taxAmount?: number;
+  notes?: string;
+}
+
+export interface UniversalReceipt {
+  id: string;
+  tenantId: string;
+  receiptNumber: string;
+  sourceModule: ReceiptModuleSource;
+  sourceReferenceId: string;
+  
+  customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  customerTaxId?: string;
+  studentAdmissionNo?: string;
+  patientId?: string;
+  patientMrn?: string;
+  candidateNumber?: string;
+  roomOrTableNumber?: string;
+  
+  currency: string;
+  currencySymbol: string;
+  items: ReceiptItem[];
+  subtotal: number;
+  discountAmount: number;
+  taxAmount: number;
+  taxRatePercentage?: number;
+  taxRegistrationNumber?: string;
+  grandTotal: number;
+  
+  paymentMethod: 'CASH' | 'M-PESA' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'CREDIT' | 'ROOM_CHARGE' | 'CHEQUE' | 'OTHER';
+  paymentReference?: string;
+  amountTendered?: number;
+  changeGiven?: number;
+  balanceRemaining?: number;
+  
+  cashierId?: string;
+  cashierName: string;
+  stationName?: string;
+  branchName?: string;
+  
+  businessName: string;
+  tradingName?: string;
+  logoUrl?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  websiteUrl?: string;
+  customHeader?: string;
+  customFooter?: string;
+  
+  qrVerificationUrl?: string;
+  verificationCode?: string;
+  isReprint: boolean;
+  reprintCount: number;
+  lastReprintedAt?: string;
+  
+  status: 'ISSUED' | 'VOIDED' | 'REFUNDED';
+  issuedAt: string;
+  createdAt: string;
+}
+
+export type PrintJobStatus = 'PENDING' | 'PRINTING' | 'COMPLETED' | 'OFFLINE_QUEUED' | 'FAILED_RETRYING' | 'CANCELLED';
+
+export interface PrintJobRecord {
+  id: string;
+  tenantId: string;
+  receiptId: string;
+  receiptNumber: string;
+  printerId: string;
+  printerName: string;
+  stationTarget: PrinterStationTarget;
+  interfaceType: PrinterInterfaceType;
+  paperWidth: PrinterPaperWidth;
+  copies: number;
+  
+  status: PrintJobStatus;
+  attempts: number;
+  maxAttempts: number;
+  lastError?: string;
+  isAutoTriggered: boolean;
+  isReprint: boolean;
+  
+  rawEscPosHex?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface PrinterAuditLog {
+  id: string;
+  tenantId: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  action: 'PRINT_SUCCESS' | 'PRINT_RETRY' | 'REPRINT_ISSUED' | 'PRINT_FAILED' | 'PRINTER_CREATED' | 'PRINTER_UPDATED' | 'PRINTER_DELETED' | 'PRINTER_TESTED' | 'QUEUE_CLEARED';
+  printerName?: string;
+  receiptNumber?: string;
+  details: string;
+  ipAddress?: string;
+  timestamp: string;
+}
+
+
+
 
 
 

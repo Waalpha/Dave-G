@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FeePayment, StudentInvoice, FeeStructure, Student, Program, SchoolClass } from '../../../types';
+import { FeePayment, StudentInvoice, FeeStructure, Student, Program, SchoolClass, UniversalReceipt } from '../../../types';
 import {
   DollarSign, FileText, Plus, Search, Filter, CheckCircle2, AlertCircle,
-  Receipt, Download, Printer, Layers, Clock, Check, X, Building
+  Receipt, Download, Printer, Layers, Clock, Check, X, Building, Eye
 } from 'lucide-react';
+import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
+import { printService } from '../../../lib/printService';
 
 interface FeesFinanceManagementProps {
   currencySymbol?: string;
@@ -31,6 +33,8 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
   const [isBatchInvoiceModalOpen, setIsBatchInvoiceModalOpen] = useState(false);
   const [isStructureModalOpen, setIsStructureModalOpen] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<FeePayment | null>(null);
+  const [selectedUniversalReceipt, setSelectedUniversalReceipt] = useState<UniversalReceipt | null>(null);
+  const [isUniversalReceiptModalOpen, setIsUniversalReceiptModalOpen] = useState(false);
 
   // Payment Form
   const [payStudentId, setPayStudentId] = useState('');
@@ -147,13 +151,66 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
       setSuccessMsg(`Payment of ${currencySymbol} ${payAmount} recorded successfully.`);
       setTimeout(() => setSuccessMsg(''), 4000);
       setIsPaymentModalOpen(false);
-      setViewingReceipt(payment);
       fetchData();
+      if (payment) {
+        openUniversalReceipt(payment);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error recording payment');
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openUniversalReceipt = async (payment: FeePayment) => {
+    try {
+      const res = await fetch(`/api/app/receipts?search=${payment.receiptNo}`, { headers: getHeaders() });
+      if (res.ok) {
+        const d = await res.json();
+        const r = d.receipts?.[0];
+        if (r) {
+          setSelectedUniversalReceipt(r);
+          setIsUniversalReceiptModalOpen(true);
+          // Auto dispatch thermal printer
+          printService.printReceipt(r).catch(() => {});
+          return;
+        }
+      }
+    } catch {}
+
+    const fb: UniversalReceipt = {
+      id: `rcpt_${payment.id}`,
+      tenantId: localStorage.getItem('erp_tenant_id') || '',
+      sourceModule: 'EDUCATION_FEES',
+      sourceReferenceId: payment.id,
+      receiptNumber: payment.receiptNo,
+      businessName: 'Institution Fees Department',
+      currency: 'KES',
+      currencySymbol: currencySymbol,
+      customerName: payment.studentName,
+      studentAdmissionNo: payment.admissionNo,
+      items: [{
+        name: `Academic Fee Payment (${payment.invoiceNo || 'General Fee Account'})`,
+        quantity: 1,
+        unitPrice: payment.amount,
+        total: payment.amount,
+        notes: payment.notes
+      }],
+      subtotal: payment.amount,
+      discountAmount: 0,
+      taxAmount: 0,
+      grandTotal: payment.amount,
+      paymentMethod: (payment.paymentMethod as any) || 'CASH',
+      paymentReference: payment.referenceNo,
+      cashierName: payment.receivedBy || 'Finance Bursar',
+      issuedAt: payment.paidAt,
+      isReprint: false,
+      reprintCount: 0,
+      status: 'ISSUED',
+      createdAt: payment.paidAt || new Date().toISOString()
+    };
+    setSelectedUniversalReceipt(fb);
+    setIsUniversalReceiptModalOpen(true);
   };
 
   // Create Single Invoice
@@ -409,10 +466,11 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                       <td className="p-3 text-slate-500">{p.receivedBy}</td>
                       <td className="p-3 text-right">
                         <button
-                          onClick={() => setViewingReceipt(p)}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[11px] font-semibold"
+                          onClick={() => openUniversalReceipt(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded text-[11px] font-semibold"
                         >
-                          Print Receipt
+                          <Printer className="w-3 h-3" />
+                          <span>Print Receipt</span>
                         </button>
                       </td>
                     </tr>
@@ -1053,6 +1111,19 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
           </form>
         </div>
       )}
+
+      {/* UNIVERSAL RECEIPT MODAL FOR PHYSICAL THERMAL PRINTING */}
+      <UniversalReceiptModal
+        isOpen={isUniversalReceiptModalOpen}
+        receipt={selectedUniversalReceipt}
+        onClose={() => {
+          setIsUniversalReceiptModalOpen(false);
+          setSelectedUniversalReceipt(null);
+        }}
+        onReprint={(updated) => {
+          setSelectedUniversalReceipt(updated);
+        }}
+      />
     </div>
   );
 };

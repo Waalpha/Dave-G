@@ -307,8 +307,8 @@ export const PosConfigView: React.FC<PosConfigViewProps> = ({
     }
   };
 
-  const handleToggleFeature = (key: keyof PosTenantConfig['enabledFeatures']) => {
-    setFeatures(prev => ({
+  const handleToggleFeature = (key: string) => {
+    setFeatures((prev: any) => ({
       ...prev,
       [key]: !prev[key]
     }));
@@ -394,7 +394,7 @@ export const PosConfigView: React.FC<PosConfigViewProps> = ({
               <button
                 type="button"
                 key={preset.type}
-                onClick={() => handleApplyPreset(preset.type)}
+                onClick={() => handleApplyPreset(preset.type as PosBusinessType)}
                 className={`p-4 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                   isSelected
                     ? 'border-indigo-600 bg-indigo-50/50 ring-2 ring-indigo-500/20'

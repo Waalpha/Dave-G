@@ -12,6 +12,7 @@ import { HospitalityWebsiteTemplate } from './templates/HospitalityWebsiteTempla
 import { EnterpriseBusinessWebsiteTemplate } from './templates/EnterpriseBusinessWebsiteTemplate';
 import { EducationWebsiteTemplate } from './templates/EducationWebsiteTemplate';
 import { SafeConfigurationUnavailable } from './templates/SafeConfigurationUnavailable';
+import { BrooksOfLifePublicWebsite } from './brooks/BrooksOfLifePublicWebsite';
 
 interface TenantPublicWebsiteProps {
   tenantSlug?: string;
@@ -96,6 +97,18 @@ export const TenantPublicWebsite: React.FC<TenantPublicWebsiteProps> = ({
   }
 
   const tenantType = (data.tenant.type || '').toUpperCase();
+
+  // Special case: Brooks of Life UK
+  if (tenantType === 'THEOLOGY_AND_MEDIA' || tenantType === 'THEOLOGY' || data.tenant.slug === 'brooks-of-life' || data.tenant.id === 'tenant_brooks_of_life') {
+    return (
+      <BrooksOfLifePublicWebsite
+        onNavigateToLogin={() => handlePortalLogin()}
+        onNavigateToVerification={(code) => {
+          window.location.hash = code ? `/verify-document/${code}` : '/verify-document';
+        }}
+      />
+    );
+  }
 
   // Multi-Tenant Industry Renderer Dispatcher
   // A Wholesale/Shop tenant will strictly render WholesaleWebsiteTemplate.
