@@ -7,35 +7,31 @@ import {
   Shield, AlertTriangle, AlertCircle, Mail, UserPlus, Sliders,
   MoveUp, MoveDown, Eye, Copy, ArrowRight, Printer
 } from 'lucide-react';
-import { TenantPublicWebsiteConfig, TenantPublicNews, TenantPublicEvent, Tenant, User, TenantHeroSlide, TenantDomain } from '../../types';
+import { Tenant, User, TenantDomain } from '../../types';
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
-import { HeroSlideModal } from './components/HeroSlideModal';
 import { PrinterManagerSettings } from './settings/PrinterManagerSettings';
 import { compressImageFile } from '../../lib/imageUtils';
-import { DEFAULT_HERO_SLIDES } from '../../components/public/HeroSlider';
-import { getBaseDomain, buildTenantUrl, buildCustomDomainUrl } from '../../lib/domainResolver';
 
 interface TenantSettingsProps {
-  initialTab?: 'branding' | 'public_website' | 'users' | 'printers';
+  initialTab?: 'branding' | 'users' | 'printers';
 }
 
 export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'branding' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'public_website' | 'users' | 'printers'>(() => {
+  const [activeTab, setActiveTab] = useState<'branding' | 'users' | 'printers'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('users')) return 'users';
-      if (hash.includes('website')) return 'public_website';
       if (hash.includes('printers') || hash.includes('hardware')) return 'printers';
     }
-    return initialTab === ('domains' as any) ? 'public_website' : initialTab;
+    return initialTab === ('public_website' as any) || initialTab === ('domains' as any) ? 'branding' : initialTab;
   });
 
   useEffect(() => {
     if (initialTab) {
-      if ((initialTab as string) === 'domains') {
-        setActiveTab('public_website');
+      if ((initialTab as string) === 'domains' || (initialTab as string) === 'public_website') {
+        setActiveTab('branding');
       } else {
         setActiveTab(initialTab);
       }
@@ -79,29 +75,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
   const [contactPhone, setContactPhone] = useState(tenant?.branding?.contactPhone || '');
   const [address, setAddress] = useState(tenant?.branding?.address || '');
 
-  // Public Website state
-  const [pwEnabled, setPwEnabled] = useState(tenant?.publicWebsite?.enabled ?? true);
-  const [heroTitle, setHeroTitle] = useState(tenant?.publicWebsite?.heroTitle || '');
-  const [tagline, setTagline] = useState(tenant?.publicWebsite?.tagline || '');
-  const [heroDescription, setHeroDescription] = useState(tenant?.publicWebsite?.heroDescription || '');
-  const [heroImage, setHeroImage] = useState(tenant?.publicWebsite?.heroImage || '');
-  const [aboutText, setAboutText] = useState(tenant?.publicWebsite?.aboutText || '');
-  const [mission, setMission] = useState(tenant?.publicWebsite?.mission || '');
-  const [vision, setVision] = useState(tenant?.publicWebsite?.vision || '');
-  const [coreValuesInput, setCoreValuesInput] = useState((tenant?.publicWebsite?.coreValues || []).join(', '));
-  const [admissionNotice, setAdmissionNotice] = useState(tenant?.publicWebsite?.admissionNotice || '');
-  const [facebookUrl, setFacebookUrl] = useState(tenant?.publicWebsite?.facebookUrl || '');
-  const [twitterUrl, setTwitterUrl] = useState(tenant?.publicWebsite?.twitterUrl || '');
-  const [linkedinUrl, setLinkedinUrl] = useState(tenant?.publicWebsite?.linkedinUrl || '');
-  const [instagramUrl, setInstagramUrl] = useState(tenant?.publicWebsite?.instagramUrl || '');
-
-  const [news, setNews] = useState<TenantPublicNews[]>(tenant?.publicWebsite?.news || []);
-  const [events, setEvents] = useState<TenantPublicEvent[]>(tenant?.publicWebsite?.events || []);
-  const [heroSlides, setHeroSlides] = useState<TenantHeroSlide[]>(tenant?.publicWebsite?.heroSlides || []);
-  const [autoSlideInterval, setAutoSlideInterval] = useState<number>(tenant?.publicWebsite?.autoSlideInterval || 6);
-  const [isSlideModalOpen, setIsSlideModalOpen] = useState(false);
-  const [editingSlide, setEditingSlide] = useState<TenantHeroSlide | null>(null);
-
   // UI state
   const [saved, setSaved] = useState(false);
   const [savedMessage, setSavedMessage] = useState('Configuration saved successfully!');
@@ -117,27 +90,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
     setContactEmail(t.branding?.contactEmail || '');
     setContactPhone(t.branding?.contactPhone || '');
     setAddress(t.branding?.address || '');
-
-    if (t.publicWebsite) {
-      setPwEnabled(t.publicWebsite.enabled ?? true);
-      setHeroTitle(t.publicWebsite.heroTitle || '');
-      setTagline(t.publicWebsite.tagline || '');
-      setHeroDescription(t.publicWebsite.heroDescription || '');
-      setHeroImage(t.publicWebsite.heroImage || '');
-      setHeroSlides(t.publicWebsite.heroSlides || []);
-      setAutoSlideInterval(t.publicWebsite.autoSlideInterval || 6);
-      setAboutText(t.publicWebsite.aboutText || '');
-      setMission(t.publicWebsite.mission || '');
-      setVision(t.publicWebsite.vision || '');
-      setCoreValuesInput((t.publicWebsite.coreValues || []).join(', '));
-      setAdmissionNotice(t.publicWebsite.admissionNotice || '');
-      setFacebookUrl(t.publicWebsite.facebookUrl || '');
-      setTwitterUrl(t.publicWebsite.twitterUrl || '');
-      setLinkedinUrl(t.publicWebsite.linkedinUrl || '');
-      setInstagramUrl(t.publicWebsite.instagramUrl || '');
-      setNews(t.publicWebsite.news || []);
-      setEvents(t.publicWebsite.events || []);
-    }
   };
 
   // Load tenant list for Super Admin ONLY
@@ -294,125 +246,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
     }
   };
 
-  const handleSavePublicWebsite = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    try {
-      setSaving(true);
-      const targetTenantId = selectedTenantId || tenant?.id || '';
-      if (!targetTenantId) {
-        alert('Please select or specify a valid tenant');
-        return;
-      }
-      const coreValues = coreValuesInput
-        .split(',')
-        .map(v => v.trim())
-        .filter(Boolean);
-
-      const publicWebsiteData: TenantPublicWebsiteConfig = {
-        enabled: pwEnabled,
-        heroTitle,
-        tagline,
-        heroDescription,
-        heroImage,
-        heroSlides,
-        autoSlideInterval,
-        aboutText,
-        mission,
-        vision,
-        coreValues,
-        admissionNotice,
-        facebookUrl,
-        twitterUrl,
-        linkedinUrl,
-        instagramUrl,
-        news,
-        events
-      };
-
-      const res = await fetch('/api/tenant/public-website', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': localStorage.getItem('erp_user_id') || '',
-          'x-tenant-id': targetTenantId
-        },
-        body: JSON.stringify({
-          tenantId: targetTenantId,
-          ...publicWebsiteData
-        })
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        if (updated) {
-          populateFromTenant(updated);
-        }
-        await refreshAuth();
-        setSavedMessage('Public Website & Landing Page configuration saved successfully!');
-        setSaved(true);
-        setTimeout(() => setSaved(false), 4000);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || errData.error || 'Failed to save public website settings');
-      }
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || 'Network error saving public website settings');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Hero Slider Handlers
-  const handleSaveSlide = (savedSlide: TenantHeroSlide) => {
-    setHeroSlides(prev => {
-      const existingIdx = prev.findIndex(s => s.id === savedSlide.id);
-      if (existingIdx >= 0) {
-        const next = [...prev];
-        next[existingIdx] = savedSlide;
-        return next;
-      }
-      return [...prev, savedSlide];
-    });
-  };
-
-  const handleDeleteSlide = (slideId: string) => {
-    if (confirm('Are you sure you want to remove this slide from the carousel?')) {
-      setHeroSlides(prev => prev.filter(s => s.id !== slideId));
-    }
-  };
-
-  const handleMoveSlide = (index: number, direction: 'up' | 'down') => {
-    setHeroSlides(prev => {
-      const targetIdx = direction === 'up' ? index - 1 : index + 1;
-      if (targetIdx < 0 || targetIdx >= prev.length) return prev;
-      const next = [...prev];
-      const temp = next[index];
-      next[index] = next[targetIdx];
-      next[targetIdx] = temp;
-      return next;
-    });
-  };
-
-  const handleDuplicateSlide = (slide: TenantHeroSlide) => {
-    const clone: TenantHeroSlide = {
-      ...slide,
-      id: `slide_${Date.now().toString(36)}`,
-      title: `${slide.title} (Copy)`
-    };
-    setHeroSlides(prev => [...prev, clone]);
-  };
-
-  const handleLoadDefaultSlides = () => {
-    if (heroSlides.length > 0 && !confirm('Replace current slides with default academic templates?')) {
-      return;
-    }
-    setHeroSlides(DEFAULT_HERO_SLIDES);
-  };
-
-  const currentSlug = tenant?.slug || selectedTenantId || '';
-  const publicWebsiteUrl = `/#/public/${currentSlug}`;
-
   // User Management Functions
   const fetchTenantUsers = async () => {
     try {
@@ -560,24 +393,13 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           {/* Quick Save Header Button */}
           <button
             type="button"
-            onClick={() => activeTab === 'branding' ? handleSaveBranding() : handleSavePublicWebsite()}
+            onClick={() => handleSaveBranding()}
             disabled={saving}
             className="inline-flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span>{saving ? 'Saving...' : 'Save Settings'}</span>
           </button>
-
-          <a
-            href={publicWebsiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all cursor-pointer"
-          >
-            <Globe className="w-4 h-4" />
-            <span>View Live Website</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
         </div>
       </div>
 
@@ -669,18 +491,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
         >
           <Building2 className="w-4 h-4" />
           <span>ERP Branding &amp; Currency</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('public_website')}
-          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'public_website'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Globe className="w-4 h-4" />
-          <span>Public Website &amp; Domain Info</span>
         </button>
 
         <button
@@ -911,540 +721,8 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
         </form>
       )}
 
-      {/* TAB 2: PUBLIC WEBSITE SETTINGS */}
-      {activeTab === 'public_website' && (
-        <form onSubmit={handleSavePublicWebsite} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6 text-xs">
-          
-          {/* Enable Toggle & URL Banner */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center space-x-2">
-                <Globe className="w-4 h-4 text-blue-600" />
-                <span className="font-bold text-slate-900 text-sm">Public Website Status</span>
-              </div>
-              <p className="text-slate-500 text-[11px]">
-                When enabled, visitors can explore your departments, programs, announcements, and submit online admission applications.
-              </p>
-            </div>
+      {/* TAB 2: TEAM & USER ACCOUNTS */}
 
-            <div className="flex items-center space-x-4">
-              <label className="inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={pwEnabled}
-                  onChange={e => setPwEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                <span className="ml-2 font-bold text-slate-700">{pwEnabled ? 'Active / Online' : 'Offline'}</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Read-Only Public Website Address & Platform-Managed Domain Info */}
-          {(() => {
-            const currentTenantObj = (user?.role === 'SUPER_ADMIN' ? allTenants.find(t => t.id === selectedTenantId) : tenant) || tenant;
-            const bDomain = getBaseDomain();
-            const subdomainSlug = currentTenantObj?.slug || currentTenantObj?.subdomain || 'organization';
-            const customDomainRecord = tenantDomains.find(d => d.type === 'CUSTOM');
-            const primaryDomainRecord = tenantDomains.find(d => d.isPrimary) || tenantDomains[0];
-            const primaryDomainDisplay = primaryDomainRecord ? primaryDomainRecord.domain : `${subdomainSlug}.${bDomain}`;
-            const primaryDomainUrl = primaryDomainRecord?.type === 'CUSTOM'
-              ? buildCustomDomainUrl(primaryDomainRecord.domain)
-              : buildTenantUrl(subdomainSlug);
-
-            return (
-              <div className="p-5 bg-gradient-to-br from-slate-50 to-blue-50/20 border border-slate-200 rounded-2xl space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
-                  <div>
-                    <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                      <Globe className="w-4 h-4 text-blue-600" />
-                      <span>Public Website Address &amp; Hostname</span>
-                    </h3>
-                    <p className="text-slate-500 text-[11px] mt-0.5">
-                      Production URL and DNS routing status assigned to your organization.
-                    </p>
-                  </div>
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                    <span>Domain Active</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                  {/* Primary Domain */}
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Primary Website Address</span>
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-slate-900 text-xs truncate max-w-[200px] sm:max-w-xs">
-                        {primaryDomainDisplay}
-                      </span>
-                      <div className="flex items-center space-x-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(primaryDomainUrl, 'primary-url')}
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                          title="Copy Domain URL"
-                        >
-                          {copiedKey === 'primary-url' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                        <a
-                          href={primaryDomainUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
-                          title="Open live website in new tab"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2 text-[11px] text-slate-500">
-                      <span className="flex items-center space-x-1 text-emerald-600 font-semibold">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Active / Verified</span>
-                      </span>
-                      <span>&bull;</span>
-                      <span className="flex items-center space-x-1 text-teal-600 font-semibold">
-                        <Shield className="w-3 h-3" />
-                        <span>SSL / TLS 1.3 Active</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Custom Domain */}
-                  <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Custom Domain</span>
-                    {customDomainRecord ? (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-bold text-slate-900 text-xs truncate max-w-[200px] sm:max-w-xs">
-                            {customDomainRecord.domain}
-                          </span>
-                          <div className="flex items-center space-x-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(`https://${customDomainRecord.domain}`, 'custom-url')}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                              title="Copy Custom Domain"
-                            >
-                              {copiedKey === 'custom-url' ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                            </button>
-                            <a
-                              href={`https://${customDomainRecord.domain}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 hover:text-blue-800 transition-colors"
-                              title="Open live custom domain in new tab"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 text-[11px] text-slate-500">
-                          <span className={`flex items-center space-x-1 font-semibold ${
-                            customDomainRecord.verificationStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-600'
-                          }`}>
-                            {customDomainRecord.verificationStatus === 'VERIFIED' ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                            <span>{customDomainRecord.verificationStatus === 'VERIFIED' ? 'Verified' : 'Pending Verification'}</span>
-                          </span>
-                          <span>&bull;</span>
-                          <span className="flex items-center space-x-1 text-teal-600 font-semibold">
-                            <Shield className="w-3 h-3" />
-                            <span>SSL Active</span>
-                          </span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="text-slate-500 font-medium py-1">
-                          Not connected
-                        </div>
-                        <p className="text-[10px] text-slate-400">
-                          To link a branded custom domain (e.g. www.{companyName ? companyName.toLowerCase().replace(/[^a-z0-9]/g, '') : 'organization'}.com), contact Davetech Platform Administration.
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Central Platform Infrastructure Notice */}
-                <div className="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px] text-slate-600 flex items-start space-x-2">
-                  <Shield className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold text-slate-800">Platform-Managed Infrastructure: </span>
-                    Domain assignment, DNS records, and hostname routing are managed centrally by Davetech Platform Administration.
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Hero Slider Carousel Configuration */}
-          <div className="space-y-4 pt-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                  <span>Hero Slides Carousel</span>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-extrabold">
-                    {heroSlides.length} {heroSlides.length === 1 ? 'Slide' : 'Slides'}
-                  </span>
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Interactive multi-slide hero carousel with auto-play, custom CTA buttons, badges, and responsive imagery.
-                </p>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={handleLoadDefaultSlides}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 cursor-pointer transition-colors"
-                  title="Load 3 Pre-designed Academic Slides"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Load Preset Slides</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingSlide(null);
-                    setIsSlideModalOpen(true);
-                  }}
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1.5 shadow-sm cursor-pointer transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Slide</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Slider Settings: Auto-slide Interval */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center space-x-2">
-                <Sliders className="w-4 h-4 text-slate-500 shrink-0" />
-                <div>
-                  <span className="font-bold text-slate-800 text-xs block">Auto-Play Slide Rotation Timing</span>
-                  <span className="text-[11px] text-slate-500">How long each hero slide stays visible before transitioning to next</span>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <select
-                  value={autoSlideInterval}
-                  onChange={e => setAutoSlideInterval(Number(e.target.value))}
-                  className="p-1.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 cursor-pointer"
-                >
-                  <option value={3}>3 Seconds (Fast)</option>
-                  <option value={5}>5 Seconds (Recommended)</option>
-                  <option value={6}>6 Seconds (Standard)</option>
-                  <option value={8}>8 Seconds (Relaxed)</option>
-                  <option value={10}>10 Seconds (Slow)</option>
-                  <option value={0}>Pause / Manual Navigation Only</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Slides List */}
-            {heroSlides.length === 0 ? (
-              <div className="p-8 border-2 border-dashed border-slate-200 rounded-2xl text-center space-y-3 bg-slate-50/50">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <div>
-                  <p className="font-bold text-slate-800 text-xs">No Custom Hero Slides Added Yet</p>
-                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto mt-1">
-                    The public website will display default high-resolution academic slides, or you can add custom tailored slides right now.
-                  </p>
-                </div>
-                <div className="flex items-center justify-center space-x-3 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleLoadDefaultSlides}
-                    className="px-3.5 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs cursor-pointer"
-                  >
-                    Load Default Academic Template
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingSlide(null);
-                      setIsSlideModalOpen(true);
-                    }}
-                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-2xs flex items-center space-x-1.5 cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Create First Slide</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {heroSlides.map((slide, idx) => (
-                  <div
-                    key={slide.id || idx}
-                    className="p-3 bg-white border border-slate-200 rounded-xl shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group hover:border-slate-300 transition-all"
-                  >
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
-                      {/* Slide Thumbnail */}
-                      <div className="w-20 h-14 rounded-lg overflow-hidden bg-slate-900 shrink-0 relative border border-slate-200 shadow-2xs">
-                        <img
-                          src={slide.imageUrl}
-                          alt={slide.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white font-mono text-[9px] font-bold">
-                          #{idx + 1}
-                        </span>
-                      </div>
-
-                      {/* Slide Details */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center space-x-2">
-                          {slide.badgeText && (
-                            <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-bold text-[9px] uppercase tracking-wider border border-blue-100 truncate max-w-[200px]">
-                              {slide.badgeText}
-                            </span>
-                          )}
-                          {slide.tagline && (
-                            <span className="text-[10px] text-slate-500 truncate hidden md:inline">
-                              • {slide.tagline}
-                            </span>
-                          )}
-                        </div>
-                        <h4 className="font-bold text-slate-900 text-xs truncate mt-0.5">
-                          {slide.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {slide.subtitle}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center space-x-1 shrink-0 self-end sm:self-center">
-                      <button
-                        type="button"
-                        onClick={() => handleMoveSlide(idx, 'up')}
-                        disabled={idx === 0}
-                        title="Move Up"
-                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-30 cursor-pointer"
-                      >
-                        <MoveUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMoveSlide(idx, 'down')}
-                        disabled={idx === heroSlides.length - 1}
-                        title="Move Down"
-                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg disabled:opacity-30 cursor-pointer"
-                      >
-                        <MoveDown className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDuplicateSlide(slide)}
-                        title="Duplicate Slide"
-                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg cursor-pointer"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingSlide(slide);
-                          setIsSlideModalOpen(true);
-                        }}
-                        title="Edit Slide Content"
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg font-bold cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSlide(slide.id)}
-                        title="Delete Slide"
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Fallback Single Hero Settings */}
-            <div className="pt-3 border-t border-slate-100 space-y-3">
-              <span className="font-bold text-slate-800 text-xs block">Default / Static Fallback Text</span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-slate-700 text-[11px]">Primary Headline</label>
-                  <input
-                    type="text"
-                    placeholder="Empowering Future Leaders & Innovators"
-                    value={heroTitle}
-                    onChange={e => setHeroTitle(e.target.value)}
-                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-slate-700 text-[11px]">Tagline / Sub-badge</label>
-                  <input
-                    type="text"
-                    placeholder="Accredited Premier Technical & Vocational Institution"
-                    value={tagline}
-                    onChange={e => setTagline(e.target.value)}
-                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* About, Mission & Vision */}
-          <div className="space-y-4 pt-4 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2 border-b border-slate-100 pb-2">
-              <BookOpen className="w-4 h-4 text-emerald-600" />
-              <span>About Us, Mission, Vision & Core Values</span>
-            </h3>
-
-            <div>
-              <label className="font-semibold text-slate-700">About Institution</label>
-              <textarea
-                rows={3}
-                placeholder="Provide a comprehensive narrative about your history, academic excellence, and campus culture."
-                value={aboutText}
-                onChange={e => setAboutText(e.target.value)}
-                className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="font-semibold text-slate-700">Our Mission</label>
-                <textarea
-                  rows={2}
-                  placeholder="To provide accessible, high-caliber competency-based education..."
-                  value={mission}
-                  onChange={e => setMission(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Our Vision</label>
-                <textarea
-                  rows={2}
-                  placeholder="To be the global benchmark for transformative professional training..."
-                  value={vision}
-                  onChange={e => setVision(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="font-semibold text-slate-700">Core Values (Comma Separated)</label>
-              <input
-                type="text"
-                placeholder="Integrity, Innovation, Professionalism, Diversity, Excellence"
-                value={coreValuesInput}
-                onChange={e => setCoreValuesInput(e.target.value)}
-                className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-              />
-            </div>
-          </div>
-
-          {/* Admission Notice */}
-          <div className="space-y-4 pt-4 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2 border-b border-slate-100 pb-2">
-              <Calendar className="w-4 h-4 text-amber-600" />
-              <span>Admissions Notice Bar</span>
-            </h3>
-
-            <div>
-              <label className="font-semibold text-slate-700">Admissions Announcement / Intake Banner</label>
-              <input
-                type="text"
-                placeholder="Applications for May 2026 & September 2026 Intakes are Ongoing. Early bird scholarships available."
-                value={admissionNotice}
-                onChange={e => setAdmissionNotice(e.target.value)}
-                className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-              />
-            </div>
-          </div>
-
-          {/* Social Links */}
-          <div className="space-y-4 pt-4 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center space-x-2 border-b border-slate-100 pb-2">
-              <Globe className="w-4 h-4 text-cyan-600" />
-              <span>Social Media Channels</span>
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="font-semibold text-slate-700">Facebook URL</label>
-                <input
-                  type="url"
-                  placeholder="https://facebook.com/your-institution"
-                  value={facebookUrl}
-                  onChange={e => setFacebookUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Twitter / X URL</label>
-                <input
-                  type="url"
-                  placeholder="https://twitter.com/your-institution"
-                  value={twitterUrl}
-                  onChange={e => setTwitterUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">LinkedIn URL</label>
-                <input
-                  type="url"
-                  placeholder="https://linkedin.com/school/your-institution"
-                  value={linkedinUrl}
-                  onChange={e => setLinkedinUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Instagram URL</label>
-                <input
-                  type="url"
-                  placeholder="https://instagram.com/your-institution"
-                  value={instagramUrl}
-                  onChange={e => setInstagramUrl(e.target.value)}
-                  className="w-full mt-1 p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 flex justify-end">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs flex items-center space-x-2 cursor-pointer"
-            >
-              <Save className="w-4 h-4" />
-              <span>{saving ? 'Saving...' : 'Save Public Website Settings'}</span>
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* TAB 3: TEAM & USER ACCOUNTS */}
       {activeTab === 'users' && (
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6 text-xs">
           {/* Header & Actions */}
@@ -1814,18 +1092,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           onSuccess={fetchTenantUsers}
         />
       )}
-
-      {/* Hero Slide Creation & Editing Modal */}
-      <HeroSlideModal
-        isOpen={isSlideModalOpen}
-        slide={editingSlide}
-        onClose={() => {
-          setIsSlideModalOpen(false);
-          setEditingSlide(null);
-        }}
-        onSave={handleSaveSlide}
-        primaryColor={primaryColor}
-      />
 
     </div>
   );

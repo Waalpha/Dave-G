@@ -348,9 +348,9 @@ function MainAppContent() {
           )
         )}
 
-        {/* Direct Domains & Routing Path Redirected to Public Website Info */}
+        {/* Direct Domains & Routing Path Redirected to Branding Info */}
         {currentRoute === '/app/domains' && (
-          <TenantSettings initialTab="public_website" />
+          <TenantSettings initialTab="branding" />
         )}
 
         {/* Production-Ready Industry-Specific & Enterprise ERP Module Views */}

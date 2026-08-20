@@ -3757,7 +3757,7 @@ export interface TemsPaymentRecord {
 // ==========================================
 
 export type PrinterInterfaceType = 'WEB_USB' | 'WEB_SERIAL' | 'NETWORK_LAN' | 'LOCAL_BRIDGE' | 'SYSTEM_DEFAULT';
-export type PrinterPaperWidth = '58mm' | '80mm';
+export type PrinterPaperWidth = '58mm' | '80mm' | 'A4';
 export type PrinterStationTarget = 
   | 'ALL' 
   | 'CASHIER' 

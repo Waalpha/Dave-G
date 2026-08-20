@@ -707,14 +707,15 @@ export const PrinterManagerSettings: React.FC<PrinterManagerSettingsProps> = ({ 
               {/* Paper Width & Copies */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-300 mb-1">Thermal Paper Width</label>
+                  <label className="block font-medium text-slate-300 mb-1">Paper Format / Page Size</label>
                   <select
                     value={editingPrinter.paperWidth || '80mm'}
                     onChange={(e) => setEditingPrinter({ ...editingPrinter, paperWidth: e.target.value as PrinterPaperWidth })}
                     className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
                   >
-                    <option value="80mm">80mm (Standard Full Width - 48 cols)</option>
-                    <option value="58mm">58mm (Compact Mobile Width - 32 cols)</option>
+                    <option value="80mm">80mm (Standard POS Thermal Roll - 48 cols)</option>
+                    <option value="58mm">58mm (Compact Mobile POS Thermal Roll - 32 cols)</option>
+                    <option value="A4">A4 Full Page Document (Standard Laser / Inkjet)</option>
                   </select>
                 </div>
 

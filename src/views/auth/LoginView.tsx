@@ -676,22 +676,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenantSlug, onNavigateToPu
                     setInfo('You have successfully signed out.');
                     setCancelRedirect(true);
                   }}
-                  className="flex-1 py-3 px-4 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 px-4 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5 text-slate-400" />
                   <span>Sign In with Different Account</span>
                 </button>
-
-                {isTenantPortal && (
-                  <button
-                    type="button"
-                    onClick={handleBackToPublic}
-                    className="py-3 px-4 bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-800 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Public Site</span>
-                  </button>
-                )}
               </div>
             </div>
 
@@ -842,18 +831,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenantSlug, onNavigateToPu
             </div>
           </div>
 
-          {/* Right Action: Public Website Return */}
+          {/* Right Action: Platform Return */}
           <div className="ml-auto">
-            {isTenantPortal && tenantBranding.websiteEnabled ? (
-              <button
-                type="button"
-                onClick={handleBackToPublic}
-                className="text-xs font-semibold text-slate-400 hover:text-white transition-colors py-1.5 px-3 rounded-lg hover:bg-slate-900 border border-slate-800 cursor-pointer flex items-center gap-1.5"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
-                <span>Back to Website</span>
-              </button>
-            ) : !isTenantPortal ? (
+            {!isTenantPortal && (
               <button
                 type="button"
                 onClick={handleBackToPublic}
@@ -862,7 +842,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenantSlug, onNavigateToPu
                 <ArrowLeft className="w-3.5 h-3.5 text-slate-400" />
                 <span>Back to Home</span>
               </button>
-            ) : null}
+            )}
           </div>
         </div>
 
