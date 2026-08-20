@@ -5,25 +5,23 @@ import {
   Image as ImageIcon, Trash2, Globe, ExternalLink, Sparkles, BookOpen, 
   Calendar, RefreshCw, Layers, Users, KeyRound, Edit2, Plus, Search,
   Shield, AlertTriangle, AlertCircle, Mail, UserPlus, Sliders,
-  MoveUp, MoveDown, Eye, Copy, ArrowRight, Printer
+  MoveUp, MoveDown, Eye, Copy, ArrowRight
 } from 'lucide-react';
 import { Tenant, User, TenantDomain } from '../../types';
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
-import { PrinterManagerSettings } from './settings/PrinterManagerSettings';
 import { compressImageFile } from '../../lib/imageUtils';
 
 interface TenantSettingsProps {
-  initialTab?: 'branding' | 'users' | 'printers';
+  initialTab?: 'branding' | 'users';
 }
 
 export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'branding' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'users' | 'printers'>(() => {
+  const [activeTab, setActiveTab] = useState<'branding' | 'users'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('users')) return 'users';
-      if (hash.includes('printers') || hash.includes('hardware')) return 'printers';
     }
     return initialTab === ('public_website' as any) || initialTab === ('domains' as any) ? 'branding' : initialTab;
   });
@@ -503,18 +501,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
         >
           <Users className="w-4 h-4" />
           <span>Team &amp; User Accounts</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('printers')}
-          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
-            activeTab === 'printers'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-900'
-          }`}
-        >
-          <Printer className="w-4 h-4" />
-          <span>Printers &amp; Hardware</span>
         </button>
       </div>
 
@@ -1065,13 +1051,6 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* TAB 4: PHYSICAL PRINTERS & HARDWARE */}
-      {activeTab === 'printers' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xs">
-          <PrinterManagerSettings tenant={allTenants.find(t => t.id === selectedTenantId) || tenant!} />
         </div>
       )}
 

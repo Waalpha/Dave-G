@@ -5070,6 +5070,232 @@ async function startServer() {
   });
 
   // =========================================================================
+  // BROOKS OF LIFE UK — STUDENT ADMISSIONS API ENDPOINTS
+  // =========================================================================
+
+  app.get('/api/tems/admissions', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const status = req.query.status as string | undefined;
+    const programmeId = req.query.programmeId as string | undefined;
+    const intake = req.query.intake as string | undefined;
+    const centreId = req.query.centreId as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const applications = dbStore.getStudentAdmissions(tenantId, {
+      status,
+      programmeId,
+      intake,
+      centreId,
+      search
+    });
+
+    const allApps = dbStore.getStudentAdmissions(tenantId);
+
+    // Compute comprehensive dashboard metrics
+    const progMap: Record<string, { name: string; count: number }> = {};
+    const intakeMap: Record<string, number> = {};
+    const centreMap: Record<string, { name: string; count: number }> = {};
+    const statusMap: Record<string, number> = {};
+
+    allApps.forEach(a => {
+      // By programme
+      if (a.programmeId) {
+        if (!progMap[a.programmeId]) {
+          progMap[a.programmeId] = { name: a.programmeName || a.programmeId, count: 0 };
+        }
+        progMap[a.programmeId].count++;
+      }
+      // By intake
+      const intakeKey = a.intake || 'Unspecified';
+      intakeMap[intakeKey] = (intakeMap[intakeKey] || 0) + 1;
+      // By centre
+      if (a.centreId) {
+        if (!centreMap[a.centreId]) {
+          centreMap[a.centreId] = { name: a.centreName || a.centreId, count: 0 };
+        }
+        centreMap[a.centreId].count++;
+      }
+      // By status
+      statusMap[a.status] = (statusMap[a.status] || 0) + 1;
+    });
+
+    const stats = {
+      total: allApps.length,
+      pendingReview: allApps.filter(a => a.status === 'PENDING_REVIEW').length,
+      underReview: allApps.filter(a => a.status === 'UNDER_REVIEW').length,
+      documentsRequired: allApps.filter(a => a.status === 'DOCUMENTS_REQUIRED').length,
+      interviewScheduled: allApps.filter(a => a.status === 'INTERVIEW_SCHEDULED' || a.interviews?.some(i => i.status === 'SCHEDULED')).length,
+      accepted: allApps.filter(a => a.status === 'ACCEPTED').length,
+      rejected: allApps.filter(a => a.status === 'REJECTED').length,
+      admitted: allApps.filter(a => a.status === 'ADMITTED' || a.status === 'REGISTERED').length,
+      registered: allApps.filter(a => a.status === 'REGISTERED').length,
+      candidateEnrolled: allApps.filter(a => !!a.candidateId || !!a.candidateNumber).length,
+      byProgramme: Object.entries(progMap).map(([id, val]) => ({ programmeId: id, programmeName: val.name, count: val.count })),
+      byIntake: Object.entries(intakeMap).map(([intake, count]) => ({ intake, count })),
+      byCentre: Object.entries(centreMap).map(([id, val]) => ({ centreId: id, centreName: val.name, count: val.count })),
+      byStatus: Object.entries(statusMap).map(([status, count]) => ({ status, count }))
+    };
+
+    return res.json({ applications, stats });
+  });
+
+  app.get('/api/tems/admissions/:id', (req, res) => {
+    const user = getAuthUser(req);
+    const tenantId = getEffectiveTenantId(req, user);
+    const application = dbStore.getStudentAdmissionById(tenantId, req.params.id);
+    if (!application) {
+      return res.status(404).json({ error: 'Admissions application not found' });
+    }
+    return res.json({ application });
+  });
+
+  app.post('/api/tems/admissions', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveStudentAdmission(tenantId, req.body, user);
+      return res.json({ success: true, application: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/tems/admissions/:id', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const saved = await dbStore.saveStudentAdmission(tenantId, { ...req.body, id: req.params.id }, user);
+      return res.json({ success: true, application: saved });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/tems/admissions/:id', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const ok = await dbStore.deleteStudentAdmission(tenantId, req.params.id, user);
+      return res.json({ success: ok });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/check-duplicates', (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const result = dbStore.checkAdmissionDuplicates(tenantId, req.body);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/documents', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const app = await dbStore.addAdmissionDocument(tenantId, req.params.id, req.body, user);
+      return res.json({ success: true, application: app });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/tems/admissions/:id/documents/:docId/status', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { status, verificationNotes } = req.body;
+      const app = await dbStore.updateAdmissionDocumentStatus(tenantId, req.params.id, req.params.docId, status, verificationNotes, user);
+      return res.json({ success: true, application: app });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/interviews', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const app = await dbStore.scheduleAdmissionInterview(tenantId, req.params.id, req.body, user);
+      return res.json({ success: true, application: app });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/tems/admissions/:id/interviews/:intId', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const app = await dbStore.updateAdmissionInterview(tenantId, req.params.id, req.params.intId, req.body, user);
+      return res.json({ success: true, application: app });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/review-notes', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const { note, decision } = req.body;
+      const app = await dbStore.addAdmissionReviewNote(tenantId, req.params.id, note, decision, user);
+      return res.json({ success: true, application: app });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/approve-admit', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const result = await dbStore.approveAndAdmitApplicant(tenantId, req.params.id, req.body, user);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/register-student', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const result = await dbStore.registerAdmittedStudent(tenantId, req.params.id, req.body, user);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/enroll-candidate', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const result = await dbStore.enrollAdmissionAsCandidate(tenantId, req.params.id, user);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/tems/admissions/:id/admission-letter', async (req, res) => {
+    try {
+      const user = getAuthUser(req);
+      const tenantId = getEffectiveTenantId(req, user);
+      const result = await dbStore.generateTemsAdmissionLetter(tenantId, req.params.id, user);
+      return res.json({ success: true, ...result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // =========================================================================
   // CENTRALIZED PHYSICAL PRINTERS & UNIVERSAL RECEIPT ENDPOINTS
   // =========================================================================
 

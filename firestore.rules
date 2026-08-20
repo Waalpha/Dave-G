@@ -2,12 +2,14 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
+    // Global helper functions
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    // ==========================================
     // Platform Settings & SaaS Configurations
+    // ==========================================
     match /platformSettings/{settingId} {
       allow read, write: if true;
     }
@@ -16,7 +18,6 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Tenant Management & Routing
     match /tenants/{tenantId} {
       allow read, write: if true;
     }
@@ -25,12 +26,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Users & RBAC
     match /users/{userId} {
       allow read, write: if true;
     }
 
-    // System Logs & Notifications
     match /auditLogs/{logId} {
       allow read, write: if true;
     }
@@ -40,7 +39,7 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // Education & Campus Management Collections
+    // Education, Admissions & TEMS Collections
     // ==========================================
     match /campuses/{campusId} {
       allow read, write: if true;
@@ -86,6 +85,14 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /attendanceSessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    match /attendanceScans/{scanId} {
+      allow read, write: if true;
+    }
+
     match /feeStructures/{feeId} {
       allow read, write: if true;
     }
@@ -99,6 +106,54 @@ service cloud.firestore {
     }
 
     match /studentGrades/{gradeId} {
+      allow read, write: if true;
+    }
+
+    match /academicTranscripts/{transcriptId} {
+      allow read, write: if true;
+    }
+
+    match /academicCertificates/{certId} {
+      allow read, write: if true;
+    }
+
+    match /admissionLetters/{letterId} {
+      allow read, write: if true;
+    }
+
+    match /documentVerifications/{docVerifId} {
+      allow read, write: if true;
+    }
+
+    match /studentAdmissions/{admissionId} {
+      allow read, write: if true;
+    }
+
+    match /candidateProfiles/{candidateId} {
+      allow read, write: if true;
+    }
+
+    match /examCentres/{centreId} {
+      allow read, write: if true;
+    }
+
+    match /examPapers/{paperId} {
+      allow read, write: if true;
+    }
+
+    match /examDiets/{dietId} {
+      allow read, write: if true;
+    }
+
+    match /examSessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    match /examRegistrations/{regId} {
+      allow read, write: if true;
+    }
+
+    match /examResults/{resultId} {
       allow read, write: if true;
     }
 
@@ -119,7 +174,7 @@ service cloud.firestore {
     }
 
     // ==========================================
-    // Industry Modules (SACCO, POS, Retail, HR, CRM)
+    // Commerce, Retail, POS, SACCO & Hospitality
     // ==========================================
     match /chamaMembers/{memberId} {
       allow read, write: if true;
@@ -141,6 +196,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /posConfigs/{configId} {
+      allow read, write: if true;
+    }
+
     match /posProducts/{productId} {
       allow read, write: if true;
     }
@@ -149,11 +208,79 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
+    match /posSaleReturns/{returnId} {
+      allow read, write: if true;
+    }
+
+    match /posCustomers/{customerId} {
+      allow read, write: if true;
+    }
+
+    match /posCustomerTransactions/{txId} {
+      allow read, write: if true;
+    }
+
+    match /posSuppliers/{supplierId} {
+      allow read, write: if true;
+    }
+
+    match /posExpenses/{expenseId} {
+      allow read, write: if true;
+    }
+
+    match /purchaseOrders/{poId} {
+      allow read, write: if true;
+    }
+
+    match /goodsReceivedNotes/{grnId} {
+      allow read, write: if true;
+    }
+
+    match /supplierPayments/{paymentId} {
+      allow read, write: if true;
+    }
+
+    match /warehouses/{warehouseId} {
+      allow read, write: if true;
+    }
+
+    match /branches/{branchId} {
+      allow read, write: if true;
+    }
+
+    match /cashierShifts/{shiftId} {
+      allow read, write: if true;
+    }
+
     match /restaurantTables/{tableId} {
       allow read, write: if true;
     }
 
     match /restaurantMenu/{menuId} {
+      allow read, write: if true;
+    }
+
+    match /kitchenTickets/{ticketId} {
+      allow read, write: if true;
+    }
+
+    match /barTabs/{tabId} {
+      allow read, write: if true;
+    }
+
+    match /hotelRoomTypes/{typeId} {
+      allow read, write: if true;
+    }
+
+    match /hotelRooms/{roomId} {
+      allow read, write: if true;
+    }
+
+    match /hotelGuests/{guestId} {
+      allow read, write: if true;
+    }
+
+    match /hotelReservations/{resId} {
       allow read, write: if true;
     }
 
@@ -178,6 +305,25 @@ service cloud.firestore {
     }
 
     match /churchGivings/{givingId} {
+      allow read, write: if true;
+    }
+
+    // ==========================================
+    // Centralized Printers & Receipts Collections
+    // ==========================================
+    match /printers/{printerId} {
+      allow read, write: if true;
+    }
+
+    match /universalReceipts/{receiptId} {
+      allow read, write: if true;
+    }
+
+    match /printJobs/{jobId} {
+      allow read, write: if true;
+    }
+
+    match /printerAuditLogs/{logId} {
       allow read, write: if true;
     }
 
@@ -401,25 +547,6 @@ service cloud.firestore {
     }
 
     match /healthcareMortuary/{id} {
-      allow read, write: if true;
-    }
-
-    // ==========================================
-    // Centralized Printers & Receipts Collections
-    // ==========================================
-    match /printers/{printerId} {
-      allow read, write: if true;
-    }
-
-    match /universalReceipts/{receiptId} {
-      allow read, write: if true;
-    }
-
-    match /printJobs/{jobId} {
-      allow read, write: if true;
-    }
-
-    match /printerAuditLogs/{logId} {
       allow read, write: if true;
     }
 

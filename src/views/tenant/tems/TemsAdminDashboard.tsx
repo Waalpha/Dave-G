@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   GraduationCap, BookOpen, Calendar, MapPin, Users, Award,
   FileCheck, ShieldCheck, Plus, Search, Filter, Edit3, Trash2,
-  DollarSign, CheckCircle, Clock, AlertCircle, QrCode, RefreshCw
+  DollarSign, CheckCircle, Clock, AlertCircle, QrCode, RefreshCw, UserPlus
 } from 'lucide-react';
 import {
   TheologicalProgramme, TheologicalUnit, ExaminationSession,
@@ -10,9 +10,10 @@ import {
   ExaminationPaper, ExamResultRecord, OfficialTranscript,
   OfficialCertificate, TemsFeeScheduleItem, TemsPaymentRecord
 } from '../../../types';
+import { TemsAdmissionsDashboard } from './TemsAdmissionsDashboard';
 
 export const TemsAdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'programmes' | 'sessions' | 'centres' | 'papers' | 'candidates' | 'results' | 'transcripts' | 'certificates' | 'fees'>('programmes');
+  const [activeTab, setActiveTab] = useState<'admissions' | 'programmes' | 'sessions' | 'centres' | 'papers' | 'candidates' | 'results' | 'transcripts' | 'certificates' | 'fees'>('admissions');
 
   // Domain data
   const [programmes, setProgrammes] = useState<TheologicalProgramme[]>([]);
@@ -239,6 +240,7 @@ export const TemsAdminDashboard: React.FC = () => {
       {/* Navigation Sub-Tabs */}
       <div className="flex overflow-x-auto space-x-2 border-b border-slate-800 pb-2 text-xs font-medium scrollbar-none">
         {[
+          { id: 'admissions', label: 'Student Admissions', icon: UserPlus },
           { id: 'programmes', label: 'Programmes & Curriculum', icon: BookOpen },
           { id: 'sessions', label: 'Exam Diets & Sessions', icon: Calendar },
           { id: 'centres', label: 'Centres & Invigilation', icon: MapPin },
@@ -267,6 +269,11 @@ export const TemsAdminDashboard: React.FC = () => {
           );
         })}
       </div>
+
+      {/* TAB: ADMISSIONS */}
+      {activeTab === 'admissions' && (
+        <TemsAdmissionsDashboard onNavigateToCandidates={() => setActiveTab('candidates')} />
+      )}
 
       {/* TAB: PROGRAMMES */}
       {activeTab === 'programmes' && (

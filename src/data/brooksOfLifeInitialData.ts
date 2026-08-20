@@ -4,7 +4,7 @@ import {
   CandidateProfile, CandidateExamRegistration, ExaminerProfile, ExaminationScript,
   RplApplication, ExaminationResultRecord, OfficialTranscriptRecord, OfficialCertificateRecord,
   MediaContentItem, TVScheduleItem, MinistryEventRecord, TheologicalArticleRecord,
-  TemsFeeScheduleItem, TemsPaymentRecord
+  TemsFeeScheduleItem, TemsPaymentRecord, StudentAdmissionApplication
 } from '../types';
 
 export const BROOKS_OF_LIFE_TENANT_ID = 'tenant_brooks_of_life';
@@ -1772,3 +1772,692 @@ export const INITIAL_BROOKS_PAYMENTS: TemsPaymentRecord[] = [
     createdAt: '2026-08-05T10:05:00Z'
   }
 ];
+
+export const INITIAL_BROOKS_ADMISSIONS: StudentAdmissionApplication[] = [
+  {
+    id: 'app_bol_001',
+    tenantId: BROOKS_OF_LIFE_TENANT_ID,
+    applicationNumber: 'BOL-APP-2026-0001',
+    firstName: 'Jonathan',
+    middleName: 'Edwards',
+    lastName: 'King',
+    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&h=300&q=80',
+    dateOfBirth: '1995-04-12',
+    gender: 'MALE',
+    nationalIdOrPassport: 'GBR849201948',
+    phone: '+44 7700 900142',
+    email: 'j.king@example.org.uk',
+    address: '14 St. John’s Wood Road',
+    city: 'London',
+    postalCode: 'NW8 8QP',
+    country: 'United Kingdom',
+    emergencyContactName: 'Eleanor King',
+    emergencyContactPhone: '+44 7700 900199',
+    emergencyContactRelation: 'Spouse',
+    homeChurch: 'Grace City Fellowship London',
+    denomination: 'Independent Evangelical / Reformed',
+    ministryRole: 'Youth Pastor & Worship Deacon',
+    pastorName: 'Rev. Timothy Barnes',
+    pastorPhone: '+44 7700 900331',
+    pastorEmail: 't.barnes@gracecityfellowship.org.uk',
+    programmeId: 'prog_dip_pastoral',
+    programmeName: 'Diploma in Pastoral Theology & Biblical Studies',
+    programmeCode: 'DIP-PAST-THEO',
+    intake: 'September 2026',
+    centreId: 'centre_lon_main',
+    centreName: 'London Central Theological Assessment Centre',
+    studyMode: 'FULL_TIME_CAMPUS',
+    academicYear: '2026/2027',
+    previousEducation: [
+      {
+        id: 'edu_1',
+        institutionName: 'Kings College London Extension',
+        qualificationAwarded: 'A-Levels (Religious Studies, English, History)',
+        yearCompleted: 2014,
+        gradeOrScore: 'Grade A, B, B',
+        country: 'United Kingdom'
+      },
+      {
+        id: 'edu_2',
+        institutionName: 'London School of Theology Summer Institute',
+        qualificationAwarded: 'Certificate in Basic Hermeneutics',
+        yearCompleted: 2021,
+        gradeOrScore: 'Distinction',
+        country: 'United Kingdom'
+      }
+    ],
+    documents: [
+      {
+        id: 'doc_1',
+        name: 'Passport Photo Identification',
+        type: 'ID_PASSPORT',
+        fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+        fileName: 'passport_j_king.pdf',
+        fileSize: 1420000,
+        uploadedAt: '2026-07-10T14:30:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Original UK passport verified and certified by Admissions Officer.',
+        verifiedBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+        verifiedAt: '2026-07-12T09:15:00Z'
+      },
+      {
+        id: 'doc_2',
+        name: 'A-Level & Secondary Academic Certificates',
+        type: 'ACADEMIC_CERTIFICATE',
+        fileUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80',
+        fileName: 'academic_certificates_king.pdf',
+        fileSize: 2100000,
+        uploadedAt: '2026-07-10T14:35:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Meets matriculation prerequisites for Diploma programme.',
+        verifiedBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+        verifiedAt: '2026-07-12T09:18:00Z'
+      },
+      {
+        id: 'doc_3',
+        name: 'Pastoral Recommendation Letter',
+        type: 'RECOMMENDATION_LETTER',
+        fileUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80',
+        fileName: 'pastoral_reference_barnes.pdf',
+        fileSize: 850000,
+        uploadedAt: '2026-07-11T10:00:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Endorsement received from Grace City Fellowship senior minister.',
+        verifiedBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+        verifiedAt: '2026-07-12T09:20:00Z'
+      }
+    ],
+    interviews: [
+      {
+        id: 'int_1',
+        scheduledDate: '2026-07-18',
+        scheduledTime: '11:00',
+        mode: 'IN_PERSON',
+        locationOrLink: 'Dean’s Boardroom, Brooks of Life London Centre',
+        interviewerId: 'user_brooks_examiner_1',
+        interviewerName: 'Prof. David Olawale (Dean of Theology)',
+        status: 'COMPLETED',
+        score: 92,
+        notes: 'Exceptional theological clarity, strong spiritual maturity, exemplary pastoral calling, and keen desire for rigorous biblical scholarship.',
+        recommendation: 'STRONGLY_RECOMMEND',
+        conductedAt: '2026-07-18T11:45:00Z'
+      }
+    ],
+    reviewNotes: [
+      {
+        id: 'rn_1',
+        authorId: 'user_brooks_examiner_1',
+        authorName: 'Prof. David Olawale',
+        authorRole: 'Dean of Theology & Admissions Panelist',
+        note: 'Candidate meets all theological and academic criteria with high standing. Full unconditional admission approved.',
+        createdAt: '2026-07-18T12:00:00Z',
+        decision: 'ACCEPTED'
+      }
+    ],
+    auditTrail: [
+      {
+        id: 'aud_1',
+        action: 'CREATED',
+        description: 'Application BOL-APP-2026-0001 initiated online by applicant.',
+        performedBy: 'Jonathan Edwards King',
+        timestamp: '2026-07-10T14:20:00Z'
+      },
+      {
+        id: 'aud_2',
+        action: 'SUBMITTED',
+        description: 'Application submitted with 3 supporting credentials.',
+        performedBy: 'Jonathan Edwards King',
+        timestamp: '2026-07-11T10:15:00Z'
+      },
+      {
+        id: 'aud_3',
+        action: 'DOC_VERIFIED',
+        description: 'All 3 uploaded documents verified by Admissions Registry.',
+        performedBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+        timestamp: '2026-07-12T09:20:00Z'
+      },
+      {
+        id: 'aud_4',
+        action: 'INTERVIEW_COMPLETED',
+        description: 'Admissions interview completed with score 92/100 and Strongly Recommend.',
+        performedBy: 'Prof. David Olawale',
+        timestamp: '2026-07-18T11:45:00Z'
+      },
+      {
+        id: 'aud_5',
+        action: 'DECISION_MADE',
+        description: 'Application approved and status set to ACCEPTED.',
+        performedBy: 'Admissions Board',
+        timestamp: '2026-07-18T12:00:00Z'
+      },
+      {
+        id: 'aud_6',
+        action: 'ADMITTED',
+        description: 'Student profile created with Admission No: BOL/ADM/2026/001.',
+        performedBy: 'Academic Registrar',
+        timestamp: '2026-07-20T10:00:00Z'
+      },
+      {
+        id: 'aud_7',
+        action: 'LETTER_GENERATED',
+        description: 'Official Brooks of Life UK Admission Letter generated (Ref: BOL-LET-2026-001).',
+        performedBy: 'Academic Registrar',
+        timestamp: '2026-07-20T10:05:00Z'
+      },
+      {
+        id: 'aud_8',
+        action: 'REGISTERED',
+        description: 'Student registered for September 2026 academic intake.',
+        performedBy: 'Academic Registrar',
+        timestamp: '2026-07-22T09:00:00Z'
+      },
+      {
+        id: 'aud_9',
+        action: 'CANDIDATE_ENROLLED',
+        description: 'Enrolled in TEMS Candidates & Slips as candidate BOL/THEO/2026/001.',
+        performedBy: 'Examination Registry',
+        timestamp: '2026-08-01T08:30:00Z'
+      }
+    ],
+    status: 'REGISTERED',
+    decisionNotes: 'Unconditional admission granted. Highly qualified applicant.',
+    decisionDate: '2026-07-18T12:00:00Z',
+    decidedBy: 'Prof. David Olawale (Dean of Theology)',
+    admissionNumber: 'BOL/ADM/2026/001',
+    studentNumber: 'BOL-STU-2026-001',
+    studentId: 'stu_bol_001',
+    candidateId: 'cand_bol_001',
+    candidateNumber: 'BOL/THEO/2026/001',
+    admittedAt: '2026-07-20T10:00:00Z',
+    admittedBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+    registeredAt: '2026-07-22T09:00:00Z',
+    registeredBy: 'Dr. Rebecca Vance (Admissions Registrar)',
+    candidateEnrolledAt: '2026-08-01T08:30:00Z',
+    admissionLetterGenerated: true,
+    admissionLetterNumber: 'BOL-LET-2026-001',
+    admissionLetterDate: '2026-07-20',
+    admissionLetterVerificationCode: 'BOL-VER-ADM-849201948',
+    createdAt: '2026-07-10T14:20:00Z',
+    updatedAt: '2026-08-01T08:30:00Z'
+  },
+  {
+    id: 'app_bol_002',
+    tenantId: BROOKS_OF_LIFE_TENANT_ID,
+    applicationNumber: 'BOL-APP-2026-0002',
+    firstName: 'Sarah',
+    middleName: 'Grace',
+    lastName: 'Montgomery',
+    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&h=300&q=80',
+    dateOfBirth: '1998-09-24',
+    gender: 'FEMALE',
+    nationalIdOrPassport: 'GBR559102834',
+    phone: '+44 7700 900551',
+    email: 'sarah.montgomery@example.co.uk',
+    address: '88 Victoria Crescent',
+    city: 'Birmingham',
+    postalCode: 'B15 2ET',
+    country: 'United Kingdom',
+    emergencyContactName: 'Mark Montgomery',
+    emergencyContactPhone: '+44 7700 900559',
+    emergencyContactRelation: 'Father',
+    homeChurch: 'Bethel Community Chapel Birmingham',
+    denomination: 'Pentecostal / Assemblies of God',
+    ministryRole: 'Children’s Ministry Director',
+    pastorName: 'Pastor Marcus Cole',
+    pastorPhone: '+44 7700 900882',
+    pastorEmail: 'm.cole@bethelchapel.co.uk',
+    programmeId: 'prog_cert_biblical',
+    programmeName: 'Certificate in Biblical & Ministry Foundations',
+    programmeCode: 'CERT-BIBL',
+    intake: 'September 2026',
+    centreId: 'centre_bir_02',
+    centreName: 'Birmingham Grace Examination Hall',
+    studyMode: 'HYBRID_INTENSIVE',
+    academicYear: '2026/2027',
+    previousEducation: [
+      {
+        id: 'edu_3',
+        institutionName: 'University of Birmingham',
+        qualificationAwarded: 'BSc Psychology & Education',
+        yearCompleted: 2020,
+        gradeOrScore: 'First Class Honours (2:1)',
+        country: 'United Kingdom'
+      }
+    ],
+    documents: [
+      {
+        id: 'doc_4',
+        name: 'Passport & Identity Document',
+        type: 'ID_PASSPORT',
+        fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+        fileName: 'passport_sarah_montgomery.pdf',
+        fileSize: 1650000,
+        uploadedAt: '2026-07-25T11:00:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Verified UK Citizen.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-07-26T14:00:00Z'
+      },
+      {
+        id: 'doc_5',
+        name: 'Degree Transcript & Certificate',
+        type: 'TRANSCRIPT',
+        fileUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80',
+        fileName: 'uob_transcript_montgomery.pdf',
+        fileSize: 1890000,
+        uploadedAt: '2026-07-25T11:05:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Degree confirmed directly.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-07-26T14:02:00Z'
+      }
+    ],
+    interviews: [
+      {
+        id: 'int_2',
+        scheduledDate: '2026-08-02',
+        scheduledTime: '14:00',
+        mode: 'VIDEO_CALL',
+        locationOrLink: 'https://meet.google.com/bol-adm-interview',
+        interviewerId: 'user_brooks_examiner_2',
+        interviewerName: 'Dr. Elizabeth Campbell (Systematic Theology)',
+        status: 'COMPLETED',
+        score: 88,
+        notes: 'Strong grasp of foundational Christian doctrines, heartfelt commitment to ministry leadership training.',
+        recommendation: 'RECOMMEND',
+        conductedAt: '2026-08-02T14:35:00Z'
+      }
+    ],
+    reviewNotes: [
+      {
+        id: 'rn_2',
+        authorId: 'user_brooks_examiner_2',
+        authorName: 'Dr. Elizabeth Campbell',
+        authorRole: 'Faculty Admissions Examiner',
+        note: 'Applicant recommended for admission. Application passed review unconditionally.',
+        createdAt: '2026-08-02T15:00:00Z',
+        decision: 'ACCEPTED'
+      }
+    ],
+    auditTrail: [
+      {
+        id: 'aud_10',
+        action: 'CREATED',
+        description: 'Application BOL-APP-2026-0002 created.',
+        performedBy: 'Sarah Grace Montgomery',
+        timestamp: '2026-07-25T10:45:00Z'
+      },
+      {
+        id: 'aud_11',
+        action: 'SUBMITTED',
+        description: 'Submitted for September 2026 intake.',
+        performedBy: 'Sarah Grace Montgomery',
+        timestamp: '2026-07-25T11:15:00Z'
+      },
+      {
+        id: 'aud_12',
+        action: 'DOC_VERIFIED',
+        description: 'Transcripts and identity documents verified.',
+        performedBy: 'Dr. Rebecca Vance',
+        timestamp: '2026-07-26T14:02:00Z'
+      },
+      {
+        id: 'aud_13',
+        action: 'INTERVIEW_COMPLETED',
+        description: 'Interview scored 88/100.',
+        performedBy: 'Dr. Elizabeth Campbell',
+        timestamp: '2026-08-02T14:35:00Z'
+      },
+      {
+        id: 'aud_14',
+        action: 'STATUS_CHANGED',
+        description: 'Status moved to ACCEPTED. Ready for Approve & Admit.',
+        performedBy: 'Admissions Board',
+        timestamp: '2026-08-02T15:00:00Z'
+      }
+    ],
+    status: 'ACCEPTED',
+    decisionNotes: 'Application accepted. Ready for formal admission and student profile issuance.',
+    decisionDate: '2026-08-02T15:00:00Z',
+    decidedBy: 'Dr. Elizabeth Campbell',
+    createdAt: '2026-07-25T10:45:00Z',
+    updatedAt: '2026-08-02T15:00:00Z'
+  },
+  {
+    id: 'app_bol_003',
+    tenantId: BROOKS_OF_LIFE_TENANT_ID,
+    applicationNumber: 'BOL-APP-2026-0003',
+    firstName: 'Emmanuel',
+    middleName: 'Kofi',
+    lastName: 'Mensah',
+    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&h=300&q=80',
+    dateOfBirth: '1992-11-05',
+    gender: 'MALE',
+    nationalIdOrPassport: 'GHA901847192',
+    phone: '+44 7700 900712',
+    email: 'e.mensah@charismaministry.org',
+    address: '42 Trinity Close',
+    city: 'Manchester',
+    postalCode: 'M14 6WR',
+    country: 'United Kingdom',
+    emergencyContactName: 'Abena Mensah',
+    emergencyContactPhone: '+44 7700 900719',
+    emergencyContactRelation: 'Sister',
+    homeChurch: 'Christ’s Ambassadors International Manchester',
+    denomination: 'Charismatic / Pentecostal',
+    ministryRole: 'Evangelism Coordinator',
+    pastorName: 'Bishop Isaac Appiah',
+    pastorPhone: '+44 7700 900993',
+    pastorEmail: 'bishop.appiah@caiministry.org',
+    programmeId: 'prog_bdiv_theology',
+    programmeName: 'Bachelor of Divinity in Theological Studies',
+    programmeCode: 'B-DIV',
+    intake: 'January 2027',
+    centreId: 'centre_man_03',
+    centreName: 'Manchester Ecclesia Examination Centre',
+    studyMode: 'DISTANCE_ONLINE',
+    academicYear: '2026/2027',
+    previousEducation: [
+      {
+        id: 'edu_4',
+        institutionName: 'University of Ghana Extension',
+        qualificationAwarded: 'Diploma in Religious Studies',
+        yearCompleted: 2018,
+        gradeOrScore: 'Credit',
+        country: 'Ghana'
+      }
+    ],
+    documents: [
+      {
+        id: 'doc_6',
+        name: 'Passport Identification',
+        type: 'ID_PASSPORT',
+        fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+        fileName: 'passport_e_mensah.pdf',
+        fileSize: 1540000,
+        uploadedAt: '2026-08-10T16:00:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Valid international passport with UK visa status.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-08-12T11:00:00Z'
+      },
+      {
+        id: 'doc_7',
+        name: 'Theological Recommendation Letter',
+        type: 'RECOMMENDATION_LETTER',
+        fileUrl: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80',
+        fileName: 'bishop_appiah_recommendation.pdf',
+        fileSize: 920000,
+        uploadedAt: '2026-08-10T16:10:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'Direct verification confirmed with Bishop Appiah.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-08-12T11:05:00Z'
+      }
+    ],
+    interviews: [
+      {
+        id: 'int_3',
+        scheduledDate: '2026-08-25',
+        scheduledTime: '15:30',
+        mode: 'VIDEO_CALL',
+        locationOrLink: 'https://meet.google.com/bol-mensah-int',
+        interviewerId: 'user_brooks_examiner_1',
+        interviewerName: 'Prof. David Olawale (Dean of Theology)',
+        status: 'SCHEDULED'
+      }
+    ],
+    reviewNotes: [
+      {
+        id: 'rn_3',
+        authorId: 'user_brooks_admin',
+        authorName: 'Dr. Rebecca Vance',
+        authorRole: 'Admissions Registrar',
+        note: 'Documents verified. Interview scheduled with Dean for Bachelor of Divinity degree assessment.',
+        createdAt: '2026-08-12T11:15:00Z',
+        decision: 'UNDER_REVIEW'
+      }
+    ],
+    auditTrail: [
+      {
+        id: 'aud_15',
+        action: 'CREATED',
+        description: 'Application BOL-APP-2026-0003 initiated.',
+        performedBy: 'Emmanuel Kofi Mensah',
+        timestamp: '2026-08-10T15:45:00Z'
+      },
+      {
+        id: 'aud_16',
+        action: 'SUBMITTED',
+        description: 'Submitted for January 2027 intake.',
+        performedBy: 'Emmanuel Kofi Mensah',
+        timestamp: '2026-08-10T16:20:00Z'
+      },
+      {
+        id: 'aud_17',
+        action: 'STATUS_CHANGED',
+        description: 'Status updated to UNDER_REVIEW.',
+        performedBy: 'Dr. Rebecca Vance',
+        timestamp: '2026-08-12T11:15:00Z'
+      },
+      {
+        id: 'aud_18',
+        action: 'INTERVIEW_SCHEDULED',
+        description: 'Interview scheduled for 25 Aug 2026 with Prof. David Olawale.',
+        performedBy: 'Dr. Rebecca Vance',
+        timestamp: '2026-08-12T11:20:00Z'
+      }
+    ],
+    status: 'UNDER_REVIEW',
+    createdAt: '2026-08-10T15:45:00Z',
+    updatedAt: '2026-08-12T11:20:00Z'
+  },
+  {
+    id: 'app_bol_004',
+    tenantId: BROOKS_OF_LIFE_TENANT_ID,
+    applicationNumber: 'BOL-APP-2026-0004',
+    firstName: 'Deborah',
+    middleName: 'Ann',
+    lastName: 'Thorpe',
+    photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&h=300&q=80',
+    dateOfBirth: '1987-03-18',
+    gender: 'FEMALE',
+    nationalIdOrPassport: 'GBR781920391',
+    phone: '+44 7700 900234',
+    email: 'd.thorpe@methodistchurch.org.uk',
+    address: '19 Wesley Lane',
+    city: 'Leeds',
+    postalCode: 'LS2 9JT',
+    country: 'United Kingdom',
+    emergencyContactName: 'Christopher Thorpe',
+    emergencyContactPhone: '+44 7700 900239',
+    emergencyContactRelation: 'Spouse',
+    homeChurch: 'Trinity Methodist Circuit Leeds',
+    denomination: 'Methodist Church of Great Britain',
+    ministryRole: 'Local Preacher & Pastoral Visitor',
+    pastorName: 'Rev. Gillian Shaw',
+    pastorPhone: '+44 7700 900612',
+    pastorEmail: 'g.shaw@methodistleeds.org.uk',
+    programmeId: 'prog_dip_pastoral',
+    programmeName: 'Diploma in Pastoral Theology & Biblical Studies',
+    programmeCode: 'DIP-PAST-THEO',
+    intake: 'September 2026',
+    centreId: 'centre_lee_04',
+    centreName: 'Leeds Academic & Ministry Centre',
+    studyMode: 'PART_TIME_EVENING',
+    academicYear: '2026/2027',
+    previousEducation: [
+      {
+        id: 'edu_5',
+        institutionName: 'Leeds Metropolitan College',
+        qualificationAwarded: 'BTEC National Diploma',
+        yearCompleted: 2006,
+        gradeOrScore: 'Merit',
+        country: 'United Kingdom'
+      }
+    ],
+    documents: [
+      {
+        id: 'doc_8',
+        name: 'Passport Identification',
+        type: 'ID_PASSPORT',
+        fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+        fileName: 'passport_d_thorpe.pdf',
+        fileSize: 1320000,
+        uploadedAt: '2026-08-14T09:00:00Z',
+        status: 'VERIFIED',
+        verificationNotes: 'UK passport verified.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-08-15T10:00:00Z'
+      },
+      {
+        id: 'doc_9',
+        name: 'Academic Transcript',
+        type: 'TRANSCRIPT',
+        fileUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80',
+        fileName: 'btec_transcript_unclear.pdf',
+        fileSize: 450000,
+        uploadedAt: '2026-08-14T09:05:00Z',
+        status: 'REJECTED',
+        verificationNotes: 'Scan is blurry and incomplete. Please upload an official sealed or high-res certified copy.',
+        verifiedBy: 'Dr. Rebecca Vance',
+        verifiedAt: '2026-08-15T10:05:00Z'
+      }
+    ],
+    interviews: [],
+    reviewNotes: [
+      {
+        id: 'rn_4',
+        authorId: 'user_brooks_admin',
+        authorName: 'Dr. Rebecca Vance',
+        authorRole: 'Admissions Registrar',
+        note: 'Transcript upload was unreadable. Applicant notified via automated email to upload clearer certified copy.',
+        createdAt: '2026-08-15T10:10:00Z',
+        decision: 'DOCUMENTS_REQUIRED'
+      }
+    ],
+    auditTrail: [
+      {
+        id: 'aud_19',
+        action: 'CREATED',
+        description: 'Application BOL-APP-2026-0004 created.',
+        performedBy: 'Deborah Ann Thorpe',
+        timestamp: '2026-08-14T08:50:00Z'
+      },
+      {
+        id: 'aud_20',
+        action: 'SUBMITTED',
+        description: 'Application submitted for Diploma in Pastoral Theology.',
+        performedBy: 'Deborah Ann Thorpe',
+        timestamp: '2026-08-14T09:10:00Z'
+      },
+      {
+        id: 'aud_21',
+        action: 'DOC_REJECTED',
+        description: 'Transcript rejected due to low resolution scan.',
+        performedBy: 'Dr. Rebecca Vance',
+        timestamp: '2026-08-15T10:05:00Z'
+      },
+      {
+        id: 'aud_22',
+        action: 'STATUS_CHANGED',
+        description: 'Status changed to DOCUMENTS_REQUIRED.',
+        performedBy: 'Dr. Rebecca Vance',
+        timestamp: '2026-08-15T10:10:00Z'
+      }
+    ],
+    status: 'DOCUMENTS_REQUIRED',
+    decisionNotes: 'Clear official copy of academic transcript required before interview can be scheduled.',
+    createdAt: '2026-08-14T08:50:00Z',
+    updatedAt: '2026-08-15T10:10:00Z'
+  },
+  {
+    id: 'app_bol_005',
+    tenantId: BROOKS_OF_LIFE_TENANT_ID,
+    applicationNumber: 'BOL-APP-2026-0005',
+    firstName: 'Marcus',
+    middleName: 'Alexander',
+    lastName: 'Sterling',
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&h=300&q=80',
+    dateOfBirth: '1999-01-20',
+    gender: 'MALE',
+    nationalIdOrPassport: 'GBR690184711',
+    phone: '+44 7700 900456',
+    email: 'm.sterling@harvestchurch.org',
+    address: '55 St. Andrew Square',
+    city: 'Edinburgh',
+    postalCode: 'EH2 2AD',
+    country: 'United Kingdom',
+    emergencyContactName: 'Fiona Sterling',
+    emergencyContactPhone: '+44 7700 900459',
+    emergencyContactRelation: 'Mother',
+    homeChurch: 'Harvest Christian Centre Edinburgh',
+    denomination: 'Church of Scotland / Reformed Evangelical',
+    ministryRole: 'Audio/Visual & Media Assistant',
+    pastorName: 'Rev. Alistair MacLeod',
+    pastorPhone: '+44 7700 900789',
+    pastorEmail: 'a.macleod@harvestchurch.org',
+    programmeId: 'prog_cert_biblical',
+    programmeName: 'Certificate in Biblical & Ministry Foundations',
+    programmeCode: 'CERT-BIBL',
+    intake: 'September 2026',
+    centreId: 'centre_edi_05',
+    centreName: 'Edinburgh St. Columba Study Centre',
+    studyMode: 'DISTANCE_ONLINE',
+    academicYear: '2026/2027',
+    previousEducation: [
+      {
+        id: 'edu_6',
+        institutionName: 'Edinburgh Academy',
+        qualificationAwarded: 'Scottish Highers (5 Subjects)',
+        yearCompleted: 2017,
+        gradeOrScore: 'Grade A, A, B, B, C',
+        country: 'United Kingdom'
+      }
+    ],
+    documents: [
+      {
+        id: 'doc_10',
+        name: 'Passport Photo ID',
+        type: 'ID_PASSPORT',
+        fileUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=600&q=80',
+        fileName: 'sterling_passport.pdf',
+        fileSize: 1200000,
+        uploadedAt: '2026-08-18T14:00:00Z',
+        status: 'SUBMITTED'
+      },
+      {
+        id: 'doc_11',
+        name: 'Scottish Highers Certificate',
+        type: 'ACADEMIC_CERTIFICATE',
+        fileUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=600&q=80',
+        fileName: 'highers_cert.pdf',
+        fileSize: 1750000,
+        uploadedAt: '2026-08-18T14:05:00Z',
+        status: 'SUBMITTED'
+      }
+    ],
+    interviews: [],
+    reviewNotes: [],
+    auditTrail: [
+      {
+        id: 'aud_23',
+        action: 'CREATED',
+        description: 'Application BOL-APP-2026-0005 created online.',
+        performedBy: 'Marcus Alexander Sterling',
+        timestamp: '2026-08-18T13:50:00Z'
+      },
+      {
+        id: 'aud_24',
+        action: 'SUBMITTED',
+        description: 'Application submitted for initial triage and review.',
+        performedBy: 'Marcus Alexander Sterling',
+        timestamp: '2026-08-18T14:10:00Z'
+      }
+    ],
+    status: 'PENDING_REVIEW',
+    createdAt: '2026-08-18T13:50:00Z',
+    updatedAt: '2026-08-18T14:10:00Z'
+  }
+];
+

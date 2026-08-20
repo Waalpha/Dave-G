@@ -38,6 +38,8 @@ import {
   OfficialCertificateRecord, CertificateVerificationLookupResult,
   TVScheduleItem, MediaContentItem, MinistryEventRecord, TheologicalArticleRecord,
   TemsFeeScheduleItem, TemsPaymentRecord, CandidateProfile,
+  StudentAdmissionApplication, AdmissionsApplicationStatus, AdmissionsDocument,
+  AdmissionsDocumentStatus, AdmissionsInterview, AdmissionsReviewNote, AdmissionsAuditEntry,
   PrinterDevice, UniversalReceipt, PrintJobRecord, PrinterAuditLog, ReceiptItem
 } from '../types';
 
@@ -50,7 +52,7 @@ import {
   INITIAL_BROOKS_RPL_APPLICATIONS, INITIAL_BROOKS_RESULTS, INITIAL_BROOKS_TRANSCRIPTS,
   INITIAL_BROOKS_CERTIFICATES, INITIAL_BROOKS_TV_SCHEDULE, INITIAL_BROOKS_MEDIA,
   INITIAL_BROOKS_EVENTS, INITIAL_BROOKS_ARTICLES, INITIAL_BROOKS_FEE_SCHEDULE,
-  INITIAL_BROOKS_PAYMENTS
+  INITIAL_BROOKS_PAYMENTS, INITIAL_BROOKS_ADMISSIONS
 } from './brooksOfLifeInitialData';
 
 export function hashPassword(password: string, userId: string = 'global_salt'): string {
@@ -573,6 +575,7 @@ class DatabaseStore {
   private theologicalArticles: TheologicalArticleRecord[] = [...INITIAL_BROOKS_ARTICLES];
   private temsFeeSchedules: TemsFeeScheduleItem[] = [...INITIAL_BROOKS_FEE_SCHEDULE];
   private temsPayments: TemsPaymentRecord[] = [...INITIAL_BROOKS_PAYMENTS];
+  private studentAdmissions: StudentAdmissionApplication[] = [...INITIAL_BROOKS_ADMISSIONS];
   private printers: PrinterDevice[] = [];
   private universalReceipts: UniversalReceipt[] = [];
   private printJobs: PrintJobRecord[] = [];
@@ -748,7 +751,8 @@ class DatabaseStore {
         ministryEvents: this.ministryEvents,
         theologicalArticles: this.theologicalArticles,
         temsFeeSchedules: this.temsFeeSchedules,
-        temsPayments: this.temsPayments
+        temsPayments: this.temsPayments,
+        studentAdmissions: this.studentAdmissions
       };
       fs.writeFileSync(this.getDiskBackupPath(), JSON.stringify(data, null, 2), 'utf8');
     } catch (err) {
@@ -897,6 +901,7 @@ class DatabaseStore {
         if (Array.isArray(data.theologicalArticles)) this.theologicalArticles = data.theologicalArticles;
         if (Array.isArray(data.temsFeeSchedules)) this.temsFeeSchedules = data.temsFeeSchedules;
         if (Array.isArray(data.temsPayments)) this.temsPayments = data.temsPayments;
+        if (Array.isArray(data.studentAdmissions)) this.studentAdmissions = data.studentAdmissions;
         console.log('[DatabaseStore] Successfully loaded cache from disk');
       }
     } catch (err) {
@@ -1197,6 +1202,11 @@ class DatabaseStore {
 
       const dbMortuary = await loadCollectionFromFirestore<MortuaryRecord>('healthcareMortuary');
       this.mortuaryRecords = Array.isArray(dbMortuary) ? dbMortuary : [];
+
+      const dbStudentAdmissions = await loadCollectionFromFirestore<StudentAdmissionApplication>('studentAdmissions');
+      if (Array.isArray(dbStudentAdmissions) && dbStudentAdmissions.length > 0) {
+        this.studentAdmissions = dbStudentAdmissions;
+      }
 
       const dbNotifications = await loadCollectionFromFirestore<PlatformNotification>('notifications');
       this.notifications = Array.isArray(dbNotifications) && dbNotifications.length > 0 ? dbNotifications : [...INITIAL_NOTIFICATIONS];
@@ -9916,6 +9926,819 @@ class DatabaseStore {
     return log;
   }
 
+  // ==========================================================================
+  // BROOKS OF LIFE UK — STUDENT ADMISSIONS MODULE METHODS
+  // ==========================================================================
+
+  public getStudentAdmissions(
+    tenantId: string,
+    filters?: {
+      status?: string;
+      programmeId?: string;
+      intake?: string;
+      centreId?: string;
+      search?: string;
+    }
+  ): StudentAdmissionApplication[] {
+    let list = this.studentAdmissions.filter(a => a.tenantId === tenantId);
+
+    if (filters?.status && filters.status !== 'ALL') {
+      list = list.filter(a => a.status === filters.status);
+    }
+    if (filters?.programmeId && filters.programmeId !== 'ALL') {
+      list = list.filter(a => a.programmeId === filters.programmeId);
+    }
+    if (filters?.intake && filters.intake !== 'ALL') {
+      list = list.filter(a => a.intake === filters.intake);
+    }
+    if (filters?.centreId && filters.centreId !== 'ALL') {
+      list = list.filter(a => a.centreId === filters.centreId);
+    }
+    if (filters?.search && filters.search.trim()) {
+      const q = filters.search.toLowerCase().trim();
+      list = list.filter(a =>
+        a.applicationNumber.toLowerCase().includes(q) ||
+        a.firstName.toLowerCase().includes(q) ||
+        a.lastName.toLowerCase().includes(q) ||
+        (a.middleName && a.middleName.toLowerCase().includes(q)) ||
+        a.email.toLowerCase().includes(q) ||
+        a.phone.toLowerCase().includes(q) ||
+        a.nationalIdOrPassport.toLowerCase().includes(q) ||
+        (a.admissionNumber && a.admissionNumber.toLowerCase().includes(q)) ||
+        (a.studentNumber && a.studentNumber.toLowerCase().includes(q)) ||
+        (a.candidateNumber && a.candidateNumber.toLowerCase().includes(q)) ||
+        a.programmeName.toLowerCase().includes(q) ||
+        a.centreName.toLowerCase().includes(q)
+      );
+    }
+
+    return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  public getStudentAdmissionById(tenantId: string, id: string): StudentAdmissionApplication | undefined {
+    return this.studentAdmissions.find(
+      a => a.tenantId === tenantId && (a.id === id || a.applicationNumber === id || a.admissionNumber === id || a.studentNumber === id)
+    );
+  }
+
+  public checkAdmissionDuplicates(
+    tenantId: string,
+    params: {
+      nationalIdOrPassport?: string;
+      email?: string;
+      phone?: string;
+      fullName?: string;
+      dateOfBirth?: string;
+      excludeId?: string;
+    }
+  ): {
+    isDuplicate: boolean;
+    matchedBy: string[];
+    existingApplications: StudentAdmissionApplication[];
+    existingStudents: Student[];
+    existingCandidates: CandidateProfile[];
+  } {
+    const matchedBy: string[] = [];
+    const matchedApps: StudentAdmissionApplication[] = [];
+    const matchedStudents: Student[] = [];
+    const matchedCandidates: CandidateProfile[] = [];
+
+    const normId = params.nationalIdOrPassport?.trim().toLowerCase();
+    const normEmail = params.email?.trim().toLowerCase();
+    const normPhone = params.phone?.replace(/[\s\-\(\)\+]/g, '');
+    const normName = params.fullName?.trim().toLowerCase();
+    const normDob = params.dateOfBirth?.trim();
+
+    // Check Applications
+    this.studentAdmissions
+      .filter(a => a.tenantId === tenantId && (!params.excludeId || a.id !== params.excludeId))
+      .forEach(a => {
+        let matched = false;
+        if (normId && a.nationalIdOrPassport.toLowerCase() === normId) {
+          if (!matchedBy.includes('ID/Passport')) matchedBy.push('ID/Passport');
+          matched = true;
+        }
+        if (normEmail && a.email.toLowerCase() === normEmail) {
+          if (!matchedBy.includes('Email Address')) matchedBy.push('Email Address');
+          matched = true;
+        }
+        if (normPhone && a.phone.replace(/[\s\-\(\)\+]/g, '') === normPhone) {
+          if (!matchedBy.includes('Phone Number')) matchedBy.push('Phone Number');
+          matched = true;
+        }
+        const aFullName = `${a.firstName} ${a.middleName || ''} ${a.lastName}`.trim().toLowerCase();
+        if (normName && normDob && aFullName === normName && a.dateOfBirth === normDob) {
+          if (!matchedBy.includes('Full Name & Date of Birth')) matchedBy.push('Full Name & Date of Birth');
+          matched = true;
+        }
+        if (matched) matchedApps.push(a);
+      });
+
+    // Check Students
+    this.students
+      .filter(s => s.tenantId === tenantId)
+      .forEach(s => {
+        let matched = false;
+        if (normId && s.nationalId && s.nationalId.toLowerCase() === normId) {
+          if (!matchedBy.includes('ID/Passport (Existing Student)')) matchedBy.push('ID/Passport (Existing Student)');
+          matched = true;
+        }
+        if (normEmail && s.email && s.email.toLowerCase() === normEmail) {
+          if (!matchedBy.includes('Email Address (Existing Student)')) matchedBy.push('Email Address (Existing Student)');
+          matched = true;
+        }
+        if (normPhone && s.phone && s.phone.replace(/[\s\-\(\)\+]/g, '') === normPhone) {
+          if (!matchedBy.includes('Phone Number (Existing Student)')) matchedBy.push('Phone Number (Existing Student)');
+          matched = true;
+        }
+        if (normName && normDob && s.fullName.toLowerCase() === normName && s.dateOfBirth === normDob) {
+          if (!matchedBy.includes('Full Name & DOB (Existing Student)')) matchedBy.push('Full Name & DOB (Existing Student)');
+          matched = true;
+        }
+        if (matched) matchedStudents.push(s);
+      });
+
+    // Check CandidateProfiles
+    this.candidateProfiles
+      .filter(c => c.tenantId === tenantId)
+      .forEach(c => {
+        let matched = false;
+        if (normId && c.nationalIdOrPassport && c.nationalIdOrPassport.toLowerCase() === normId) {
+          if (!matchedBy.includes('ID/Passport (TEMS Candidate)')) matchedBy.push('ID/Passport (TEMS Candidate)');
+          matched = true;
+        }
+        if (normEmail && c.email && c.email.toLowerCase() === normEmail) {
+          if (!matchedBy.includes('Email Address (TEMS Candidate)')) matchedBy.push('Email Address (TEMS Candidate)');
+          matched = true;
+        }
+        if (matched) matchedCandidates.push(c);
+      });
+
+    return {
+      isDuplicate: matchedBy.length > 0,
+      matchedBy,
+      existingApplications: matchedApps,
+      existingStudents: matchedStudents,
+      existingCandidates: matchedCandidates
+    };
+  }
+
+  public async saveStudentAdmission(
+    tenantId: string,
+    data: Partial<StudentAdmissionApplication>,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const actorName = requestingUser?.name || requestingUser?.email || 'Applicant / Admissions Staff';
+    const existingIndex = this.studentAdmissions.findIndex(a => a.tenantId === tenantId && a.id === data.id);
+
+    if (existingIndex >= 0) {
+      const prev = this.studentAdmissions[existingIndex];
+      const auditTrail = [...(prev.auditTrail || [])];
+
+      if (data.status && data.status !== prev.status) {
+        auditTrail.push({
+          id: `aud_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          action: 'STATUS_CHANGED',
+          description: `Application status changed from ${prev.status} to ${data.status}.`,
+          performedBy: actorName,
+          performedById: requestingUser?.id,
+          timestamp: new Date().toISOString(),
+          previousValue: prev.status,
+          newValue: data.status
+        });
+      }
+
+      const updated: StudentAdmissionApplication = {
+        ...prev,
+        ...data,
+        auditTrail,
+        updatedAt: new Date().toISOString()
+      };
+
+      this.studentAdmissions[existingIndex] = updated;
+      await this.persistDoc('studentAdmissions', updated.id, updated);
+      this.saveToDiskBackup();
+      return updated;
+    } else {
+      const count = this.studentAdmissions.filter(a => a.tenantId === tenantId).length + 1;
+      const appNumber = data.applicationNumber || `BOL-APP-${new Date().getFullYear()}-${String(count).padStart(4, '0')}`;
+      const newId = data.id || `app_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const isDraft = data.status === 'DRAFT';
+
+      const auditTrail: AdmissionsAuditEntry[] = [
+        {
+          id: `aud_${Date.now()}_1`,
+          action: isDraft ? 'CREATED' : 'SUBMITTED',
+          description: isDraft
+            ? `Draft application ${appNumber} created.`
+            : `Application ${appNumber} submitted for ${data.programmeName || 'Theology Programme'}.`,
+          performedBy: actorName,
+          performedById: requestingUser?.id,
+          timestamp: new Date().toISOString()
+        }
+      ];
+
+      const newApp: StudentAdmissionApplication = {
+        id: newId,
+        tenantId,
+        applicationNumber: appNumber,
+        firstName: data.firstName || '',
+        middleName: data.middleName || '',
+        lastName: data.lastName || '',
+        photoUrl: data.photoUrl || '',
+        dateOfBirth: data.dateOfBirth || '',
+        gender: data.gender || 'MALE',
+        nationalIdOrPassport: data.nationalIdOrPassport || '',
+        phone: data.phone || '',
+        email: data.email || '',
+        address: data.address || '',
+        city: data.city || 'London',
+        postalCode: data.postalCode || '',
+        country: data.country || 'United Kingdom',
+        emergencyContactName: data.emergencyContactName || '',
+        emergencyContactPhone: data.emergencyContactPhone || '',
+        emergencyContactRelation: data.emergencyContactRelation || '',
+        homeChurch: data.homeChurch || '',
+        denomination: data.denomination || '',
+        ministryRole: data.ministryRole || '',
+        pastorName: data.pastorName || '',
+        pastorPhone: data.pastorPhone || '',
+        pastorEmail: data.pastorEmail || '',
+        programmeId: data.programmeId || '',
+        programmeName: data.programmeName || '',
+        programmeCode: data.programmeCode || '',
+        intake: data.intake || 'September 2026',
+        centreId: data.centreId || '',
+        centreName: data.centreName || '',
+        studyMode: data.studyMode || 'FULL_TIME_CAMPUS',
+        academicYear: data.academicYear || '2026/2027',
+        previousEducation: data.previousEducation || [],
+        documents: data.documents || [],
+        interviews: data.interviews || [],
+        reviewNotes: data.reviewNotes || [],
+        auditTrail,
+        status: data.status || 'SUBMITTED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      this.studentAdmissions.unshift(newApp);
+      await this.persistDoc('studentAdmissions', newApp.id, newApp);
+      this.saveToDiskBackup();
+      return newApp;
+    }
+  }
+
+  public async deleteStudentAdmission(tenantId: string, id: string, requestingUser?: User): Promise<boolean> {
+    const idx = this.studentAdmissions.findIndex(a => a.tenantId === tenantId && a.id === id);
+    if (idx >= 0) {
+      this.studentAdmissions.splice(idx, 1);
+      await deleteDocFromFirestore('studentAdmissions', id);
+      this.saveToDiskBackup();
+      return true;
+    }
+    return false;
+  }
+
+  public async addAdmissionDocument(
+    tenantId: string,
+    applicationId: string,
+    doc: Partial<AdmissionsDocument>,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const newDoc: AdmissionsDocument = {
+      id: doc.id || `doc_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: doc.name || 'Uploaded Document',
+      type: doc.type || 'OTHER',
+      fileUrl: doc.fileUrl || '',
+      fileName: doc.fileName || 'document.pdf',
+      fileSize: doc.fileSize || 1024,
+      uploadedAt: new Date().toISOString(),
+      status: doc.status || 'SUBMITTED',
+      verificationNotes: doc.verificationNotes || ''
+    };
+
+    app.documents = [...(app.documents || []), newDoc];
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'DOC_UPLOADED',
+        description: `Document uploaded: ${newDoc.name} (${newDoc.type}).`,
+        performedBy: requestingUser?.name || requestingUser?.email || 'Applicant / Staff',
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return app;
+  }
+
+  public async updateAdmissionDocumentStatus(
+    tenantId: string,
+    applicationId: string,
+    docId: string,
+    status: AdmissionsDocumentStatus,
+    verificationNotes?: string,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const docIndex = app.documents.findIndex(d => d.id === docId);
+    if (docIndex < 0) throw new Error('Document not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Admissions Officer';
+    app.documents[docIndex] = {
+      ...app.documents[docIndex],
+      status,
+      verificationNotes: verificationNotes || app.documents[docIndex].verificationNotes,
+      verifiedBy: status === 'VERIFIED' ? actor : undefined,
+      verifiedAt: status === 'VERIFIED' ? new Date().toISOString() : undefined
+    };
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: status === 'VERIFIED' ? 'DOC_VERIFIED' : status === 'REJECTED' ? 'DOC_REJECTED' : 'STATUS_CHANGED',
+        description: `Document "${app.documents[docIndex].name}" status updated to ${status}.${verificationNotes ? ` Note: ${verificationNotes}` : ''}`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+
+    // Auto-update application status if all verified or if documents required
+    if (status === 'REJECTED') {
+      app.status = 'DOCUMENTS_REQUIRED';
+    }
+
+    app.updatedAt = new Date().toISOString();
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return app;
+  }
+
+  public async scheduleAdmissionInterview(
+    tenantId: string,
+    applicationId: string,
+    interview: Partial<AdmissionsInterview>,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const newInterview: AdmissionsInterview = {
+      id: interview.id || `int_${Date.now()}`,
+      scheduledDate: interview.scheduledDate || new Date().toISOString().split('T')[0],
+      scheduledTime: interview.scheduledTime || '10:00',
+      mode: interview.mode || 'IN_PERSON',
+      locationOrLink: interview.locationOrLink || 'Brooks of Life Theological Assessment Hall',
+      interviewerId: interview.interviewerId || requestingUser?.id,
+      interviewerName: interview.interviewerName || requestingUser?.name || 'Admissions Panel',
+      status: 'SCHEDULED',
+      notes: interview.notes || ''
+    };
+
+    app.interviews = [...(app.interviews || []), newInterview];
+    app.status = 'UNDER_REVIEW';
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'INTERVIEW_SCHEDULED',
+        description: `Admissions interview scheduled on ${newInterview.scheduledDate} at ${newInterview.scheduledTime} with ${newInterview.interviewerName}.`,
+        performedBy: requestingUser?.name || requestingUser?.email || 'Admissions Panel',
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return app;
+  }
+
+  public async updateAdmissionInterview(
+    tenantId: string,
+    applicationId: string,
+    interviewId: string,
+    update: Partial<AdmissionsInterview>,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const intIndex = app.interviews.findIndex(i => i.id === interviewId);
+    if (intIndex < 0) throw new Error('Interview not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Interviewer';
+    app.interviews[intIndex] = {
+      ...app.interviews[intIndex],
+      ...update,
+      conductedAt: update.status === 'COMPLETED' ? new Date().toISOString() : app.interviews[intIndex].conductedAt
+    };
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'INTERVIEW_COMPLETED',
+        description: `Interview ${update.status === 'COMPLETED' ? 'completed' : 'updated'}. Score: ${update.score ?? 'N/A'}/100. Recommendation: ${update.recommendation || 'N/A'}.`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+
+    app.updatedAt = new Date().toISOString();
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return app;
+  }
+
+  public async addAdmissionReviewNote(
+    tenantId: string,
+    applicationId: string,
+    note: string,
+    decision?: AdmissionsApplicationStatus,
+    requestingUser?: User
+  ): Promise<StudentAdmissionApplication> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Admissions Officer';
+    const newNote: AdmissionsReviewNote = {
+      id: `rn_${Date.now()}`,
+      authorId: requestingUser?.id || 'sys_user',
+      authorName: actor,
+      authorRole: requestingUser?.role || 'Admissions Officer',
+      note,
+      createdAt: new Date().toISOString(),
+      decision
+    };
+
+    app.reviewNotes = [...(app.reviewNotes || []), newNote];
+    if (decision) {
+      const prevStatus = app.status;
+      app.status = decision;
+      app.decisionNotes = note;
+      app.decisionDate = new Date().toISOString();
+      app.decidedBy = actor;
+
+      app.auditTrail = [
+        ...(app.auditTrail || []),
+        {
+          id: `aud_${Date.now()}`,
+          action: 'DECISION_MADE',
+          description: `Decision made: ${decision}. Note: ${note}`,
+          performedBy: actor,
+          performedById: requestingUser?.id,
+          timestamp: new Date().toISOString(),
+          previousValue: prevStatus,
+          newValue: decision
+        }
+      ];
+    }
+
+    app.updatedAt = new Date().toISOString();
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return app;
+  }
+
+  public async approveAndAdmitApplicant(
+    tenantId: string,
+    applicationId: string,
+    admissionData: {
+      intake?: string;
+      programmeId?: string;
+      centreId?: string;
+      academicYear?: string;
+      studyMode?: any;
+    },
+    requestingUser?: User
+  ): Promise<{ application: StudentAdmissionApplication; student: Student }> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Academic Registrar';
+    const year = new Date().getFullYear();
+    const existingAdmitted = this.studentAdmissions.filter(a => a.tenantId === tenantId && a.admissionNumber).length + 1;
+    const admissionNumber = app.admissionNumber || `BOL/ADM/${year}/${String(existingAdmitted).padStart(3, '0')}`;
+    const studentNumber = app.studentNumber || `BOL-STU-${year}-${String(existingAdmitted).padStart(3, '0')}`;
+
+    const progId = admissionData.programmeId || app.programmeId;
+    const centreId = admissionData.centreId || app.centreId;
+    const prog = this.theologicalProgrammes.find(p => p.tenantId === tenantId && p.id === progId);
+    const centre = this.examinationCentres.find(c => c.tenantId === tenantId && c.id === centreId);
+
+    // Create or Link Student Record
+    let existingStudent = this.students.find(s => s.tenantId === tenantId && (s.admissionNo === admissionNumber || s.email === app.email));
+    if (!existingStudent) {
+      existingStudent = {
+        id: app.studentId || `stu_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        admissionNo: admissionNumber,
+        fullName: [app.firstName, app.middleName, app.lastName].filter(Boolean).join(' '),
+        email: app.email,
+        phone: app.phone,
+        gender: app.gender,
+        dateOfBirth: app.dateOfBirth,
+        nationalId: app.nationalIdOrPassport,
+        address: `${app.address}, ${app.city}, ${app.country}`,
+        programId: progId,
+        programName: prog?.name || app.programmeName,
+        departmentId: prog?.departmentId || '',
+        departmentName: prog?.departmentName || '',
+        campusId: centreId,
+        campusName: centre?.name || app.centreName,
+        intake: admissionData.intake || app.intake,
+        academicYear: admissionData.academicYear || app.academicYear,
+        status: 'ACTIVE',
+        feeBalance: 0,
+        guardianName: app.emergencyContactName,
+        guardianPhone: app.emergencyContactPhone,
+        guardianRelation: app.emergencyContactRelation,
+        enrolledAt: new Date().toISOString(),
+        avatarUrl: app.photoUrl
+      };
+      this.students.push(existingStudent);
+      await this.persistDoc('students', existingStudent.id, existingStudent);
+    } else {
+      existingStudent.status = 'ACTIVE';
+      existingStudent.programId = progId;
+      existingStudent.programName = prog?.name || app.programmeName;
+      existingStudent.campusId = centreId;
+      existingStudent.campusName = centre?.name || app.centreName;
+      await this.persistDoc('students', existingStudent.id, existingStudent);
+    }
+
+    // Update Application
+    app.status = 'ADMITTED';
+    app.admissionNumber = admissionNumber;
+    app.studentNumber = studentNumber;
+    app.studentId = existingStudent.id;
+    app.admittedAt = new Date().toISOString();
+    app.admittedBy = actor;
+    if (admissionData.intake) app.intake = admissionData.intake;
+    if (admissionData.academicYear) app.academicYear = admissionData.academicYear;
+    if (admissionData.studyMode) app.studyMode = admissionData.studyMode;
+    if (prog) {
+      app.programmeId = prog.id;
+      app.programmeName = prog.name;
+      app.programmeCode = prog.code;
+    }
+    if (centre) {
+      app.centreId = centre.id;
+      app.centreName = centre.name;
+    }
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'ADMITTED',
+        description: `Applicant officially admitted to ${app.programmeName}. Admission No: ${admissionNumber}, Student No: ${studentNumber}.`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString(),
+        previousValue: 'ACCEPTED',
+        newValue: 'ADMITTED'
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return { application: app, student: existingStudent };
+  }
+
+  public async registerAdmittedStudent(
+    tenantId: string,
+    applicationId: string,
+    registrationData: {
+      studentNumber?: string;
+      studyMode?: any;
+      academicYear?: string;
+      intake?: string;
+    },
+    requestingUser?: User
+  ): Promise<{ application: StudentAdmissionApplication; student?: Student }> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Admissions Registrar';
+    app.status = 'REGISTERED';
+    app.registeredAt = new Date().toISOString();
+    app.registeredBy = actor;
+    if (registrationData.studentNumber) app.studentNumber = registrationData.studentNumber;
+    if (registrationData.studyMode) app.studyMode = registrationData.studyMode;
+    if (registrationData.academicYear) app.academicYear = registrationData.academicYear;
+    if (registrationData.intake) app.intake = registrationData.intake;
+
+    // Update student if linked
+    let stu: Student | undefined;
+    if (app.studentId) {
+      stu = this.students.find(s => s.tenantId === tenantId && s.id === app.studentId);
+      if (stu) {
+        stu.status = 'ACTIVE';
+        stu.academicYear = app.academicYear;
+        stu.intake = app.intake;
+        await this.persistDoc('students', stu.id, stu);
+      }
+    }
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'REGISTERED',
+        description: `Student registration finalized for ${app.intake} (${app.academicYear}).`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString(),
+        previousValue: 'ADMITTED',
+        newValue: 'REGISTERED'
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return { application: app, student: stu };
+  }
+
+  public async enrollAdmissionAsCandidate(
+    tenantId: string,
+    applicationId: string,
+    requestingUser?: User
+  ): Promise<{ application: StudentAdmissionApplication; candidate: CandidateProfile }> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Examination Registry';
+    const year = new Date().getFullYear();
+    const existingCount = this.candidateProfiles.filter(c => c.tenantId === tenantId).length + 1;
+    const candidateNumber = app.candidateNumber || `BOL/THEO/${year}/${String(existingCount).padStart(3, '0')}`;
+
+    let candidate = this.candidateProfiles.find(
+      c => c.tenantId === tenantId && (c.id === app.candidateId || c.candidateNumber === candidateNumber || c.email === app.email)
+    );
+
+    const prog = this.theologicalProgrammes.find(p => p.tenantId === tenantId && p.id === app.programmeId);
+
+    if (!candidate) {
+      candidate = {
+        id: app.candidateId || `cand_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        candidateNumber,
+        firstName: app.firstName,
+        lastName: app.lastName,
+        middleName: app.middleName,
+        gender: app.gender,
+        dateOfBirth: app.dateOfBirth,
+        nationalIdOrPassport: app.nationalIdOrPassport,
+        email: app.email,
+        phone: app.phone,
+        address: app.address,
+        city: app.city,
+        country: app.country,
+        postalCode: app.postalCode,
+        photoUrl: app.photoUrl,
+        programmeId: app.programmeId,
+        programmeName: app.programmeName,
+        qualificationType: prog?.qualificationType || 'DIPLOMA',
+        level: 'Level 1',
+        intake: app.intake,
+        academicYear: app.academicYear,
+        registrationStatus: 'APPROVED',
+        registrationDate: new Date().toISOString().split('T')[0],
+        denominationAffiliation: app.denomination,
+        homeChurch: app.homeChurch,
+        pastorReferenceName: app.pastorName,
+        pastorReferenceContact: app.pastorPhone || app.pastorEmail,
+        academicHistory: (app.previousEducation || []).map(e => ({
+          institution: e.institutionName,
+          qualification: e.qualificationAwarded,
+          yearCompleted: String(e.yearCompleted || '2024'),
+          gradeAwarded: e.gradeOrScore || 'Pass'
+        })),
+        examinationHistory: [],
+        rplHistoryIds: [],
+        notes: `Enrolled from Admissions Application ${app.applicationNumber}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      this.candidateProfiles.push(candidate);
+      await this.persistDoc('candidateProfiles', candidate.id, candidate);
+    }
+
+    app.candidateId = candidate.id;
+    app.candidateNumber = candidate.candidateNumber;
+    app.candidateEnrolledAt = new Date().toISOString();
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'CANDIDATE_ENROLLED',
+        description: `Enrolled into TEMS Examination Registry. Candidate Examination No: ${candidate.candidateNumber}.`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return { application: app, candidate };
+  }
+
+  public async generateTemsAdmissionLetter(
+    tenantId: string,
+    applicationId: string,
+    requestingUser?: User
+  ): Promise<{ application: StudentAdmissionApplication; letterNumber: string; verificationCode: string }> {
+    const app = this.getStudentAdmissionById(tenantId, applicationId);
+    if (!app) throw new Error('Application not found');
+
+    const actor = requestingUser?.name || requestingUser?.email || 'Academic Registrar';
+    const year = new Date().getFullYear();
+    const count = this.studentAdmissions.filter(a => a.tenantId === tenantId && a.admissionLetterNumber).length + 1;
+    const letterNumber = app.admissionLetterNumber || `BOL-LET-${year}-${String(count).padStart(3, '0')}`;
+    const verificationCode = app.admissionLetterVerificationCode || `BOL-VER-ADM-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+
+    app.admissionLetterGenerated = true;
+    app.admissionLetterNumber = letterNumber;
+    app.admissionLetterDate = new Date().toISOString().split('T')[0];
+    app.admissionLetterVerificationCode = verificationCode;
+
+    // Also register in admissionLetters collection
+    const prog = this.theologicalProgrammes.find(p => p.tenantId === tenantId && p.id === app.programmeId);
+    const existingLetterIdx = this.admissionLetters.findIndex(l => l.tenantId === tenantId && (l.studentId === app.studentId || l.admissionNo === app.admissionNumber));
+    const letterRecord: AdmissionLetter = {
+      id: `adm_let_${Date.now()}`,
+      tenantId,
+      letterNumber,
+      studentId: app.studentId || app.id,
+      studentName: [app.firstName, app.middleName, app.lastName].filter(Boolean).join(' '),
+      admissionNo: app.admissionNumber || app.applicationNumber,
+      nationalId: app.nationalIdOrPassport,
+      programId: app.programmeId,
+      programName: app.programmeName,
+      departmentName: prog?.departmentName || 'Theology & Ministry',
+      campusName: app.centreName,
+      intake: app.intake,
+      academicYear: app.academicYear,
+      reportingDate: '2026-09-15',
+      duration: `${prog?.durationMonths || 24} Months`,
+      termTuitionFee: 650,
+      statutoryFees: 50,
+      admissionConditions: [
+        'Presentation of original verification documents during orientation week',
+        'Compliance with the Brooks of Life UK Student Code of Conduct and Statement of Faith',
+        'Settlement of tuition fees in accordance with the institutional fee schedule'
+      ],
+      issuedBy: actor,
+      issueDate: app.admissionLetterDate,
+      verificationCode,
+      verificationUrl: `/verify/admission/${verificationCode}`
+    };
+
+    if (existingLetterIdx >= 0) {
+      this.admissionLetters[existingLetterIdx] = letterRecord;
+    } else {
+      this.admissionLetters.push(letterRecord);
+    }
+    await this.persistDoc('admissionLetters', letterRecord.id, letterRecord);
+
+    app.auditTrail = [
+      ...(app.auditTrail || []),
+      {
+        id: `aud_${Date.now()}`,
+        action: 'LETTER_GENERATED',
+        description: `Official Brooks of Life UK Admission Letter generated (${letterNumber}, Verification: ${verificationCode}).`,
+        performedBy: actor,
+        performedById: requestingUser?.id,
+        timestamp: new Date().toISOString()
+      }
+    ];
+    app.updatedAt = new Date().toISOString();
+
+    await this.persistDoc('studentAdmissions', app.id, app);
+    this.saveToDiskBackup();
+    return { application: app, letterNumber, verificationCode };
+  }
 }
 
 export const dbStore = new DatabaseStore();

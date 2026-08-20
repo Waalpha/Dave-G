@@ -3924,6 +3924,192 @@ export interface PrinterAuditLog {
   timestamp: string;
 }
 
+export type AdmissionsApplicationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'PENDING_REVIEW'
+  | 'DOCUMENTS_REQUIRED'
+  | 'UNDER_REVIEW'
+  | 'INTERVIEW_SCHEDULED'
+  | 'ACCEPTED'
+  | 'CONDITIONALLY_ACCEPTED'
+  | 'WAITLISTED'
+  | 'REJECTED'
+  | 'WITHDRAWN'
+  | 'ADMITTED'
+  | 'REGISTERED';
+
+export type AdmissionsDocumentType =
+  | 'ID_PASSPORT'
+  | 'ACADEMIC_CERTIFICATE'
+  | 'TRANSCRIPT'
+  | 'RECOMMENDATION_LETTER'
+  | 'CHURCH_MINISTRY_DOC'
+  | 'PASSPORT_PHOTO'
+  | 'OTHER';
+
+export type AdmissionsDocumentStatus = 'SUBMITTED' | 'UNDER_REVIEW' | 'VERIFIED' | 'REJECTED';
+
+export type AdmissionsStudyMode =
+  | 'FULL_TIME_CAMPUS'
+  | 'PART_TIME_EVENING'
+  | 'DISTANCE_ONLINE'
+  | 'HYBRID_INTENSIVE';
+
+export interface AdmissionsDocument {
+  id: string;
+  name: string;
+  type: AdmissionsDocumentType;
+  fileUrl: string;
+  fileName: string;
+  fileSize?: number;
+  uploadedAt: string;
+  status: AdmissionsDocumentStatus;
+  verificationNotes?: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+}
+
+export interface AdmissionsPreviousEducation {
+  id: string;
+  institutionName: string;
+  qualificationAwarded: string;
+  majorSubject?: string;
+  yearCompleted: number | string;
+  gradeOrScore?: string;
+  country?: string;
+}
+
+export interface AdmissionsInterview {
+  id: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  mode: 'IN_PERSON' | 'VIDEO_CALL' | 'PHONE';
+  locationOrLink?: string;
+  interviewerId?: string;
+  interviewerName: string;
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
+  score?: number;
+  notes?: string;
+  recommendation?: 'STRONGLY_RECOMMEND' | 'RECOMMEND' | 'RECOMMEND_WITH_CONDITIONS' | 'NOT_RECOMMENDED';
+  conductedAt?: string;
+}
+
+export interface AdmissionsReviewNote {
+  id: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  note: string;
+  createdAt: string;
+  decision?: AdmissionsApplicationStatus;
+}
+
+export interface AdmissionsAuditEntry {
+  id: string;
+  action:
+    | 'CREATED'
+    | 'SUBMITTED'
+    | 'DOC_UPLOADED'
+    | 'DOC_VERIFIED'
+    | 'DOC_REJECTED'
+    | 'STATUS_CHANGED'
+    | 'INTERVIEW_SCHEDULED'
+    | 'INTERVIEW_COMPLETED'
+    | 'DECISION_MADE'
+    | 'ADMITTED'
+    | 'REGISTERED'
+    | 'CANDIDATE_ENROLLED'
+    | 'LETTER_GENERATED';
+  description: string;
+  performedBy: string;
+  performedById?: string;
+  timestamp: string;
+  previousValue?: string;
+  newValue?: string;
+}
+
+export interface StudentAdmissionApplication {
+  id: string;
+  tenantId: string;
+  applicationNumber: string; // e.g. "BOL-APP-2026-0001"
+
+  // Personal Info
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  photoUrl?: string;
+  dateOfBirth: string;
+  gender: 'MALE' | 'FEMALE' | 'OTHER';
+  nationalIdOrPassport: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  postalCode?: string;
+  country: string;
+
+  // Emergency Contact
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelation: string;
+
+  // Church / Ministry Info
+  homeChurch: string;
+  denomination: string;
+  ministryRole?: string;
+  pastorName?: string;
+  pastorPhone?: string;
+  pastorEmail?: string;
+
+  // Academic Programme & Centre Selection
+  programmeId: string;
+  programmeName: string;
+  programmeCode: string;
+  intake: string;
+  centreId: string;
+  centreName: string;
+  studyMode: AdmissionsStudyMode;
+  academicYear: string;
+
+  // Previous Education & Documents
+  previousEducation: AdmissionsPreviousEducation[];
+  documents: AdmissionsDocument[];
+
+  // Interviews & Reviews
+  interviews: AdmissionsInterview[];
+  reviewNotes: AdmissionsReviewNote[];
+  auditTrail: AdmissionsAuditEntry[];
+
+  // Status & Decision
+  status: AdmissionsApplicationStatus;
+  decisionNotes?: string;
+  decisionDate?: string;
+  decidedBy?: string;
+
+  // Admission & Registration Linkages
+  admissionNumber?: string;
+  studentNumber?: string;
+  studentId?: string;
+  candidateId?: string;
+  candidateNumber?: string;
+  admittedAt?: string;
+  admittedBy?: string;
+  registeredAt?: string;
+  registeredBy?: string;
+  candidateEnrolledAt?: string;
+
+  // Admission Letter Metadata
+  admissionLetterGenerated?: boolean;
+  admissionLetterNumber?: string;
+  admissionLetterDate?: string;
+  admissionLetterVerificationCode?: string;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+
 
 
 

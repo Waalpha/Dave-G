@@ -61,7 +61,42 @@ class UniversalPrintService {
   }
 
   /**
-   * Print or Auto-Print a Universal Receipt to physical thermal hardware
+   * Log receipt print job for accounting and audit tracking
+   */
+  public async logReceiptPrint(
+    receipt: UniversalReceipt,
+    options?: { isReprint?: boolean; copies?: number }
+  ): Promise<void> {
+    try {
+      const jobPayload: Partial<PrintJobRecord> = {
+        id: `job_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        receiptId: receipt.id,
+        receiptNumber: receipt.receiptNumber,
+        printerId: 'system_installed_printer',
+        printerName: 'System Installed Printer',
+        stationTarget: 'ALL',
+        interfaceType: 'SYSTEM_DEFAULT',
+        paperWidth: '80mm',
+        copies: options?.copies || 1,
+        status: 'COMPLETED',
+        attempts: 1,
+        maxAttempts: 1,
+        isAutoTriggered: !options?.isReprint,
+        isReprint: !!options?.isReprint
+      };
+
+      await fetch('/api/app/print-jobs', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(jobPayload)
+      });
+    } catch {
+      // Ignored non-blocking audit logging
+    }
+  }
+
+  /**
+   * Print or Auto-Print a Universal Receipt to system installed printer
    */
   public async printReceipt(
     receipt: UniversalReceipt,
@@ -73,35 +108,6 @@ class UniversalPrintService {
     }
   ): Promise<{ success: boolean; queued: boolean; message: string; jobId?: string; error?: string }> {
     try {
-      const printers = await this.getPrinters();
-      let targetPrinter: PrinterDevice | null = null;
-
-      if (options?.printerId) {
-        targetPrinter = printers.find(p => p.id === options.printerId) || null;
-      }
-
-      if (!targetPrinter) {
-        targetPrinter = await this.resolvePrinterForStation(options?.station || 'CASHIER');
-      }
-
-      // Default fallback virtual printer if none configured in settings
-      const printer: PrinterDevice = targetPrinter || {
-        id: 'default_virtual_printer',
-        tenantId: receipt.tenantId,
-        name: 'Default Thermal Slip Printer',
-        stationTarget: 'CASHIER',
-        interfaceType: 'SYSTEM_DEFAULT',
-        paperWidth: '80mm',
-        isDefault: true,
-        autoPrint: true,
-        kickCashDrawer: false,
-        cutPaper: true,
-        copies: 1,
-        status: 'ONLINE',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
       // Ensure reprint metadata is accurate
       const receiptToPrint: UniversalReceipt = {
         ...receipt,
@@ -109,72 +115,28 @@ class UniversalPrintService {
         reprintCount: options?.isReprint ? (receipt.reprintCount || 0) + 1 : (receipt.reprintCount || 0)
       };
 
-      // 1. Build raw ESC/POS binary buffer
-      const rawBytes = buildReceiptEscPos(receiptToPrint, printer);
-
-      // 2. Enqueue print job in database for persistence & retry tracking
-      let jobId = `job_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-      try {
-        const jobPayload: Partial<PrintJobRecord> = {
-          id: jobId,
-          receiptId: receiptToPrint.id,
-          receiptNumber: receiptToPrint.receiptNumber,
-          printerId: printer.id,
-          printerName: printer.name,
-          stationTarget: printer.stationTarget,
-          interfaceType: printer.interfaceType,
-          paperWidth: printer.paperWidth,
-          copies: options?.copies || printer.copies || 1,
-          status: 'PRINTING',
-          attempts: 1,
-          maxAttempts: 5,
-          isAutoTriggered: !options?.isReprint,
-          isReprint: !!options?.isReprint
-        };
-
-        const jobRes = await fetch('/api/app/print-jobs', {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(jobPayload)
-        });
-        if (jobRes.ok) {
-          const resJson = await jobRes.json();
-          if (resJson.job?.id) jobId = resJson.job.id;
-        }
-      } catch (queueErr) {
-        console.warn('Could not persist print job to queue:', queueErr);
+      // 1. Invoke OS / Browser installed printer dialog
+      if (typeof window !== 'undefined') {
+        window.focus();
+        window.print();
       }
 
-      // 3. Attempt direct physical dispatch to ESC/POS hardware
-      const dispatchResult = await dispatchEscPosToHardware(printer, rawBytes);
+      // 2. Log print job asynchronously
+      const jobId = `job_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      this.logReceiptPrint(receiptToPrint, options).catch(() => {});
 
-      if (dispatchResult.success) {
-        // Update job status to COMPLETED
-        this.updateJobStatus(jobId, 'COMPLETED').catch(() => {});
-        return {
-          success: true,
-          queued: false,
-          message: `Receipt ${receiptToPrint.receiptNumber} printed successfully to ${printer.name}`,
-          jobId
-        };
-      } else {
-        // Printer is offline or unreachable - queue for retry without failing transaction
-        const errMsg = dispatchResult.error || 'Printer connection timed out / offline';
-        this.updateJobStatus(jobId, 'OFFLINE_QUEUED', errMsg).catch(() => {});
-        return {
-          success: false,
-          queued: true,
-          message: `Printer "${printer.name}" is offline. Print job queued for automatic retry.`,
-          jobId,
-          error: errMsg
-        };
-      }
+      return {
+        success: true,
+        queued: false,
+        message: `Receipt ${receiptToPrint.receiptNumber} sent to system installed printer`,
+        jobId
+      };
     } catch (err: any) {
       console.error('Universal print execution failed:', err);
       return {
         success: false,
-        queued: true,
-        message: 'Printer not reachable. Receipt saved and queued in retry queue.',
+        queued: false,
+        message: 'Could not open system print dialog',
         error: err.message
       };
     }

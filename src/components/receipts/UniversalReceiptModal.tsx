@@ -52,23 +52,10 @@ export const UniversalReceiptModal: React.FC<UniversalReceiptModalProps> = ({
     setIsPrinting(true);
     setPrintStatus(null);
     try {
-      if (paperWidth === 'A4') {
-        // For A4, open high-res browser print dialog
-        window.print();
-        setPrintStatus({ type: 'success', message: 'A4 Document sent to system print dialog!' });
-        return;
-      }
-
-      const result = await printService.printReceipt(receipt, {
-        isReprint: false
-      });
-      if (result.success) {
-        setPrintStatus({ type: 'success', message: result.message });
-      } else if (result.queued) {
-        setPrintStatus({ type: 'warning', message: result.message });
-      } else {
-        setPrintStatus({ type: 'error', message: result.error || 'Failed to print receipt' });
-      }
+      window.focus();
+      window.print();
+      setPrintStatus({ type: 'success', message: `Dispatched to system installed printer (${paperWidth})!` });
+      printService.logReceiptPrint(receipt, { isReprint: false }).catch(() => {});
     } catch (err: any) {
       setPrintStatus({ type: 'error', message: err.message || 'Print dispatch failed' });
     } finally {
@@ -91,17 +78,10 @@ export const UniversalReceiptModal: React.FC<UniversalReceiptModalProps> = ({
       const data = await res.json();
       if (res.ok && data.receipt) {
         if (onReprint) onReprint(data.receipt);
-        if (paperWidth === 'A4') {
-          window.print();
-          setPrintStatus({ type: 'success', message: `Reprint copy #${data.receipt.reprintCount} generated!` });
-        } else {
-          const printRes = await printService.printReceipt(data.receipt, { isReprint: true });
-          if (printRes.success) {
-            setPrintStatus({ type: 'success', message: `Reprint copy #${data.receipt.reprintCount} sent to thermal printer!` });
-          } else {
-            setPrintStatus({ type: 'warning', message: printRes.message });
-          }
-        }
+        window.focus();
+        window.print();
+        setPrintStatus({ type: 'success', message: `Reprint copy #${data.receipt.reprintCount} sent to system installed printer!` });
+        printService.logReceiptPrint(data.receipt, { isReprint: true }).catch(() => {});
       } else {
         throw new Error(data.error || 'Could not issue reprint');
       }
