@@ -2196,6 +2196,32 @@ async function startServer() {
     }
   });
 
+  app.delete('/api/app/education/faculty/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteStaff(tenantId, req.params.id, user);
+      return res.json({ success: true, message: 'Staff member deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/faculty/bulk-delete', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const { staffIds } = req.body;
+      if (!Array.isArray(staffIds) || staffIds.length === 0) {
+        return res.status(400).json({ error: 'staffIds array is required' });
+      }
+      const result = dbStore.bulkDeleteStaff(tenantId, staffIds, user);
+      return res.json({ success: true, deletedCount: result.deletedCount });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   // Timetable
   app.post('/api/app/education/timetable', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;

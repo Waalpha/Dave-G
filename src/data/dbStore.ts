@@ -4649,7 +4649,7 @@ class DatabaseStore {
     const member = this.staff.find(s => s.tenantId === tenantId && s.id === id);
     if (!member) throw new Error('Staff member not found.');
 
-    if (data.staffNo) member.staffNo = data.staffNo.trim().toUpperCase();
+    if (data.staffNo || (data as any).staffNumber) member.staffNo = (data.staffNo || (data as any).staffNumber).trim().toUpperCase();
     if (data.fullName) member.fullName = data.fullName.trim();
     if (data.email) member.email = data.email.trim();
     if (data.phone !== undefined) member.phone = data.phone.trim();
@@ -4657,6 +4657,12 @@ class DatabaseStore {
       member.departmentId = data.departmentId;
       const dept = this.getDepartmentById(tenantId, data.departmentId);
       if (dept) member.departmentName = dept.name;
+    }
+    if (data.campusId !== undefined) {
+      member.campusId = data.campusId;
+      const campus = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (campus) member.campusName = campus.name;
+      else if (data.campusName) member.campusName = data.campusName;
     }
     if (data.designation) member.designation = data.designation.trim();
     if (data.employmentType) member.employmentType = data.employmentType;
@@ -4690,6 +4696,31 @@ class DatabaseStore {
     );
 
     return true;
+  }
+
+  public bulkDeleteStaff(tenantId: string, staffIds: string[], deletedBy: User): { deletedCount: number } {
+    let count = 0;
+    staffIds.forEach(id => {
+      const idx = this.staff.findIndex(s => s.id === id && s.tenantId === tenantId);
+      if (idx !== -1) {
+        this.staff.splice(idx, 1);
+        deleteDocFromFirestore('staff', id).catch(() => {});
+        count++;
+      }
+    });
+
+    this.logAction(
+      tenantId,
+      deletedBy.id,
+      deletedBy.name,
+      deletedBy.role,
+      'BULK_STAFF_DELETED',
+      'Staff',
+      `bulk-${Date.now()}`,
+      `Deleted ${count} staff records`
+    );
+
+    return { deletedCount: count };
   }
 
   public getTimetable(tenantId: string): TimetableEntry[] {
