@@ -563,7 +563,7 @@ export const TemsCandidatePortal: React.FC = () => {
 
                   <div className="p-3 rounded-xl bg-slate-900 text-xs text-slate-300 space-y-1">
                     <div>Date of Conferral: <strong>{c.conferralDate}</strong></div>
-                    <div>Signatories: {c.signatories.map(s => s.name).join(', ')}</div>
+                    <div>Signatories: {(c.signatories || []).map(s => s.name).join(', ') || 'Academic Registrar & Board of Governors'}</div>
                     <div>Verification Code: <strong className="font-mono text-amber-400">{c.qrVerificationCode}</strong></div>
                   </div>
 
@@ -706,7 +706,7 @@ export const TemsCandidatePortal: React.FC = () => {
               <div>
                 <h4 className="font-bold text-white mb-2">Registered Examination Papers</h4>
                 <div className="space-y-2">
-                  {selectedSlip.registeredPapers.map((p, idx) => (
+                  {(selectedSlip.registeredPapers || []).map((p, idx) => (
                     <div key={idx} className="p-3 rounded-lg bg-slate-950 border border-slate-800 flex justify-between items-center">
                       <div>
                         <div className="font-bold text-slate-200">{p.paperCode}: {p.title}</div>

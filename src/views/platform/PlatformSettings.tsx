@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { compressImageFile } from '../../lib/imageUtils';
 import { PublicWebsiteEditor } from './components/PublicWebsiteEditor';
+import { PlatformOfflineEditor } from './components/PlatformOfflineEditor';
+import { WifiOff } from 'lucide-react';
 
 const COLOR_PRESETS = [
   { name: 'Royal Blue (Davetech)', hex: '#1D53D9' },
@@ -22,7 +24,7 @@ const COLOR_PRESETS = [
 ];
 
 interface PlatformSettingsProps {
-  initialTab?: 'website-cms' | 'branding';
+  initialTab?: 'website-cms' | 'branding' | 'offline-control';
   onSettingsSaved?: () => void;
 }
 
@@ -30,7 +32,7 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
   initialTab = 'website-cms',
   onSettingsSaved 
 }) => {
-  const [activeMainTab, setActiveMainTab] = useState<'website-cms' | 'branding'>(initialTab);
+  const [activeMainTab, setActiveMainTab] = useState<'website-cms' | 'branding' | 'offline-control'>(initialTab);
   const [settings, setSettings] = useState<PlatformSettingsType>({
     platformName: 'DAVETECH',
     tagline: 'Davetech Solutions',
@@ -219,7 +221,27 @@ export const PlatformSettings: React.FC<PlatformSettingsProps> = ({
           <Palette className="w-4 h-4" />
           <span>Platform Identity, Logo & Theme Colors</span>
         </button>
+
+        <button
+          onClick={() => setActiveMainTab('offline-control')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+            activeMainTab === 'offline-control'
+              ? 'bg-[#1D53D9] text-white shadow-sm'
+              : 'text-[#777E8C] hover:text-[#1F2937] hover:bg-slate-50'
+          }`}
+        >
+          <WifiOff className="w-4 h-4" />
+          <span>Controlled Offline Policies</span>
+        </button>
       </div>
+
+      {/* RENDER OFFLINE POLICIES */}
+      {activeMainTab === 'offline-control' && (
+        <PlatformOfflineEditor
+          initialConfig={settings.offlineConfig}
+          onSaved={() => fetchSettings()}
+        />
+      )}
 
       {/* RENDER WEBSITE CMS */}
       {activeMainTab === 'website-cms' && (

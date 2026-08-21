@@ -9,6 +9,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { PosProduct, PosSaleItem, PosSaleOrder, UniversalReceipt } from '../../../types';
 import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
 import { printService } from '../../../lib/printService';
+import { offlineSyncService, OfflineServiceState } from '../../../lib/offlineSyncService';
+import { WifiOff, Database } from 'lucide-react';
 
 interface PosTerminalProps {
   saleType?: 'POS' | 'RETAIL' | 'WHOLESALE' | 'RESTAURANT' | 'BOOKSHOP';
@@ -68,6 +70,7 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
 
   const fetchProductsAndSales = async () => {
     setLoading(true);
+    const tenantId = currentTenant?.id || '';
     try {
       const [prodRes, salesRes] = await Promise.all([
         fetch('/api/app/pos/products', { headers: authHeaders }),
@@ -75,14 +78,28 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
       ]);
       if (prodRes.ok) {
         const d = await prodRes.json();
-        setProducts(d.products || []);
+        const prods = d.products || [];
+        setProducts(prods);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'pos_products', prods);
       }
       if (salesRes.ok) {
         const s = await salesRes.json();
-        setSalesHistory(s.sales || []);
+        const sales = s.sales || [];
+        setSalesHistory(sales);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'pos_sales', sales);
       }
     } catch (e) {
-      console.error('POS fetch error:', e);
+      console.warn('[PosTerminalView] Network fetch error, attempting offline cache lookup:', e);
+      if (tenantId) {
+        const cachedProds = await offlineSyncService.getCachedLookupData<PosProduct[]>(tenantId, 'pos_products');
+        if (cachedProds && cachedProds.length > 0) {
+          setProducts(cachedProds);
+        }
+        const cachedSales = await offlineSyncService.getCachedLookupData<PosSaleOrder[]>(tenantId, 'pos_sales');
+        if (cachedSales && cachedSales.length > 0) {
+          setSalesHistory(cachedSales);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -156,22 +173,40 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
     e.preventDefault();
     if (cart.length === 0) return;
 
-    try {
-      const payload: Partial<PosSaleOrder> = {
-        receiptNo: `RCT-${Date.now().toString().slice(-6)}`,
-        items: cart,
-        subtotal,
-        discount: discountAmount,
-        tax: 0,
-        grandTotal,
-        paymentMethod,
-        paymentReference: paymentRef,
-        customerName,
-        customerPhone,
-        saleType: (saleType as PosSaleOrder['saleType']) || 'POS',
-        status: 'COMPLETED'
-      };
+    // Check offline permission and subscription lease validity
+    const writeCheck = offlineSyncService.canPerformOfflineWrite('pos');
+    if (!writeCheck.allowed) {
+      setWarningMessage(writeCheck.reason || 'Offline POS sales are currently blocked.');
+      setTimeout(() => setWarningMessage(null), 5000);
+      return;
+    }
 
+    const tenantId = currentTenant?.id || '';
+    const userId = user?.id || '';
+    const receiptNo = `RCT-${Date.now().toString().slice(-6)}`;
+    const saleId = `sale_pos_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+    const payload: PosSaleOrder = {
+      id: saleId,
+      tenantId,
+      receiptNo,
+      items: cart,
+      subtotal,
+      discount: discountAmount,
+      tax: 0,
+      grandTotal,
+      paymentMethod,
+      paymentReference: paymentRef,
+      customerName,
+      customerPhone,
+      saleType: (saleType as PosSaleOrder['saleType']) || 'POS',
+      status: 'COMPLETED',
+      cashierId: userId,
+      cashierName: user?.name || 'Cashier',
+      date: new Date().toISOString()
+    };
+
+    try {
       const res = await fetch('/api/app/pos/sales', {
         method: 'POST',
         headers: authHeaders,
@@ -179,7 +214,6 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
       });
 
       if (res.ok) {
-        const data = await res.json();
         setCart([]);
         setShowCheckoutModal(false);
         setDiscountAmount(0);
@@ -195,16 +229,80 @@ export const PosTerminalView: React.FC<PosTerminalProps> = ({
             if (r) {
               setSelectedReceipt(r);
               setIsReceiptModalOpen(true);
-              // Auto-dispatch physical thermal printer
               printService.printReceipt(r).catch(() => {});
             }
           }
         } catch {
           // Silent catch for receipt pop
         }
+      } else {
+        throw new Error('Server sale record failed, engaging offline sync queue.');
       }
     } catch (err) {
-      console.error('Checkout error:', err);
+      console.warn('[PosTerminalView] Offline sale fallback initiated:', err);
+      
+      // 1. Locally decrement in-memory stock
+      const updatedProducts = products.map(p => {
+        const inCart = cart.find(c => c.productId === p.id);
+        if (inCart) {
+          const newQty = Math.max(0, p.quantityInStock - inCart.quantity);
+          return { ...p, quantityInStock: newQty, status: newQty === 0 ? 'OUT_OF_STOCK' : p.status };
+        }
+        return p;
+      });
+      setProducts(updatedProducts);
+      if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'pos_products', updatedProducts);
+
+      // 2. Enqueue offline mutation into IndexedDB
+      await offlineSyncService.enqueueMutation(tenantId, userId, 'pos', 'pos.create_sale', payload);
+
+      // 3. Update local sales history
+      const updatedSales = [payload, ...salesHistory];
+      setSalesHistory(updatedSales);
+      if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'pos_sales', updatedSales);
+
+      // 4. Generate local offline Universal Receipt for immediate thermal printing
+      const fallbackReceipt: UniversalReceipt = {
+        id: `rcpt_${payload.id}`,
+        tenantId,
+        sourceModule: 'POS_RETAIL',
+        sourceReferenceId: payload.id,
+        receiptNumber: payload.receiptNo,
+        businessName: currentTenant?.branding?.companyName || currentTenant?.name || 'Retail Store',
+        customerName: payload.customerName || 'Walk-in Customer',
+        customerPhone: payload.customerPhone,
+        currency: 'KES',
+        currencySymbol,
+        items: payload.items.map(i => ({
+          name: i.productName || 'Item',
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          total: i.total
+        })),
+        subtotal: payload.subtotal,
+        taxAmount: payload.tax || 0,
+        discountAmount: payload.discount || 0,
+        grandTotal: payload.grandTotal,
+        paymentMethod: (payload.paymentMethod as any) || 'CASH',
+        cashierName: payload.cashierName || user?.name || 'Cashier',
+        issuedAt: payload.date,
+        createdAt: payload.date,
+        isReprint: false,
+        reprintCount: 0,
+        status: 'ISSUED',
+        customFooter: 'Offline Transaction (Will Sync Automatically)'
+      };
+
+      setCart([]);
+      setShowCheckoutModal(false);
+      setDiscountAmount(0);
+      setPaymentRef(`REF-${Date.now().toString(36).toUpperCase()}`);
+      setSelectedReceipt(fallbackReceipt);
+      setIsReceiptModalOpen(true);
+      printService.printReceipt(fallbackReceipt).catch(() => {});
+
+      setWarningMessage('Sale completed in Controlled Offline Mode. Will synchronize automatically when online.');
+      setTimeout(() => setWarningMessage(null), 5000);
     }
   };
 

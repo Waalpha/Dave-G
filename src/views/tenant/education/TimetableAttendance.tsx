@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { TimetableEntry, StudentAttendance, SchoolClass, Unit, LecturerStaff, Student } from '../../../types';
 import {
   Calendar, Clock, Users, Plus, CheckCircle2, AlertCircle, Trash2,
-  Check, X, Search, Filter, Layers, UserCheck, AlertTriangle
+  Check, X, Search, Filter, Layers, UserCheck, AlertTriangle, WifiOff
 } from 'lucide-react';
+import { offlineSyncService } from '../../../lib/offlineSyncService';
+import { useAuth } from '../../../context/AuthContext';
 
 export const TimetableAttendance: React.FC = () => {
+  const { currentTenant, user } = useAuth();
   const [subTab, setSubTab] = useState<'timetable' | 'attendance'>('timetable');
 
   const [timetable, setTimetable] = useState<TimetableEntry[]>([]);
@@ -39,11 +42,12 @@ export const TimetableAttendance: React.FC = () => {
   const [savingAttendance, setSavingAttendance] = useState(false);
 
   const getHeaders = () => ({
-    'x-user-id': localStorage.getItem('erp_user_id') || '',
+    'x-user-id': user?.id || localStorage.getItem('erp_user_id') || '',
     'Content-Type': 'application/json'
   });
 
   const fetchData = async () => {
+    const tenantId = currentTenant?.id || '';
     try {
       setLoading(true);
       setErrorMsg('');
@@ -55,22 +59,56 @@ export const TimetableAttendance: React.FC = () => {
         fetch('/api/app/education/students', { headers: getHeaders() })
       ]);
 
-      if (resTT.ok) setTimetable(await resTT.json());
+      if (resTT.ok) {
+        const tt = await resTT.json();
+        setTimetable(tt);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'edu_timetable', tt);
+      }
       if (resCls.ok) {
         const cls = await resCls.json();
         setClasses(cls);
         if (cls.length > 0 && !attClassId) setAttClassId(cls[0].id);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'edu_classes', cls);
       }
       if (resAcad.ok) {
         const acad = await resAcad.json();
-        setUnits(acad.units || []);
-        if (acad.units?.length > 0 && !attUnitId) setAttUnitId(acad.units[0].id);
+        const un = acad.units || [];
+        setUnits(un);
+        if (un.length > 0 && !attUnitId) setAttUnitId(un[0].id);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'edu_units', un);
       }
-      if (resFac.ok) setStaffList(await resFac.json());
-      if (resStud.ok) setStudents(await resStud.json());
+      if (resFac.ok) {
+        const fac = await resFac.json();
+        setStaffList(fac);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'edu_faculty', fac);
+      }
+      if (resStud.ok) {
+        const stud = await resStud.json();
+        setStudents(stud);
+        if (tenantId) offlineSyncService.cacheLookupData(tenantId, 'edu_students', stud);
+      }
     } catch (err: any) {
-      console.error('Error loading timetable data:', err);
-      setErrorMsg('Failed to load timetable and attendance.');
+      console.warn('[TimetableAttendance] Network fetch error, loading from offline cache:', err);
+      if (tenantId) {
+        const [cTT, cCls, cUnits, cFac, cStud] = await Promise.all([
+          offlineSyncService.getCachedLookupData<TimetableEntry[]>(tenantId, 'edu_timetable'),
+          offlineSyncService.getCachedLookupData<SchoolClass[]>(tenantId, 'edu_classes'),
+          offlineSyncService.getCachedLookupData<Unit[]>(tenantId, 'edu_units'),
+          offlineSyncService.getCachedLookupData<LecturerStaff[]>(tenantId, 'edu_faculty'),
+          offlineSyncService.getCachedLookupData<Student[]>(tenantId, 'edu_students')
+        ]);
+        if (cTT) setTimetable(cTT);
+        if (cCls && cCls.length > 0) {
+          setClasses(cCls);
+          if (!attClassId) setAttClassId(cCls[0].id);
+        }
+        if (cUnits && cUnits.length > 0) {
+          setUnits(cUnits);
+          if (!attUnitId) setAttUnitId(cUnits[0].id);
+        }
+        if (cFac) setStaffList(cFac);
+        if (cStud) setStudents(cStud);
+      }
     } finally {
       setLoading(false);
     }
@@ -176,6 +214,17 @@ export const TimetableAttendance: React.FC = () => {
     const classStudents = students.filter(s => s.classId === attClassId);
     if (classStudents.length === 0) return;
 
+    // Check offline permission and subscription lease validity
+    const writeCheck = offlineSyncService.canPerformOfflineWrite('education');
+    if (!writeCheck.allowed) {
+      setErrorMsg(writeCheck.reason || 'Offline attendance marking is currently blocked.');
+      setTimeout(() => setErrorMsg(''), 5000);
+      return;
+    }
+
+    const tenantId = currentTenant?.id || '';
+    const userId = user?.id || localStorage.getItem('erp_user_id') || '';
+
     try {
       setSavingAttendance(true);
       const unit = units.find(u => u.id === attUnitId);
@@ -194,17 +243,24 @@ export const TimetableAttendance: React.FC = () => {
         remarks: attendanceMap[s.id]?.remarks || ''
       }));
 
-      const res = await fetch('/api/app/education/attendance', {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ records })
-      });
+      try {
+        const res = await fetch('/api/app/education/attendance', {
+          method: 'POST',
+          headers: getHeaders(),
+          body: JSON.stringify({ records })
+        });
 
-      if (!res.ok) throw new Error('Failed to record attendance');
+        if (!res.ok) throw new Error('Server request failed');
 
-      setSuccessMsg(`Attendance saved for ${records.length} students on ${attDate}.`);
-      setTimeout(() => setSuccessMsg(''), 4000);
-      fetchAttendanceRecords();
+        setSuccessMsg(`Attendance saved online for ${records.length} students on ${attDate}.`);
+        setTimeout(() => setSuccessMsg(''), 4000);
+        fetchAttendanceRecords();
+      } catch (networkErr) {
+        // Enqueue into offline sync service
+        await offlineSyncService.enqueueMutation(tenantId, userId, 'education', 'education.record_attendance', { records });
+        setSuccessMsg(`Attendance recorded in Controlled Offline Mode (${records.length} students). Will synchronize automatically when connection is restored.`);
+        setTimeout(() => setSuccessMsg(''), 5000);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'Error saving attendance');
     } finally {

@@ -48,7 +48,15 @@ export type EducationType =
   | 'VOCATIONAL_TRAINING'
   | 'SECONDARY_SCHOOL'
   | 'PRIMARY_SCHOOL'
+  | 'BASIC_EDUCATION'
+  | 'JUNIOR_SECONDARY'
+  | 'COMPREHENSIVE_SCHOOL'
   | 'TRAINING_INSTITUTE';
+
+export type AcademicStructureMode = 
+  | 'GRADE_STREAM' 
+  | 'COURSE_CLASS_UNIT' 
+  | 'HYBRID';
 
 export type ModuleId = 
   | 'education'
@@ -220,6 +228,7 @@ export interface PublicTenantInfo {
   primaryDomain?: string;
   type: TenantType;
   educationType?: EducationType;
+  academicStructureMode?: AcademicStructureMode;
   branding: TenantBranding;
   publicWebsite?: TenantPublicWebsiteConfig;
 }
@@ -395,6 +404,7 @@ export interface PlatformSettings {
   allowSelfRegistration: boolean;
   systemNotice?: string;
   publicWebsite?: PlatformPublicWebsiteConfig;
+  offlineConfig?: PlatformOfflineConfig;
   updatedAt?: string;
 }
 
@@ -409,6 +419,7 @@ export interface Tenant {
   primaryDomain?: string;
   type: TenantType;
   educationType?: EducationType;
+  academicStructureMode?: AcademicStructureMode;
   facilityType?: FacilityType;
   status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
   planId: string;
@@ -427,6 +438,7 @@ export interface Tenant {
   branding: TenantBranding;
   publicWebsite?: TenantPublicWebsiteConfig;
   enabledModules: ModuleId[];
+  offlineConfig?: TenantOfflineConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -586,6 +598,73 @@ export interface SchoolClass {
   createdAt?: string;
 }
 
+export interface SchoolGrade {
+  id: string;
+  tenantId: string;
+  name: string; // e.g. "Grade 1", "Grade 2", ..., "Grade 9", "PP1", "PP2"
+  code: string; // e.g. "G1", "G2", "G3", ..., "G9"
+  levelNumber: number; // 1 to 9
+  category: 'EARLY_YEARS' | 'LOWER_PRIMARY' | 'UPPER_PRIMARY' | 'JUNIOR_SCHOOL' | 'SENIOR_SECONDARY' | 'OTHER';
+  stage?: 'EARLY_YEARS' | 'LOWER_PRIMARY' | 'UPPER_PRIMARY' | 'JUNIOR_SCHOOL' | 'SENIOR_SECONDARY' | 'OTHER';
+  description?: string;
+  learningAreas?: string[]; // Core CBC / Basic education subjects (e.g. Mathematics, English, Kiswahili, Integrated Science)
+  headTeacherId?: string;
+  headTeacherName?: string;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  room?: string;
+  capacity?: number;
+  orderIndex: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GradeStream {
+  id: string;
+  tenantId: string;
+  gradeId: string;
+  gradeName: string; // e.g. "Grade 4"
+  name: string; // e.g. "A", "B", "C", "Blue", "Red", "Gold"
+  fullName: string; // e.g. "Grade 4A", "Grade 4 Blue"
+  code: string; // e.g. "G4-A"
+  academicYear: string; // e.g. "2026"
+  academicTerm?: string; // e.g. "Term 1"
+  campusId?: string;
+  campusName?: string;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  roomVenue?: string;
+  room?: string;
+  capacity?: number;
+  enrolledCount?: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface StudentPromotionRecord {
+  id: string;
+  tenantId: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  fromGradeId?: string;
+  fromGradeName?: string;
+  fromStreamId?: string;
+  fromStreamName?: string;
+  toGradeId?: string;
+  toGradeName?: string;
+  toStreamId?: string;
+  toStreamName?: string;
+  fromAcademicYear: string;
+  toAcademicYear: string;
+  promotionType: 'PROMOTED' | 'REPEATED' | 'GRADUATED' | 'TRANSFERRED' | 'DEMOTED';
+  promotedAt: string;
+  promotedBy: string;
+  notes?: string;
+}
+
 export interface Student {
   id: string;
   tenantId: string;
@@ -596,13 +675,22 @@ export interface Student {
   gender: string;
   dateOfBirth: string;
   nationalId?: string;
+  assessmentNumber?: string; // e.g. UPI / Nemis / Assessment Number for Basic & Primary education
+  learnerAssessmentNo?: string;
   address?: string;
+  // Higher Ed / TVET structure:
   programId: string;
   programName: string;
   departmentId?: string;
   departmentName?: string;
   classId?: string;
   className?: string;
+  // Modern Primary / Junior School structure (School -> Grade -> Stream -> Students):
+  gradeId?: string;
+  gradeName?: string; // e.g. "Grade 4"
+  streamId?: string;
+  streamName?: string; // e.g. "Grade 4A"
+  learningStage?: 'EARLY_YEARS' | 'LOWER_PRIMARY' | 'UPPER_PRIMARY' | 'JUNIOR_SCHOOL' | 'SENIOR_SECONDARY' | 'OTHER';
   campusId: string;
   campusName: string;
   intake?: string; // e.g. "January 2026"
@@ -649,6 +737,10 @@ export interface TimetableEntry {
   lecturerId?: string;
   lecturerName: string;
   classId?: string;
+  gradeId?: string;
+  gradeName?: string;
+  streamId?: string;
+  streamName?: string;
   groupName: string;
   roomVenue: string;
   dayOfWeek: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
@@ -664,6 +756,10 @@ export interface StudentAttendance {
   date: string;
   classId?: string;
   className?: string;
+  gradeId?: string;
+  gradeName?: string;
+  streamId?: string;
+  streamName?: string;
   unitId?: string;
   unitCode?: string;
   unitName?: string;
@@ -4108,6 +4204,103 @@ export interface StudentAdmissionApplication {
   createdAt: string;
   updatedAt: string;
 }
+
+// ==========================================
+// CONTROLLED OFFLINE MODE TYPES & LEASE
+// ==========================================
+
+export type OfflineGracePeriodHours = 0 | 24 | 48 | 72 | 168; // 0=Disabled, 168=7 Days
+
+export interface PlatformOfflineConfig {
+  enabled: boolean;
+  defaultGracePeriodHours: OfflineGracePeriodHours; // Default 72 hours
+  maxGracePeriodHours: OfflineGracePeriodHours; // Maximum allowed 168 hours (7 days)
+  allowedOfflineModules: ModuleId[];
+  offlineDeviceLimit: number;
+  requireOnlineVerificationFrequencyHours: number;
+  enableOfflinePos: boolean;
+  enableOfflineEducation: boolean;
+  enableOfflineInventory: boolean;
+  offlineTransactionLimit: number;
+  updatedAt?: string;
+}
+
+export interface AuthorizedOfflineDevice {
+  id: string;
+  deviceId: string;
+  deviceName: string;
+  registeredAt: string;
+  lastSeenAt: string;
+  lastSyncAt: string;
+  lastIp?: string;
+  userAgent?: string;
+  status: 'ACTIVE' | 'REVOKED';
+}
+
+export interface TenantOfflineConfig {
+  enabled: boolean;
+  gracePeriodHours: OfflineGracePeriodHours; // Tenant specific (cannot exceed platform max)
+  allowedOfflineModules: ModuleId[];
+  enableOfflinePos: boolean;
+  enableOfflineEducation: boolean;
+  enableOfflineInventory: boolean;
+  offlineTransactionLimit: number;
+  lastSyncAt?: string;
+  authorizedDevices?: AuthorizedOfflineDevice[];
+}
+
+export interface OfflineLicenseLease {
+  leaseId: string;
+  tenantId: string;
+  tenantName: string;
+  userId: string;
+  userEmail: string;
+  deviceId: string;
+  issuedAt: number; // epoch ms
+  expiresAt: number; // epoch ms
+  gracePeriodHours: number;
+  allowedOfflineModules: ModuleId[];
+  permissions: string[];
+  subscriptionStatus: 'ACTIVE' | 'PAYMENT_DUE' | 'SUSPENDED' | 'EXPIRED' | 'CANCELLED';
+  signature: string; // Server-generated HMAC signature
+  version: string;
+}
+
+export type OfflineSyncStatus = 'PENDING' | 'SYNCING' | 'SYNCED' | 'FAILED' | 'REJECTED';
+
+export interface OfflineQueueItem {
+  operationId: string; // Unique idempotency key (UUID)
+  tenantId: string;
+  userId: string;
+  deviceId: string;
+  module: ModuleId;
+  action: 'pos.create_sale' | 'education.record_attendance' | 'education.register_student' | 'inventory.adjust_stock' | string;
+  payload: any;
+  createdAt: string;
+  clientTimestamp: number;
+  syncStatus: OfflineSyncStatus;
+  retryCount: number;
+  errorMessage?: string;
+  serverSyncedAt?: string;
+}
+
+export interface OfflineSyncBatchPayload {
+  deviceId: string;
+  tenantId: string;
+  leaseSignature: string;
+  operations: OfflineQueueItem[];
+}
+
+export interface OfflineSyncBatchResult {
+  success: boolean;
+  processedCount: number;
+  acceptedOperations: string[]; // operationIds
+  rejectedOperations: Array<{ operationId: string; reason: string }>;
+  errors: string[];
+  serverTimestamp: number;
+  freshLease?: OfflineLicenseLease;
+}
+
 
 
 

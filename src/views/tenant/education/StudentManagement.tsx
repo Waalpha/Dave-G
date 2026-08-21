@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Program, Campus, Department, SchoolClass } from '../../../types';
+import { Student, Program, Campus, Department, SchoolClass, SchoolGrade, GradeStream } from '../../../types';
 import {
   Users, Plus, Search, Filter, Edit, Trash2, CheckCircle2, XCircle,
   Phone, Mail, User, Layers, Download, Upload, FileSpreadsheet,
-  Calendar, DollarSign, X, Check, AlertCircle, FileText, ChevronRight
+  Calendar, DollarSign, X, Check, AlertCircle, FileText, ChevronRight,
+  TrendingUp, Award
 } from 'lucide-react';
 
 interface StudentManagementProps {
@@ -20,6 +21,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [campuses, setCampuses] = useState<Campus[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [grades, setGrades] = useState<SchoolGrade[]>([]);
+  const [streams, setStreams] = useState<GradeStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -29,6 +32,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [programFilter, setProgramFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [classFilter, setClassFilter] = useState('ALL');
+  const [gradeFilter, setGradeFilter] = useState('ALL');
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,19 +57,22 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   // Form State
   const [formFullName, setFormFullName] = useState('');
   const [formAdmissionNo, setFormAdmissionNo] = useState('');
+  const [formLearnerAssessmentNo, setFormLearnerAssessmentNo] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formGender, setFormGender] = useState<'MALE' | 'FEMALE' | 'OTHER'>('MALE');
-  const [formDob, setFormDob] = useState('2004-01-01');
+  const [formDob, setFormDob] = useState('2014-01-01');
   const [formNationalId, setFormNationalId] = useState('');
   const [formAddress, setFormAddress] = useState('');
+  const [formGradeId, setFormGradeId] = useState('');
+  const [formStreamId, setFormStreamId] = useState('');
   const [formProgramId, setFormProgramId] = useState('');
   const [formDepartmentId, setFormDepartmentId] = useState('');
   const [formCampusId, setFormCampusId] = useState('');
   const [formClassId, setFormClassId] = useState('');
   const [formIntake, setFormIntake] = useState('January 2026');
   const [formAcademicYear, setFormAcademicYear] = useState('2025/2026');
-  const [formAcademicTerm, setFormAcademicTerm] = useState('Semester 1');
+  const [formAcademicTerm, setFormAcademicTerm] = useState('Term 1');
   const [formFeeBalance, setFormFeeBalance] = useState('0');
   const [formStatus, setFormStatus] = useState<Student['status']>('ACTIVE');
   const [formGuardianName, setFormGuardianName] = useState('');
@@ -83,11 +90,13 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     try {
       setLoading(true);
       setErrorMsg('');
-      const [resStud, resAcad, resDept, resCls] = await Promise.all([
+      const [resStud, resAcad, resDept, resCls, resGrades, resStreams] = await Promise.all([
         fetch('/api/app/education/students', { headers: getHeaders() }),
         fetch('/api/app/education/academics', { headers: getHeaders() }),
         fetch('/api/app/education/departments', { headers: getHeaders() }),
-        fetch('/api/app/education/classes', { headers: getHeaders() })
+        fetch('/api/app/education/classes', { headers: getHeaders() }),
+        fetch('/api/app/education/grades', { headers: getHeaders() }),
+        fetch('/api/app/education/streams', { headers: getHeaders() })
       ]);
 
       if (resStud.ok) {
@@ -107,6 +116,14 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         const cData = await resCls.json();
         setClasses(Array.isArray(cData) ? cData : []);
       }
+      if (resGrades.ok) {
+        const gData = await resGrades.json();
+        setGrades(Array.isArray(gData) ? gData : []);
+      }
+      if (resStreams.ok) {
+        const strData = await resStreams.json();
+        setStreams(Array.isArray(strData) ? strData : []);
+      }
     } catch (err: any) {
       console.error('Error fetching student data:', err);
       setErrorMsg('Failed to load students list.');
@@ -122,19 +139,22 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const resetForm = () => {
     setFormFullName('');
     setFormAdmissionNo('');
+    setFormLearnerAssessmentNo('');
     setFormEmail('');
     setFormPhone('');
     setFormGender('MALE');
-    setFormDob('2004-01-01');
+    setFormDob('2014-01-01');
     setFormNationalId('');
     setFormAddress('');
+    setFormGradeId(grades[0]?.id || '');
+    setFormStreamId('');
     setFormProgramId(programs[0]?.id || '');
     setFormDepartmentId(departments[0]?.id || '');
     setFormCampusId(campuses[0]?.id || '');
     setFormClassId(classes[0]?.id || '');
     setFormIntake('January 2026');
     setFormAcademicYear('2025/2026');
-    setFormAcademicTerm('Semester 1');
+    setFormAcademicTerm('Term 1');
     setFormFeeBalance('0');
     setFormStatus('ACTIVE');
     setFormGuardianName('');
@@ -154,19 +174,22 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setEditingStudent(s);
     setFormFullName(s.fullName || '');
     setFormAdmissionNo(s.admissionNo || '');
+    setFormLearnerAssessmentNo(s.learnerAssessmentNo || '');
     setFormEmail(s.email || '');
     setFormPhone(s.phone || '');
     setFormGender((s.gender as any) || 'MALE');
-    setFormDob(s.dateOfBirth || '2004-01-01');
+    setFormDob(s.dateOfBirth || '2014-01-01');
     setFormNationalId(s.nationalId || '');
     setFormAddress(s.address || '');
+    setFormGradeId(s.gradeId || '');
+    setFormStreamId(s.streamId || '');
     setFormProgramId(s.programId || '');
     setFormDepartmentId(s.departmentId || '');
     setFormCampusId(s.campusId || '');
     setFormClassId(s.classId || '');
     setFormIntake(s.intake || 'January 2026');
     setFormAcademicYear(s.academicYear || '2025/2026');
-    setFormAcademicTerm(s.academicTerm || 'Semester 1');
+    setFormAcademicTerm(s.academicTerm || 'Term 1');
     setFormFeeBalance(String(s.feeBalance || 0));
     setFormStatus(s.status || 'ACTIVE');
     setFormGuardianName(s.guardianName || '');
@@ -191,24 +214,31 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
       const camp = campuses.find(c => c.id === formCampusId);
       const dept = departments.find(d => d.id === formDepartmentId);
       const cls = classes.find(c => c.id === formClassId);
+      const grd = grades.find(g => g.id === formGradeId);
+      const strm = streams.find(s => s.id === formStreamId);
 
       const payload = {
         fullName: formFullName.trim(),
         admissionNo: formAdmissionNo.trim() || undefined,
+        learnerAssessmentNo: formLearnerAssessmentNo.trim() || undefined,
         email: formEmail.trim() || undefined,
         phone: formPhone.trim() || undefined,
         gender: formGender,
         dateOfBirth: formDob,
         nationalId: formNationalId.trim(),
         address: formAddress.trim(),
-        programId: formProgramId,
-        programName: prog?.name || 'Academic Program',
-        departmentId: formDepartmentId,
+        gradeId: formGradeId || undefined,
+        gradeName: grd?.name || undefined,
+        streamId: formStreamId || undefined,
+        streamName: strm?.name || undefined,
+        programId: formProgramId || undefined,
+        programName: prog?.name || (grd ? grd.name : 'Academic Program'),
+        departmentId: formDepartmentId || undefined,
         departmentName: dept?.name || '',
-        campusId: formCampusId,
+        campusId: formCampusId || undefined,
         campusName: camp?.name || 'Main Campus',
-        classId: formClassId,
-        className: cls?.name || '',
+        classId: formClassId || undefined,
+        className: cls?.name || (strm ? `${grd?.name || 'Grade'} Stream ${strm.name}` : ''),
         intake: formIntake,
         academicYear: formAcademicYear,
         academicTerm: formAcademicTerm,
@@ -451,14 +481,16 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     const matchesSearch = !searchTerm.trim() ||
       (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.admissionNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.learnerAssessmentNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
 
+    const matchesGrade = gradeFilter === 'ALL' || s.gradeId === gradeFilter || (!s.gradeId && gradeFilter === 'UNASSIGNED');
     const matchesProg = programFilter === 'ALL' || s.programId === programFilter || s.programName === programFilter;
     const matchesStatus = statusFilter === 'ALL' || s.status === statusFilter;
     const matchesClass = classFilter === 'ALL' || s.classId === classFilter;
 
-    return matchesSearch && matchesProg && matchesStatus && matchesClass;
+    return matchesSearch && matchesGrade && matchesProg && matchesStatus && matchesClass;
   });
 
   return (
@@ -539,16 +571,29 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         </div>
 
         {/* Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, adm no, phone, email..."
+              placeholder="Search by name, adm no, assessment no..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          <div>
+            <select
+              value={gradeFilter}
+              onChange={e => setGradeFilter(e.target.value)}
+              className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+            >
+              <option value="ALL">All Grades (1–9)</option>
+              {grades.map(g => (
+                <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -600,10 +645,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
           <table className="w-full text-left text-xs text-slate-700">
             <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Admission No</th>
+                <th className="p-3.5">Admission / UPI</th>
                 <th className="p-3.5">Student Full Name</th>
+                <th className="p-3.5">Grade / Stream / Program</th>
                 <th className="p-3.5">Contact Details</th>
-                <th className="p-3.5">Program & Class</th>
                 <th className="p-3.5">Campus</th>
                 <th className="p-3.5">Fee Balance</th>
                 <th className="p-3.5">Status</th>
@@ -624,18 +669,34 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               ) : (
                 filteredStudents.map(s => (
                   <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3.5 font-mono font-bold text-blue-700">{s.admissionNo}</td>
+                    <td className="p-3.5">
+                      <div className="font-mono font-bold text-blue-700">{s.admissionNo}</div>
+                      {s.learnerAssessmentNo && (
+                        <div className="font-mono text-[10px] text-slate-400">UPI: {s.learnerAssessmentNo}</div>
+                      )}
+                    </td>
                     <td className="p-3.5">
                       <div className="font-semibold text-slate-900">{s.fullName}</div>
                       <div className="text-[10px] text-slate-400">{s.gender} • DOB: {s.dateOfBirth}</div>
                     </td>
+                    <td className="p-3.5">
+                      {s.gradeName ? (
+                        <div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                            {s.gradeName} {s.streamName ? `(${s.streamName})` : ''}
+                          </span>
+                          {s.className && <div className="text-[10px] text-slate-400 mt-0.5">{s.className}</div>}
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="font-medium text-slate-900">{s.programName}</div>
+                          <div className="text-[11px] text-slate-500">{s.className || 'No Class Assigned'}</div>
+                        </div>
+                      )}
+                    </td>
                     <td className="p-3.5 text-slate-500">
                       <div>{s.email}</div>
                       <div className="text-[11px] font-mono text-slate-400">{s.phone || 'No phone'}</div>
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-medium text-slate-900">{s.programName}</div>
-                      <div className="text-[11px] text-slate-500">{s.className || 'No Class Assigned'}</div>
                     </td>
                     <td className="p-3.5 text-slate-600">{s.campusName || 'Main Campus'}</td>
                     <td className="p-3.5 font-mono font-bold">
@@ -736,6 +797,48 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
+                <label className="font-semibold text-slate-700">Learner Assessment No / NEMIS / UPI</label>
+                <input
+                  type="text"
+                  placeholder="e.g. KICD-9812-402"
+                  value={formLearnerAssessmentNo}
+                  onChange={e => setFormLearnerAssessmentNo(e.target.value)}
+                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono uppercase"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">Grade (Basic School Gr 1–9)</label>
+                <select
+                  value={formGradeId}
+                  onChange={e => {
+                    setFormGradeId(e.target.value);
+                    setFormStreamId('');
+                  }}
+                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                >
+                  <option value="">-- Select Grade (Optional) --</option>
+                  {grades.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">Stream (e.g. 4A, 4B)</label>
+                <select
+                  value={formStreamId}
+                  onChange={e => setFormStreamId(e.target.value)}
+                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                >
+                  <option value="">-- Select Stream --</option>
+                  {streams.filter(s => !formGradeId || s.gradeId === formGradeId).map(s => (
+                    <option key={s.id} value={s.id}>Stream {s.name} ({s.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="font-semibold text-slate-700">Email Address</label>
                 <input
                   type="email"
@@ -803,7 +906,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Program / Course *</label>
+                <label className="font-semibold text-slate-700">Program / Course (Higher Ed / TVET)</label>
                 <select
                   value={formProgramId}
                   onChange={e => setFormProgramId(e.target.value)}
@@ -831,7 +934,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Class / Cohort</label>
+                <label className="font-semibold text-slate-700">Class / Cohort (Higher Ed / TVET)</label>
                 <select
                   value={formClassId}
                   onChange={e => setFormClassId(e.target.value)}
@@ -962,8 +1065,24 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
 
             <div className="grid grid-cols-2 gap-3 py-2">
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Program</span>
-                <p className="font-bold text-slate-900">{viewingStudent.programName}</p>
+                <span className="text-[10px] text-slate-400 font-medium">Grade / Stream</span>
+                <p className="font-bold text-slate-900">
+                  {viewingStudent.gradeName ? (
+                    <span>{viewingStudent.gradeName} {viewingStudent.streamName ? `• Stream ${viewingStudent.streamName}` : ''}</span>
+                  ) : (
+                    <span className="text-slate-400 font-normal">Not Assigned</span>
+                  )}
+                </p>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
+                <span className="text-[10px] text-slate-400 font-medium">Assessment / UPI No</span>
+                <p className="font-bold text-slate-900 font-mono">
+                  {viewingStudent.learnerAssessmentNo || <span className="text-slate-400 font-normal">N/A</span>}
+                </p>
+              </div>
+              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
+                <span className="text-[10px] text-slate-400 font-medium">Program / Course</span>
+                <p className="font-bold text-slate-900">{viewingStudent.programName || 'Basic School Curriculum'}</p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-medium">Class / Cohort</span>

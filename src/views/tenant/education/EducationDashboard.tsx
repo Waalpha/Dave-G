@@ -13,6 +13,7 @@ import { FacultyManagement } from './FacultyManagement';
 import { DepartmentManagement } from './DepartmentManagement';
 import { AcademicsManagement } from './AcademicsManagement';
 import { ClassManagement } from './ClassManagement';
+import { GradeStreamManagement } from './GradeStreamManagement';
 import { FeesFinanceManagement } from './FeesFinanceManagement';
 import { TimetableAttendance } from './TimetableAttendance';
 import { ExamGradingManagement } from './ExamGradingManagement';
@@ -231,10 +232,11 @@ export const EducationDashboard: React.FC = () => {
           { id: 'teacher_portal', label: 'Teacher / Faculty Portal', icon: Award },
           { id: 'documents', label: 'Transcripts & Certificates', icon: FileText },
           { id: 'students', label: 'Students & Admissions', icon: Users },
+          { id: 'grades_streams', label: 'Grades & Streams (1–9)', icon: Layers },
+          { id: 'classes', label: 'Classes & Cohorts', icon: Layers },
           { id: 'faculty', label: 'Lecturers & Staff', icon: Award },
           { id: 'departments', label: 'Departments', icon: Building2 },
           { id: 'academics', label: 'Courses & Units', icon: BookOpen },
-          { id: 'classes', label: 'Classes & Cohorts', icon: Layers },
           { id: 'fees', label: 'Fees & Invoices', icon: DollarSign },
           { id: 'timetable', label: 'Timetable & Attendance', icon: Calendar },
           { id: 'exams', label: 'Exams & Grading', icon: Award },
@@ -562,6 +564,11 @@ export const EducationDashboard: React.FC = () => {
         <AcademicsManagement />
       )}
 
+      {/* SUBTAB: GRADES & STREAMS (Grades 1-9) */}
+      {activeSubTab === 'grades_streams' && (
+        <GradeStreamManagement />
+      )}
+
       {/* SUBTAB 6: CLASSES & COHORTS */}
       {activeSubTab === 'classes' && (
         <ClassManagement />
@@ -585,32 +592,43 @@ export const EducationDashboard: React.FC = () => {
       {/* SUBTAB 10: INSTITUTION SETUP */}
       {activeSubTab === 'setup' && (
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs max-w-2xl space-y-6">
-          <h3 className="font-bold text-slate-900 text-base">Institution Type & Profile Setup</h3>
+          <h3 className="font-bold text-slate-900 text-base">Institution Type & Academic Structure Setup</h3>
           <p className="text-xs text-slate-500">
-            Select your specific education category. The ERP adapts terminology, grading, curricula, and course structures automatically.
+            Configure your academic structure mode. Davetech ERP seamlessly supports both modern Grade-based Basic Education (Grades 1–9 with Streams) and Higher Education/TVET structures (Courses, Classes, Departments & Units).
           </p>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-slate-700">Education Category</label>
-            <select
-              value={educationType}
-              onChange={e => setEducationType(e.target.value as EducationType)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 font-medium"
-            >
-              <option value="UNIVERSITY">University (Degrees & Master Programs)</option>
-              <option value="COLLEGE">College (Higher Diplomas & Certificates)</option>
-              <option value="TVET">TVET / Vocational Training Institute</option>
-              <option value="SECONDARY_SCHOOL">Secondary High School</option>
-              <option value="PRIMARY_SCHOOL">Primary School</option>
-              <option value="TRAINING_INSTITUTE">Professional Corporate Institute</option>
-            </select>
-          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1">Education Category</label>
+              <select
+                value={educationType}
+                onChange={e => setEducationType(e.target.value as EducationType)}
+                className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 font-medium"
+              >
+                <option value="PRIMARY_SCHOOL">Primary School (CBC Grade 1–6)</option>
+                <option value="BASIC_EDUCATION">Basic Education (CBC Grade 1–9 & Streams)</option>
+                <option value="JUNIOR_SECONDARY">Junior Secondary School (Grade 7–9)</option>
+                <option value="COMPREHENSIVE_SCHOOL">Comprehensive School (Grade 1–9 & Secondary)</option>
+                <option value="TVET">TVET / Vocational Training Institute</option>
+                <option value="COLLEGE">College (Higher Diplomas & Certificates)</option>
+                <option value="UNIVERSITY">University (Degrees & Master Programs)</option>
+                <option value="SECONDARY_SCHOOL">Secondary High School (Forms 1–4)</option>
+                <option value="TRAINING_INSTITUTE">Professional Corporate Institute</option>
+              </select>
+            </div>
 
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-1">
-            <span className="font-bold">Active Configuration:</span>
-            <p>
-              The system is configured for <strong className="underline">{educationType}</strong> operations with semester/term calendar structures, unit courses, and multi-tenant isolated student records.
-            </p>
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 space-y-2">
+              <span className="font-bold flex items-center space-x-1.5">
+                <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                <span>Academic Hierarchy Active:</span>
+              </span>
+              <p>
+                <strong>Grade-based School Model:</strong> School → Grade (1–9) → Stream (4A, 4B...) → Students, with automated student promotion progression.
+              </p>
+              <p className="text-blue-700">
+                <strong>Higher Education Model:</strong> Department → Program/Course → Unit → Class/Cohort, for colleges and universities.
+              </p>
+            </div>
           </div>
         </div>
       )}

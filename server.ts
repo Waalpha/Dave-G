@@ -164,10 +164,10 @@ async function startServer() {
         return res.status(403).json({ error: 'TENANT_SUSPENDED', message: 'Tenant organization account is suspended' });
       }
 
-      if (tenant.enabledModules && !tenant.enabledModules.includes(moduleId)) {
+      if (!Array.isArray(tenant.enabledModules) || !tenant.enabledModules.includes(moduleId)) {
         return res.status(403).json({
           error: 'FORBIDDEN_MODULE',
-          message: `The ${moduleId} module is not enabled for your organization.`
+          message: `The '${moduleId}' module is not enabled for ${tenant.name}.`
         });
       }
 
@@ -1539,6 +1539,9 @@ async function startServer() {
     const staff = dbStore.getStaff(tenantId);
     const campuses = dbStore.getCampuses(tenantId);
     const programs = dbStore.getPrograms(tenantId);
+    const grades = dbStore.getGrades(tenantId);
+    const streams = dbStore.getStreams(tenantId);
+    const tenant = dbStore.getTenant(tenantId);
     const feePayments = dbStore.getFeePayments(tenantId);
 
     const totalCollected = feePayments.reduce((sum, p) => sum + p.amount, 0);
@@ -1550,6 +1553,10 @@ async function startServer() {
       totalStaff: staff.length,
       totalCampuses: campuses.length,
       totalPrograms: programs.length,
+      totalGrades: grades.length,
+      totalStreams: streams.length,
+      academicStructureMode: tenant?.academicStructureMode || 'COURSE_CLASS_UNIT',
+      educationType: tenant?.educationType,
       totalCollected,
       totalOutstanding
     });
@@ -1983,6 +1990,132 @@ async function startServer() {
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
+  });
+
+  // ==========================================
+  // GRADES & STREAMS API (Primary & Basic Education Grade 1 - 9)
+  // Structure: School -> Grade -> Stream -> Students
+  // ==========================================
+  app.get('/api/app/education/grades', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    let grades = dbStore.getGrades(tenantId);
+    
+    // Auto-seed if empty for basic/primary school tenants
+    const tenant = dbStore.getTenant(tenantId);
+    if (grades.length === 0 && (tenant?.academicStructureMode === 'GRADE_STREAM' || ['PRIMARY_SCHOOL', 'BASIC_EDUCATION', 'JUNIOR_SECONDARY', 'COMPREHENSIVE_SCHOOL', 'K12_ACADEMY'].includes(tenant?.educationType || ''))) {
+      try {
+        dbStore.seedDefaultGrades(tenantId, user);
+        grades = dbStore.getGrades(tenantId);
+      } catch (err) {
+        console.warn('Notice seeding grades on GET:', err);
+      }
+    }
+
+    return res.json(grades);
+  });
+
+  app.post('/api/app/education/grades', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const grade = dbStore.addGrade(tenantId, req.body, user);
+      return res.status(201).json(grade);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/grades/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const grade = dbStore.updateGrade(tenantId, req.params.id, req.body, user);
+      return res.json(grade);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/grades/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteGrade(tenantId, req.params.id, user);
+      return res.json({ success: true, message: 'Grade deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/grades/seed-defaults', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.seedDefaultGrades(tenantId, user);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Streams API (e.g. Grade 4A, 4B, 4C)
+  app.get('/api/app/education/streams', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const gradeId = req.query.gradeId as string | undefined;
+    return res.json(dbStore.getStreams(tenantId, gradeId));
+  });
+
+  app.post('/api/app/education/streams', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const stream = dbStore.addStream(tenantId, req.body, user);
+      return res.status(201).json(stream);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/streams/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const stream = dbStore.updateStream(tenantId, req.params.id, req.body, user);
+      return res.json(stream);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/streams/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteStream(tenantId, req.params.id, user);
+      return res.json({ success: true, message: 'Stream deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Student Promotions API (Grade 1 -> Grade 2 -> ... -> Grade 9)
+  app.post('/api/app/education/promotions', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.promoteStudents(tenantId, req.body, user);
+      return res.status(200).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/education/promotions/history', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    return res.json(dbStore.getPromotionHistory(tenantId));
   });
 
   // Students update
@@ -3308,13 +3441,13 @@ async function startServer() {
   });
 
   // Legacy bar route compatibility
-  app.get('/api/app/bar/tables', requireAuth, (req, res) => {
+  app.get('/api/app/bar/tables', requireAuth, requireModule('bar'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     return res.json({ tables: dbStore.getRestaurantTables(tenantId) });
   });
 
-  app.patch('/api/app/bar/tables/:id/status', requireAuth, (req, res) => {
+  app.patch('/api/app/bar/tables/:id/status', requireAuth, requireModule('bar'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3325,13 +3458,13 @@ async function startServer() {
     }
   });
 
-  app.get('/api/app/bar/menu', requireAuth, (req, res) => {
+  app.get('/api/app/bar/menu', requireAuth, requireModule('bar'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     return res.json({ menu: dbStore.getRestaurantMenu(tenantId) });
   });
 
-  app.post('/api/app/bar/menu', requireAuth, (req, res) => {
+  app.post('/api/app/bar/menu', requireAuth, requireModule('bar'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3343,14 +3476,14 @@ async function startServer() {
   });
 
   // ACCOUNTING, HR, CRM, CHURCH ENDPOINTS
-  app.get('/api/app/accounting/ledger', requireAuth, (req, res) => {
+  app.get('/api/app/accounting/ledger', requireAuth, requireModule('accounting'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     const entries = dbStore.getAccountingLedger(tenantId);
     return res.json({ entries });
   });
 
-  app.post('/api/app/accounting/ledger', requireAuth, (req, res) => {
+  app.post('/api/app/accounting/ledger', requireAuth, requireModule('accounting'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3361,14 +3494,14 @@ async function startServer() {
     }
   });
 
-  app.get('/api/app/hr/employees', requireAuth, (req, res) => {
+  app.get('/api/app/hr/employees', requireAuth, requireModule('hr'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     const employees = dbStore.getEmployees(tenantId);
     return res.json({ employees });
   });
 
-  app.post('/api/app/hr/employees', requireAuth, (req, res) => {
+  app.post('/api/app/hr/employees', requireAuth, requireModule('hr'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3379,14 +3512,14 @@ async function startServer() {
     }
   });
 
-  app.get('/api/app/crm/leads', requireAuth, (req, res) => {
+  app.get('/api/app/crm/leads', requireAuth, requireModule('crm'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     const leads = dbStore.getCrmLeads(tenantId);
     return res.json({ leads });
   });
 
-  app.post('/api/app/crm/leads', requireAuth, (req, res) => {
+  app.post('/api/app/crm/leads', requireAuth, requireModule('crm'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3397,14 +3530,14 @@ async function startServer() {
     }
   });
 
-  app.get('/api/app/church/members', requireAuth, (req, res) => {
+  app.get('/api/app/church/members', requireAuth, requireModule('church'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     const members = dbStore.getChurchMembers(tenantId);
     return res.json({ members });
   });
 
-  app.post('/api/app/church/members', requireAuth, (req, res) => {
+  app.post('/api/app/church/members', requireAuth, requireModule('church'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -3415,14 +3548,14 @@ async function startServer() {
     }
   });
 
-  app.get('/api/app/church/givings', requireAuth, (req, res) => {
+  app.get('/api/app/church/givings', requireAuth, requireModule('church'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     const givings = dbStore.getChurchGivings(tenantId);
     return res.json({ givings });
   });
 
-  app.post('/api/app/church/givings', requireAuth, (req, res) => {
+  app.post('/api/app/church/givings', requireAuth, requireModule('church'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
@@ -5477,6 +5610,109 @@ async function startServer() {
   });
 
   // Catch-all 404 for unhandled API requests to prevent returning HTML index for API calls
+  // ==========================================
+  // CONTROLLED OFFLINE MODE & LEASE ENDPOINTS
+  // ==========================================
+
+  app.get('/api/app/offline/lease', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const deviceId = (req.query.deviceId as string) || (req.headers['x-device-id'] as string) || 'default_device';
+    const deviceName = (req.query.deviceName as string) || 'Authorized Web Client';
+    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+    const ip = req.ip || '127.0.0.1';
+
+    try {
+      const { lease, tenantConfig } = dbStore.issueOfflineLease(tenantId, user, deviceId, deviceName, userAgent, ip);
+      return res.json({
+        success: true,
+        lease,
+        tenantConfig,
+        serverTimestamp: Date.now()
+      });
+    } catch (err: any) {
+      return res.status(403).json({
+        error: 'OFFLINE_LEASE_REJECTED',
+        message: err.message || 'Unable to issue offline authorization lease.'
+      });
+    }
+  });
+
+  app.post('/api/app/offline/verify-lease', (req, res) => {
+    const { lease } = req.body;
+    if (!lease) {
+      return res.status(400).json({ valid: false, reason: 'MISSING_LEASE' });
+    }
+    const result = dbStore.verifyOfflineLease(lease);
+    return res.json({
+      ...result,
+      serverTimestamp: Date.now()
+    });
+  });
+
+  app.post('/api/app/offline/sync', requireAuth, async (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const batchPayload = req.body;
+
+    if (!batchPayload || !Array.isArray(batchPayload.operations)) {
+      return res.status(400).json({ error: 'INVALID_PAYLOAD', message: 'Batch payload with operations array is required' });
+    }
+
+    try {
+      const result = await dbStore.syncOfflineBatchTransactions(tenantId, batchPayload, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({
+        error: 'OFFLINE_SYNC_FAILED',
+        message: err.message || 'Failed to process offline sync batch'
+      });
+    }
+  });
+
+  // Super Admin Offline Settings Management
+  app.get('/api/platform/settings/offline', requireAuth, requireSuperAdmin, (req, res) => {
+    return res.json(dbStore.getPlatformOfflineConfig());
+  });
+
+  app.put('/api/platform/settings/offline', requireAuth, requireSuperAdmin, (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const updated = dbStore.updatePlatformOfflineConfig(req.body, user);
+      return res.json({ success: true, config: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/platform/tenants/:id/offline', requireAuth, requireSuperAdmin, (req, res) => {
+    try {
+      const config = dbStore.getTenantOfflineConfig(req.params.id);
+      return res.json(config);
+    } catch (err: any) {
+      return res.status(404).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/platform/tenants/:id/offline', requireAuth, requireSuperAdmin, (req, res) => {
+    const user = (req as any).user as User;
+    try {
+      const config = dbStore.updateTenantOfflineConfig(req.params.id, req.body, user);
+      return res.json({ success: true, config });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/platform/tenants/:id/devices/:deviceId/revoke', requireAuth, requireSuperAdmin, (req, res) => {
+    const user = (req as any).user as User;
+    const ok = dbStore.revokeOfflineDevice(req.params.id, req.params.deviceId, user);
+    if (!ok) {
+      return res.status(404).json({ error: 'DEVICE_NOT_FOUND', message: 'Device not found for this tenant.' });
+    }
+    return res.json({ success: true, message: 'Device offline authorization revoked.' });
+  });
+
   app.all('/api/*', (req, res) => {
     return res.status(404).json({ error: 'API_NOT_FOUND', message: `API endpoint ${req.originalUrl} not found` });
   });

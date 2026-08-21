@@ -635,7 +635,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-amber-500"
             >
               <option value="ALL">All Theological Programmes</option>
-              {programmes.map((p) => (
+              {(programmes || []).map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.code} - {p.title || p.name}
                 </option>
@@ -665,7 +665,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
               className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-amber-500"
             >
               <option value="ALL">All Centres</option>
-              {centres.map((c) => (
+              {(centres || []).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -681,7 +681,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
           <div className="flex items-center space-x-2">
             <FileText className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-bold text-white">
-              Student Admission Applications ({applications.length})
+              Student Admission Applications ({(applications || []).length})
             </h3>
           </div>
 
@@ -711,7 +711,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                     Loading admissions applications...
                   </td>
                 </tr>
-              ) : applications.length === 0 ? (
+              ) : (applications || []).length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     <Users className="w-8 h-8 mx-auto text-slate-600 mb-2" />
@@ -719,7 +719,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                   </td>
                 </tr>
               ) : (
-                applications.map((app) => {
+                (applications || []).map((app) => {
                   const verifiedDocs = (app.documents || []).filter(d => d.status === 'VERIFIED').length;
                   const totalDocs = (app.documents || []).length;
                   const completedInterviews = (app.interviews || []).filter(i => i.status === 'COMPLETED').length;
@@ -1109,7 +1109,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                       {(selectedApp.previousEducation || []).length === 0 ? (
                         <div className="text-slate-500">No previous education entered.</div>
                       ) : (
-                        selectedApp.previousEducation.map((edu, idx) => (
+                        (selectedApp.previousEducation || []).map((edu, idx) => (
                           <div key={idx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 flex justify-between items-center">
                             <div>
                               <div className="font-bold text-white">{edu.qualificationAwarded}</div>
@@ -1144,7 +1144,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                       {(selectedApp.documents || []).length === 0 ? (
                         <div className="text-slate-500">No documents uploaded yet.</div>
                       ) : (
-                        selectedApp.documents.map((doc) => (
+                        (selectedApp.documents || []).map((doc) => (
                           <div key={doc.id} className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
                             <div className="flex justify-between items-start">
                               <div>
@@ -1222,7 +1222,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                       {(selectedApp.interviews || []).length === 0 ? (
                         <div className="text-slate-500">No interview scheduled yet.</div>
                       ) : (
-                        selectedApp.interviews.map((int) => (
+                        (selectedApp.interviews || []).map((int) => (
                           <div key={int.id} className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2">
                             <div className="flex justify-between items-start">
                               <div>
@@ -1553,7 +1553,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
                     >
                       <option value="">-- Select Programme --</option>
-                      {programmes.map((p) => (
+                      {(programmes || []).map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.code} - {p.title || p.name} ({p.level})
                         </option>
@@ -1570,7 +1570,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                       className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-amber-500"
                     >
                       <option value="">-- Select Examination Centre --</option>
-                      {centres.map((c) => (
+                      {(centres || []).map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name} ({c.city})
                         </option>
@@ -1709,7 +1709,7 @@ export const TemsAdmissionsDashboard: React.FC<TemsAdmissionsDashboardProps> = (
                   </button>
                 </div>
 
-                {newForm.previousEducation.map((edu, idx) => (
+                {(newForm.previousEducation || []).map((edu, idx) => (
                   <div key={idx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div>
                       <label className="block text-slate-500 text-[10px] mb-1">Institution</label>

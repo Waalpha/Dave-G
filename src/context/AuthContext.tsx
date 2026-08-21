@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [inspectingTenant, setInspectingTenant] = useState<Tenant | null>(null);
-  const [enabledModules, setEnabledModules] = useState<ModuleId[]>(ALL_ERP_MODULES.map(m => m.id));
+  const [enabledModules, setEnabledModules] = useState<ModuleId[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const getHeaders = () => {
@@ -56,6 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!storedUserId) {
       setUser(null);
       setTenant(null);
+      setEnabledModules([]);
       setIsLoading(false);
       return;
     }
@@ -67,7 +68,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (data && data.user) {
           setUser(data.user);
           setTenant(data.tenant || null);
-          setEnabledModules(data.enabledModules && data.enabledModules.length > 0 ? data.enabledModules : ALL_ERP_MODULES.map(m => m.id));
+          const modules = Array.isArray(data.enabledModules) ? data.enabledModules : (data.tenant?.enabledModules || []);
+          setEnabledModules(modules);
           return;
         }
       }
@@ -75,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('erp_user_id');
       setUser(null);
       setTenant(null);
+      setEnabledModules([]);
     } catch (err) {
       console.warn('Auth refresh note:', err);
       // In offline scenario with existing local token, maintain session
@@ -303,7 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setTenant(null);
     setInspectingTenant(null);
-    setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
+    setEnabledModules([]);
   };
 
   const inspectTenant = async (tenantId: string): Promise<boolean> => {
@@ -336,9 +339,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const clearInspection = () => {
     setInspectingTenant(null);
     if (tenant) {
-      setEnabledModules(tenant.enabledModules);
+      setEnabledModules(tenant.enabledModules || []);
     } else {
-      setEnabledModules(ALL_ERP_MODULES.map(m => m.id));
+      setEnabledModules([]);
     }
   };
 
@@ -346,7 +349,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user?.role === 'SUPER_ADMIN' && !inspectingTenant) return true;
     const currentTenant = inspectingTenant || tenant;
     if (!currentTenant) return false;
-    return enabledModules.includes(moduleId);
+    return (enabledModules || []).includes(moduleId);
   };
 
   const hasPermission = (permission: string): boolean => {

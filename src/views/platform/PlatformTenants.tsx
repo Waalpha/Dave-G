@@ -4,12 +4,13 @@ import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
 import { useAuth } from '../../context/AuthContext';
 import {
   Building2, Plus, ShieldCheck, Check, X, Edit2, AlertCircle, RefreshCw, 
-  Layers, ExternalLink, KeyRound, Users, Trash2, ShieldAlert, CheckCircle2, Globe, Copy
+  Layers, ExternalLink, KeyRound, Users, Trash2, ShieldAlert, CheckCircle2, Globe, Copy, WifiOff
 } from 'lucide-react';
 import { EditTenantModal } from './components/EditTenantModal';
 import { TenantUsersModal } from './components/TenantUsersModal';
 import { GlobalUsersList } from './components/GlobalUsersList';
 import { TenantDomainManager } from '../tenant/components/TenantDomainManager';
+import { TenantOfflineModal } from './components/TenantOfflineModal';
 import { compressImageFile } from '../../lib/imageUtils';
 import { getBaseDomain, normalizeSubdomain, isReservedSubdomain } from '../../lib/domainResolver';
 
@@ -56,6 +57,7 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
   const [selectedTenantForEdit, setSelectedTenantForEdit] = useState<Tenant | null>(null);
   const [selectedTenantForUsers, setSelectedTenantForUsers] = useState<Tenant | null>(null);
   const [selectedTenantForDomains, setSelectedTenantForDomains] = useState<Tenant | null>(null);
+  const [selectedTenantForOffline, setSelectedTenantForOffline] = useState<Tenant | null>(null);
   const [selectedTenantForDelete, setSelectedTenantForDelete] = useState<Tenant | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -508,6 +510,16 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
                         <span>Domains</span>
                       </button>
 
+                      {/* Controlled Offline Mode */}
+                      <button
+                        onClick={() => setSelectedTenantForOffline(t)}
+                        className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition-colors inline-flex items-center space-x-1 cursor-pointer"
+                        title="Configure offline grace periods and authorized workstations"
+                      >
+                        <WifiOff className="w-3.5 h-3.5" />
+                        <span>Offline Mode</span>
+                      </button>
+
                       {/* Toggle Status */}
                       <button
                         onClick={() => handleToggleTenantStatus(t)}
@@ -956,6 +968,17 @@ export const PlatformTenants: React.FC<PlatformTenantsProps> = ({ onInspectNavig
             />
           </div>
         </div>
+      )}
+
+      {/* CONTROLLED OFFLINE MODE MODAL (SUPER ADMIN) */}
+      {selectedTenantForOffline && (
+        <TenantOfflineModal
+          tenant={selectedTenantForOffline}
+          onClose={() => setSelectedTenantForOffline(null)}
+          onSaved={() => {
+            fetchTenants();
+          }}
+        />
       )}
     </div>
   );

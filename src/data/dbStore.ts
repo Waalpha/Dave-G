@@ -4,7 +4,8 @@ import path from 'path';
 import { saveDocToFirestore, deleteDocFromFirestore, loadCollectionFromFirestore } from '../lib/firestore';
 import {
   Tenant, User, AuditLog, Campus, AcademicYear, AcademicTerm, Department,
-  Program, UnitSubject, SchoolClass, Student, LecturerStaff, TimetableEntry,
+  Program, UnitSubject, SchoolClass, SchoolGrade, GradeStream, StudentPromotionRecord, AcademicStructureMode,
+  Student, LecturerStaff, TimetableEntry,
   StudentAttendance, FeeStructure, StudentInvoice, FeePayment, StudentGradeRecord,
   LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
@@ -40,7 +41,9 @@ import {
   TemsFeeScheduleItem, TemsPaymentRecord, CandidateProfile,
   StudentAdmissionApplication, AdmissionsApplicationStatus, AdmissionsDocument,
   AdmissionsDocumentStatus, AdmissionsInterview, AdmissionsReviewNote, AdmissionsAuditEntry,
-  PrinterDevice, UniversalReceipt, PrintJobRecord, PrinterAuditLog, ReceiptItem
+  PrinterDevice, UniversalReceipt, PrintJobRecord, PrinterAuditLog, ReceiptItem,
+  PlatformOfflineConfig, TenantOfflineConfig, OfflineLicenseLease, OfflineQueueItem,
+  OfflineSyncBatchPayload, OfflineSyncBatchResult, OfflineGracePeriodHours, AuthorizedOfflineDevice
 } from '../types';
 
 import {
@@ -54,6 +57,32 @@ import {
   INITIAL_BROOKS_EVENTS, INITIAL_BROOKS_ARTICLES, INITIAL_BROOKS_FEE_SCHEDULE,
   INITIAL_BROOKS_PAYMENTS, INITIAL_BROOKS_ADMISSIONS
 } from './brooksOfLifeInitialData';
+
+const SERVER_OFFLINE_SECRET = process.env.OFFLINE_LEASE_SECRET || 'davetech_enterprise_offline_lease_secret_v1_2026';
+
+export const DEFAULT_PLATFORM_OFFLINE_CONFIG: PlatformOfflineConfig = {
+  enabled: true,
+  defaultGracePeriodHours: 72,
+  maxGracePeriodHours: 168,
+  allowedOfflineModules: ['pos', 'education', 'inventory', 'retail', 'wholesale', 'bookshop'],
+  offlineDeviceLimit: 10,
+  requireOnlineVerificationFrequencyHours: 72,
+  enableOfflinePos: true,
+  enableOfflineEducation: true,
+  enableOfflineInventory: true,
+  offlineTransactionLimit: 1000
+};
+
+export const DEFAULT_TENANT_OFFLINE_CONFIG: TenantOfflineConfig = {
+  enabled: true,
+  gracePeriodHours: 72,
+  allowedOfflineModules: ['pos', 'education', 'inventory', 'retail', 'wholesale', 'bookshop'],
+  enableOfflinePos: true,
+  enableOfflineEducation: true,
+  enableOfflineInventory: true,
+  offlineTransactionLimit: 500,
+  authorizedDevices: []
+};
 
 export function hashPassword(password: string, userId: string = 'global_salt'): string {
   return crypto.pbkdf2Sync(password, `salt_${userId}`, 10000, 64, 'sha256').toString('hex');
@@ -449,6 +478,195 @@ export const INITIAL_TIMETABLE: TimetableEntry[] = [];
 export const INITIAL_FEE_PAYMENTS: FeePayment[] = [];
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
+export const DEFAULT_GRADE_TEMPLATES = [
+  {
+    name: 'Grade 1',
+    code: 'G1',
+    levelNumber: 1,
+    category: 'LOWER_PRIMARY' as const,
+    description: 'Foundation Lower Primary (Grade 1)',
+    orderIndex: 1,
+    learningAreas: [
+      'Mathematics Activities',
+      'English Language Activities',
+      'Kiswahili Language Activities',
+      'Environmental Activities',
+      'Hygiene and Nutrition Activities',
+      'Creative Arts Activities',
+      'Religious Education Activities (CRE/IRE/HRE)',
+      'Movement and Physical Activities'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
+    name: 'Grade 2',
+    code: 'G2',
+    levelNumber: 2,
+    category: 'LOWER_PRIMARY' as const,
+    description: 'Foundation Lower Primary (Grade 2)',
+    orderIndex: 2,
+    learningAreas: [
+      'Mathematics Activities',
+      'English Language Activities',
+      'Kiswahili Language Activities',
+      'Environmental Activities',
+      'Hygiene and Nutrition Activities',
+      'Creative Arts Activities',
+      'Religious Education Activities (CRE/IRE/HRE)',
+      'Movement and Physical Activities'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
+    name: 'Grade 3',
+    code: 'G3',
+    levelNumber: 3,
+    category: 'LOWER_PRIMARY' as const,
+    description: 'Foundation Lower Primary (Grade 3)',
+    orderIndex: 3,
+    learningAreas: [
+      'Mathematics Activities',
+      'English Language Activities',
+      'Kiswahili Language Activities',
+      'Environmental Activities',
+      'Hygiene and Nutrition Activities',
+      'Creative Arts Activities',
+      'Religious Education Activities (CRE/IRE/HRE)',
+      'Movement and Physical Activities'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
+    name: 'Grade 4',
+    code: 'G4',
+    levelNumber: 4,
+    category: 'UPPER_PRIMARY' as const,
+    description: 'Middle School Upper Primary (Grade 4)',
+    orderIndex: 4,
+    learningAreas: [
+      'Mathematics',
+      'English Language',
+      'Kiswahili Language',
+      'Science and Technology',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Creative Arts',
+      'Religious Education (CRE/IRE/HRE)',
+      'Physical and Health Education'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  },
+  {
+    name: 'Grade 5',
+    code: 'G5',
+    levelNumber: 5,
+    category: 'UPPER_PRIMARY' as const,
+    description: 'Middle School Upper Primary (Grade 5)',
+    orderIndex: 5,
+    learningAreas: [
+      'Mathematics',
+      'English Language',
+      'Kiswahili Language',
+      'Science and Technology',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Creative Arts',
+      'Religious Education (CRE/IRE/HRE)',
+      'Physical and Health Education'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  },
+  {
+    name: 'Grade 6',
+    code: 'G6',
+    levelNumber: 6,
+    category: 'UPPER_PRIMARY' as const,
+    description: 'Upper Primary Stage & Transition (Grade 6)',
+    orderIndex: 6,
+    learningAreas: [
+      'Mathematics',
+      'English Language',
+      'Kiswahili Language',
+      'Science and Technology',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Creative Arts',
+      'Religious Education (CRE/IRE/HRE)',
+      'Physical and Health Education'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  },
+  {
+    name: 'Grade 7',
+    code: 'G7',
+    levelNumber: 7,
+    category: 'JUNIOR_SCHOOL' as const,
+    description: 'Junior Secondary Comprehensive (Grade 7)',
+    orderIndex: 7,
+    learningAreas: [
+      'Mathematics',
+      'English',
+      'Kiswahili',
+      'Integrated Science',
+      'Health Education',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Pre-Technical Studies',
+      'Creative Arts and Sports',
+      'Religious Education (CRE/IRE/HRE)',
+      'Life Skills Education',
+      'Business Studies'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  },
+  {
+    name: 'Grade 8',
+    code: 'G8',
+    levelNumber: 8,
+    category: 'JUNIOR_SCHOOL' as const,
+    description: 'Junior Secondary Intermediate (Grade 8)',
+    orderIndex: 8,
+    learningAreas: [
+      'Mathematics',
+      'English',
+      'Kiswahili',
+      'Integrated Science',
+      'Health Education',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Pre-Technical Studies',
+      'Creative Arts and Sports',
+      'Religious Education (CRE/IRE/HRE)',
+      'Life Skills Education',
+      'Business Studies'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  },
+  {
+    name: 'Grade 9',
+    code: 'G9',
+    levelNumber: 9,
+    category: 'JUNIOR_SCHOOL' as const,
+    description: 'Junior Secondary Graduation & Senior Transition (Grade 9)',
+    orderIndex: 9,
+    learningAreas: [
+      'Mathematics',
+      'English',
+      'Kiswahili',
+      'Integrated Science',
+      'Health Education',
+      'Social Studies',
+      'Agriculture and Nutrition',
+      'Pre-Technical Studies',
+      'Creative Arts and Sports',
+      'Religious Education (CRE/IRE/HRE)',
+      'Life Skills Education',
+      'Business Studies'
+    ],
+    defaultStreams: ['A', 'B', 'C']
+  }
+];
+
 // Memory Data Store Engine
 class DatabaseStore {
   private tenants: Tenant[] = [];
@@ -461,6 +679,9 @@ class DatabaseStore {
   private programs: Program[] = [];
   private units: UnitSubject[] = [];
   private schoolClasses: SchoolClass[] = [];
+  private schoolGrades: SchoolGrade[] = [];
+  private gradeStreams: GradeStream[] = [];
+  private studentPromotions: StudentPromotionRecord[] = [];
   private students: Student[] = [];
   private staff: LecturerStaff[] = [];
   private timetable: TimetableEntry[] = [];
@@ -595,7 +816,8 @@ class DatabaseStore {
     copyrightText: '© 2026 Davetech Solutions. All rights reserved.',
     allowSelfRegistration: false,
     systemNotice: '',
-    publicWebsite: { ...DEFAULT_PLATFORM_PUBLIC_WEBSITE_CONFIG }
+    publicWebsite: { ...DEFAULT_PLATFORM_PUBLIC_WEBSITE_CONFIG },
+    offlineConfig: { ...DEFAULT_PLATFORM_OFFLINE_CONFIG }
   };
 
   constructor() {
@@ -646,6 +868,9 @@ class DatabaseStore {
         programs: this.programs,
         units: this.units,
         schoolClasses: this.schoolClasses,
+        schoolGrades: this.schoolGrades,
+        gradeStreams: this.gradeStreams,
+        studentPromotions: this.studentPromotions,
         students: this.students,
         staff: this.staff,
         timetable: this.timetable,
@@ -793,6 +1018,9 @@ class DatabaseStore {
         if (Array.isArray(data.programs)) this.programs = data.programs;
         if (Array.isArray(data.units)) this.units = data.units;
         if (Array.isArray(data.schoolClasses)) this.schoolClasses = data.schoolClasses;
+        if (Array.isArray(data.schoolGrades)) this.schoolGrades = data.schoolGrades;
+        if (Array.isArray(data.gradeStreams)) this.gradeStreams = data.gradeStreams;
+        if (Array.isArray(data.studentPromotions)) this.studentPromotions = data.studentPromotions;
         if (Array.isArray(data.students)) this.students = data.students;
         if (Array.isArray(data.staff)) this.staff = data.staff;
         if (Array.isArray(data.timetable)) this.timetable = data.timetable;
@@ -999,6 +1227,15 @@ class DatabaseStore {
 
       const dbClasses = await loadCollectionFromFirestore<SchoolClass>('schoolClasses');
       this.schoolClasses = Array.isArray(dbClasses) ? dbClasses : [];
+
+      const dbGradesList = await loadCollectionFromFirestore<SchoolGrade>('schoolGrades');
+      this.schoolGrades = Array.isArray(dbGradesList) ? dbGradesList : [];
+
+      const dbStreamsList = await loadCollectionFromFirestore<GradeStream>('gradeStreams');
+      this.gradeStreams = Array.isArray(dbStreamsList) ? dbStreamsList : [];
+
+      const dbPromotionsList = await loadCollectionFromFirestore<StudentPromotionRecord>('studentPromotions');
+      this.studentPromotions = Array.isArray(dbPromotionsList) ? dbPromotionsList : [];
 
       const dbStaff = await loadCollectionFromFirestore<LecturerStaff>('staff');
       this.staff = Array.isArray(dbStaff) ? dbStaff : [];
@@ -1946,6 +2183,9 @@ class DatabaseStore {
     }
 
     const tenantId = `tenant_${Date.now().toString(36)}`;
+    const isGradeStreamSchool = ['PRIMARY_SCHOOL', 'BASIC_EDUCATION', 'JUNIOR_SECONDARY', 'COMPREHENSIVE_SCHOOL', 'K12_ACADEMY'].includes(data.educationType || '');
+    const academicStructureMode: AcademicStructureMode = (data as any).academicStructureMode || (isGradeStreamSchool ? 'GRADE_STREAM' : 'COURSE_CLASS_UNIT');
+
     const newTenant: Tenant = {
       id: tenantId,
       name: data.name || 'New Tenant',
@@ -1955,6 +2195,7 @@ class DatabaseStore {
       customDomain: data.customDomain?.trim() || undefined,
       type: data.type,
       educationType: data.educationType,
+      academicStructureMode,
       status: 'ACTIVE',
       planId: 'plan_professional',
       websiteEnabled: data.websiteEnabled ?? true,
@@ -2061,6 +2302,14 @@ class DatabaseStore {
       };
       this.tenantDomains.push(customDomainRecord);
       await this.persistDoc('tenantDomains', customDomainRecord.id, customDomainRecord);
+    }
+
+    if (newTenant.academicStructureMode === 'GRADE_STREAM' || isGradeStreamSchool) {
+      try {
+        this.seedDefaultGrades(tenantId, adminUser);
+      } catch (err) {
+        console.warn('Notice seeding default grades:', err);
+      }
     }
 
     this.logAction(
@@ -2188,6 +2437,7 @@ class DatabaseStore {
       websiteEnabled?: boolean;
       type?: any;
       educationType?: any;
+      academicStructureMode?: AcademicStructureMode;
       status?: 'ACTIVE' | 'SUSPENDED';
       planId?: string;
       branding?: Partial<Tenant['branding']>;
@@ -2242,7 +2492,27 @@ class DatabaseStore {
       }
     }
     if (data.type) tenant.type = data.type;
-    if (data.educationType !== undefined) tenant.educationType = data.educationType;
+    if (data.educationType !== undefined) {
+      tenant.educationType = data.educationType;
+      const isGradeStream = ['PRIMARY_SCHOOL', 'BASIC_EDUCATION', 'JUNIOR_SECONDARY', 'COMPREHENSIVE_SCHOOL', 'K12_ACADEMY'].includes(data.educationType);
+      if (!data.academicStructureMode) {
+        tenant.academicStructureMode = isGradeStream ? 'GRADE_STREAM' : 'COURSE_CLASS_UNIT';
+      }
+    }
+    if (data.academicStructureMode !== undefined) {
+      tenant.academicStructureMode = data.academicStructureMode;
+    }
+
+    if (tenant.academicStructureMode === 'GRADE_STREAM') {
+      const existingGrades = this.schoolGrades.filter(g => g.tenantId === tenantId);
+      if (existingGrades.length === 0) {
+        try {
+          this.seedDefaultGrades(tenantId, updatedBy);
+        } catch (err) {
+          console.warn('Notice seeding grades on update:', err);
+        }
+      }
+    }
     if (data.status) tenant.status = data.status;
     if (data.planId) tenant.planId = data.planId;
     if (data.enabledModules && Array.isArray(data.enabledModules)) {
@@ -3410,6 +3680,449 @@ class DatabaseStore {
     return true;
   }
 
+  // ==========================================
+  // GRADE & STREAM MANAGEMENT (Grade 1 - 9)
+  // School -> Grade -> Stream -> Students
+  // ==========================================
+  public getGrades(tenantId: string): SchoolGrade[] {
+    const list = this.schoolGrades.filter(g => g.tenantId === tenantId);
+    return list.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+  }
+
+  public getGradeById(tenantId: string, id: string): SchoolGrade | undefined {
+    return this.schoolGrades.find(g => g.tenantId === tenantId && g.id === id);
+  }
+
+  public addGrade(tenantId: string, data: Partial<SchoolGrade>, user: User): SchoolGrade {
+    const name = data.name?.trim();
+    if (!name) throw new Error('Grade name is required (e.g. Grade 1, Grade 4, Grade 9).');
+
+    let headTeacherName = data.headTeacherName || '';
+    if (data.headTeacherId) {
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.headTeacherId);
+      if (staff) headTeacherName = staff.fullName;
+    }
+
+    const lvl = Number(data.levelNumber) || 1;
+    const category = data.category || (lvl <= 3 ? 'LOWER_PRIMARY' : lvl <= 6 ? 'UPPER_PRIMARY' : 'JUNIOR_SCHOOL');
+
+    const newGrade: SchoolGrade = {
+      id: `grd_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      name,
+      code: data.code?.trim().toUpperCase() || name.replace(/[^A-Za-z0-9]/g, '').substring(0, 5).toUpperCase(),
+      levelNumber: lvl,
+      category,
+      description: data.description?.trim() || '',
+      learningAreas: Array.isArray(data.learningAreas) && data.learningAreas.length > 0
+        ? data.learningAreas
+        : ['Mathematics', 'English', 'Kiswahili', 'Integrated Science', 'Social Studies'],
+      headTeacherId: data.headTeacherId || '',
+      headTeacherName,
+      orderIndex: data.orderIndex !== undefined ? Number(data.orderIndex) : this.schoolGrades.filter(g => g.tenantId === tenantId).length + 1,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.schoolGrades.push(newGrade);
+    saveDocToFirestore('schoolGrades', newGrade.id, newGrade).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_GRADE', 'SchoolGrade', newGrade.id, `Created academic grade "${newGrade.name}" (${newGrade.code})`);
+    return newGrade;
+  }
+
+  public updateGrade(tenantId: string, id: string, data: Partial<SchoolGrade>, user: User): SchoolGrade {
+    const grade = this.getGradeById(tenantId, id);
+    if (!grade) throw new Error('Grade not found.');
+
+    if (data.name) grade.name = data.name.trim();
+    if (data.code) grade.code = data.code.trim().toUpperCase();
+    if (data.levelNumber !== undefined) grade.levelNumber = Number(data.levelNumber);
+    if (data.category) grade.category = data.category;
+    if (data.description !== undefined) grade.description = data.description.trim();
+    if (Array.isArray(data.learningAreas)) grade.learningAreas = data.learningAreas;
+    if (data.headTeacherId !== undefined) {
+      grade.headTeacherId = data.headTeacherId;
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.headTeacherId);
+      if (staff) grade.headTeacherName = staff.fullName;
+    }
+    if (data.orderIndex !== undefined) grade.orderIndex = Number(data.orderIndex);
+    if (data.status) grade.status = data.status;
+    grade.updatedAt = new Date().toISOString();
+
+    // Propagate name changes to Streams and Students
+    if (data.name) {
+      this.gradeStreams.forEach(st => {
+        if (st.tenantId === tenantId && st.gradeId === id) {
+          st.gradeName = grade.name;
+          st.fullName = `${grade.name}${st.name}`;
+          saveDocToFirestore('gradeStreams', st.id, st).catch(() => {});
+        }
+      });
+      this.students.forEach(st => {
+        if (st.tenantId === tenantId && st.gradeId === id) {
+          st.gradeName = grade.name;
+          saveDocToFirestore('students', st.id, st).catch(() => {});
+        }
+      });
+    }
+
+    saveDocToFirestore('schoolGrades', grade.id, grade).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_GRADE', 'SchoolGrade', grade.id, `Updated academic grade "${grade.name}"`);
+    return grade;
+  }
+
+  public deleteGrade(tenantId: string, id: string, user: User): boolean {
+    const idx = this.schoolGrades.findIndex(g => g.tenantId === tenantId && g.id === id);
+    if (idx === -1) throw new Error('Grade not found.');
+    const grade = this.schoolGrades[idx];
+
+    const hasStudents = this.students.some(s => s.tenantId === tenantId && s.gradeId === id);
+    if (hasStudents) {
+      throw new Error(`Cannot delete grade "${grade.name}" because it currently has enrolled students.`);
+    }
+
+    // Delete associated streams
+    const streamsToDelete = this.gradeStreams.filter(s => s.tenantId === tenantId && s.gradeId === id);
+    streamsToDelete.forEach(st => {
+      deleteDocFromFirestore('gradeStreams', st.id).catch(() => {});
+    });
+    this.gradeStreams = this.gradeStreams.filter(s => !(s.tenantId === tenantId && s.gradeId === id));
+
+    this.schoolGrades.splice(idx, 1);
+    deleteDocFromFirestore('schoolGrades', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_GRADE', 'SchoolGrade', id, `Deleted academic grade "${grade.name}" and associated streams`);
+    return true;
+  }
+
+  public seedDefaultGrades(tenantId: string, user: User): { success: boolean; grades: SchoolGrade[]; streams: GradeStream[] } {
+    const existing = this.schoolGrades.filter(g => g.tenantId === tenantId);
+    if (existing.length > 0) {
+      return {
+        success: true,
+        grades: existing,
+        streams: this.gradeStreams.filter(s => s.tenantId === tenantId)
+      };
+    }
+
+    const createdGrades: SchoolGrade[] = [];
+    const createdStreams: GradeStream[] = [];
+    const now = new Date().toISOString();
+    const currentYear = `${new Date().getFullYear()}`;
+
+    DEFAULT_GRADE_TEMPLATES.forEach((tpl) => {
+      const gradeId = `grd_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
+      const grade: SchoolGrade = {
+        id: gradeId,
+        tenantId,
+        name: tpl.name,
+        code: tpl.code,
+        levelNumber: tpl.levelNumber,
+        category: tpl.category,
+        description: tpl.description,
+        learningAreas: [...tpl.learningAreas],
+        orderIndex: tpl.orderIndex,
+        status: 'ACTIVE',
+        createdAt: now,
+        updatedAt: now
+      };
+      this.schoolGrades.push(grade);
+      createdGrades.push(grade);
+      saveDocToFirestore('schoolGrades', grade.id, grade).catch(() => {});
+
+      // Create default streams for this grade (e.g. 4A, 4B, 4C)
+      tpl.defaultStreams.forEach((streamSuffix) => {
+        const streamId = `strm_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${streamSuffix.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
+        const stream: GradeStream = {
+          id: streamId,
+          tenantId,
+          gradeId: grade.id,
+          gradeName: grade.name,
+          name: streamSuffix,
+          fullName: `${grade.name}${streamSuffix}`,
+          code: `${grade.code}-${streamSuffix}`,
+          academicYear: currentYear,
+          academicTerm: 'Term 1',
+          capacity: 40,
+          enrolledCount: 0,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now
+        };
+        this.gradeStreams.push(stream);
+        createdStreams.push(stream);
+        saveDocToFirestore('gradeStreams', stream.id, stream).catch(() => {});
+      });
+    });
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'SEED_DEFAULT_GRADES',
+      'SchoolGrade',
+      `tenant_${tenantId}`,
+      `Seeded default Grades 1 through 9 with CBC learning areas and streams.`
+    );
+
+    return {
+      success: true,
+      grades: createdGrades,
+      streams: createdStreams
+    };
+  }
+
+  // STREAM MANAGEMENT (e.g. Grade 4A, 4B, 4C)
+  public getStreams(tenantId: string, gradeId?: string): GradeStream[] {
+    let list = this.gradeStreams.filter(s => s.tenantId === tenantId);
+    if (gradeId) {
+      list = list.filter(s => s.gradeId === gradeId);
+    }
+    // Compute enrolled student counts
+    return list.map(st => {
+      const count = this.students.filter(stud => stud.tenantId === tenantId && stud.streamId === st.id && stud.status === 'ACTIVE').length;
+      return { ...st, enrolledCount: count };
+    });
+  }
+
+  public getStreamById(tenantId: string, id: string): GradeStream | undefined {
+    const st = this.gradeStreams.find(s => s.tenantId === tenantId && s.id === id);
+    if (!st) return undefined;
+    const count = this.students.filter(stud => stud.tenantId === tenantId && stud.streamId === st.id && stud.status === 'ACTIVE').length;
+    return { ...st, enrolledCount: count };
+  }
+
+  public addStream(tenantId: string, data: Partial<GradeStream>, user: User): GradeStream {
+    const gradeId = data.gradeId;
+    if (!gradeId) throw new Error('Grade ID is required to add a stream.');
+    const grade = this.getGradeById(tenantId, gradeId);
+    if (!grade) throw new Error('Referenced Grade not found.');
+
+    const name = data.name?.trim() || 'A';
+    const fullName = data.fullName?.trim() || `${grade.name}${name.startsWith(' ') ? name : '' + name}`;
+
+    let teacherName = data.classTeacherName || '';
+    if (data.classTeacherId) {
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.classTeacherId);
+      if (staff) teacherName = staff.fullName;
+    }
+
+    let campusName = data.campusName || '';
+    if (data.campusId) {
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (camp) campusName = camp.name;
+    }
+
+    const newStream: GradeStream = {
+      id: `strm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      gradeId: grade.id,
+      gradeName: grade.name,
+      name,
+      fullName,
+      code: data.code?.trim().toUpperCase() || `${grade.code}-${name.replace(/[^A-Za-z0-9]/g, '')}`.toUpperCase(),
+      academicYear: data.academicYear || `${new Date().getFullYear()}`,
+      academicTerm: data.academicTerm || 'Term 1',
+      campusId: data.campusId || '',
+      campusName,
+      classTeacherId: data.classTeacherId || '',
+      classTeacherName: teacherName,
+      roomVenue: data.roomVenue?.trim() || '',
+      capacity: Number(data.capacity) || 40,
+      enrolledCount: 0,
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    this.gradeStreams.push(newStream);
+    saveDocToFirestore('gradeStreams', newStream.id, newStream).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_STREAM', 'GradeStream', newStream.id, `Created stream "${newStream.fullName}" (${newStream.code}) for ${grade.name}`);
+    return newStream;
+  }
+
+  public updateStream(tenantId: string, id: string, data: Partial<GradeStream>, user: User): GradeStream {
+    const stream = this.gradeStreams.find(s => s.tenantId === tenantId && s.id === id);
+    if (!stream) throw new Error('Stream not found.');
+
+    if (data.gradeId && data.gradeId !== stream.gradeId) {
+      const grade = this.getGradeById(tenantId, data.gradeId);
+      if (grade) {
+        stream.gradeId = grade.id;
+        stream.gradeName = grade.name;
+      }
+    }
+    if (data.name) stream.name = data.name.trim();
+    if (data.fullName) stream.fullName = data.fullName.trim();
+    if (data.code) stream.code = data.code.trim().toUpperCase();
+    if (data.academicYear) stream.academicYear = data.academicYear;
+    if (data.academicTerm) stream.academicTerm = data.academicTerm;
+    if (data.capacity !== undefined) stream.capacity = Number(data.capacity);
+    if (data.roomVenue !== undefined) stream.roomVenue = data.roomVenue.trim();
+    if (data.classTeacherId !== undefined) {
+      stream.classTeacherId = data.classTeacherId;
+      const staff = this.staff.find(s => s.tenantId === tenantId && s.id === data.classTeacherId);
+      if (staff) stream.classTeacherName = staff.fullName;
+    }
+    if (data.campusId !== undefined) {
+      stream.campusId = data.campusId;
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === data.campusId);
+      if (camp) stream.campusName = camp.name;
+    }
+    if (data.status) stream.status = data.status;
+    stream.updatedAt = new Date().toISOString();
+
+    // Propagate changes to enrolled students
+    if (data.fullName) {
+      this.students.forEach(st => {
+        if (st.tenantId === tenantId && st.streamId === id) {
+          st.streamName = stream.fullName;
+          saveDocToFirestore('students', st.id, st).catch(() => {});
+        }
+      });
+    }
+
+    saveDocToFirestore('gradeStreams', stream.id, stream).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_STREAM', 'GradeStream', stream.id, `Updated stream "${stream.fullName}"`);
+    return stream;
+  }
+
+  public deleteStream(tenantId: string, id: string, user: User): boolean {
+    const idx = this.gradeStreams.findIndex(s => s.tenantId === tenantId && s.id === id);
+    if (idx === -1) throw new Error('Stream not found.');
+    const stream = this.gradeStreams[idx];
+
+    const hasStudents = this.students.some(s => s.tenantId === tenantId && s.streamId === id);
+    if (hasStudents) {
+      throw new Error(`Cannot delete stream "${stream.fullName}" because it has enrolled students. Reassign or promote students first.`);
+    }
+
+    this.gradeStreams.splice(idx, 1);
+    deleteDocFromFirestore('gradeStreams', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_STREAM', 'GradeStream', id, `Deleted stream "${stream.fullName}"`);
+    return true;
+  }
+
+  // ==========================================
+  // STUDENT PROMOTION ENGINE
+  // Promote students between Grades (e.g. Grade 4A -> Grade 5A)
+  // ==========================================
+  public promoteStudents(
+    tenantId: string,
+    payload: {
+      studentIds: string[];
+      fromGradeId?: string;
+      fromStreamId?: string;
+      toGradeId?: string;
+      toStreamId?: string;
+      fromAcademicYear: string;
+      toAcademicYear: string;
+      promotionType: 'PROMOTED' | 'REPEATED' | 'GRADUATED' | 'TRANSFERRED' | 'DEMOTED';
+      notes?: string;
+    },
+    user: User
+  ): { success: boolean; promotedCount: number; records: StudentPromotionRecord[] } {
+    const { studentIds, fromGradeId, fromStreamId, toGradeId, toStreamId, fromAcademicYear, toAcademicYear, promotionType, notes } = payload;
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      throw new Error('No students selected for promotion.');
+    }
+
+    const fromGrade = fromGradeId ? this.getGradeById(tenantId, fromGradeId) : undefined;
+    const fromStream = fromStreamId ? this.getStreamById(tenantId, fromStreamId) : undefined;
+    const toGrade = toGradeId ? this.getGradeById(tenantId, toGradeId) : undefined;
+    const toStream = toStreamId ? this.getStreamById(tenantId, toStreamId) : undefined;
+
+    const promotionRecords: StudentPromotionRecord[] = [];
+    const now = new Date().toISOString();
+
+    studentIds.forEach(studId => {
+      const student = this.students.find(s => s.tenantId === tenantId && s.id === studId);
+      if (!student) return;
+
+      const rec: StudentPromotionRecord = {
+        id: `prm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        fromGradeId: student.gradeId || fromGradeId,
+        fromGradeName: student.gradeName || fromGrade?.name,
+        fromStreamId: student.streamId || fromStreamId,
+        fromStreamName: student.streamName || fromStream?.fullName,
+        toGradeId: toGradeId || student.gradeId,
+        toGradeName: toGrade?.name || student.gradeName,
+        toStreamId: toStreamId || student.streamId,
+        toStreamName: toStream?.fullName || student.streamName,
+        fromAcademicYear: fromAcademicYear || student.academicYear,
+        toAcademicYear: toAcademicYear || `${new Date().getFullYear() + 1}`,
+        promotionType: promotionType || 'PROMOTED',
+        promotedAt: now,
+        promotedBy: user.name || 'System Admin',
+        notes: notes || ''
+      };
+
+      if (promotionType === 'PROMOTED') {
+        if (toGrade) {
+          student.gradeId = toGrade.id;
+          student.gradeName = toGrade.name;
+          student.learningStage = toGrade.category;
+        }
+        if (toStream) {
+          student.streamId = toStream.id;
+          student.streamName = toStream.fullName;
+        } else if (toGrade && student.streamName) {
+          // Attempt to match same stream suffix (e.g. 4A -> 5A)
+          const existingSuffix = student.streamName.replace(/Grade\s*\d+/i, '').trim();
+          const matchStream = this.gradeStreams.find(s => s.tenantId === tenantId && s.gradeId === toGrade.id && s.name.toLowerCase() === existingSuffix.toLowerCase());
+          if (matchStream) {
+            student.streamId = matchStream.id;
+            student.streamName = matchStream.fullName;
+          }
+        }
+        student.academicYear = toAcademicYear;
+        student.status = 'ACTIVE';
+      } else if (promotionType === 'REPEATED') {
+        student.academicYear = toAcademicYear;
+        if (toStream) {
+          student.streamId = toStream.id;
+          student.streamName = toStream.fullName;
+        }
+      } else if (promotionType === 'GRADUATED') {
+        student.status = 'GRADUATED';
+        student.academicYear = toAcademicYear;
+      } else if (promotionType === 'TRANSFERRED') {
+        student.status = 'DEFERRED';
+      }
+
+      this.studentPromotions.unshift(rec);
+      promotionRecords.push(rec);
+      saveDocToFirestore('studentPromotions', rec.id, rec).catch(() => {});
+      saveDocToFirestore('students', student.id, student).catch(() => {});
+    });
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'STUDENTS_PROMOTED',
+      'StudentPromotionRecord',
+      `bulk_${promotionRecords.length}`,
+      `Executed ${promotionType} for ${promotionRecords.length} students from ${fromGrade?.name || 'Current'} (${fromAcademicYear}) to ${toGrade?.name || 'Next'} (${toAcademicYear})`
+    );
+
+    return {
+      success: true,
+      promotedCount: promotionRecords.length,
+      records: promotionRecords
+    };
+  }
+
+  public getPromotionHistory(tenantId: string): StudentPromotionRecord[] {
+    return this.studentPromotions.filter(p => p.tenantId === tenantId);
+  }
+
   public getStudents(tenantId: string): Student[] {
     return this.students.filter(s => s.tenantId === tenantId);
   }
@@ -3452,6 +4165,25 @@ class DatabaseStore {
       if (dept) deptName = dept.name;
     }
 
+    let gradeName = studentData.gradeName || '';
+    let learningStage = studentData.learningStage;
+    if (studentData.gradeId) {
+      const grd = this.getGradeById(tenantId, studentData.gradeId);
+      if (grd) {
+        gradeName = grd.name;
+        learningStage = grd.category;
+      }
+    }
+
+    let streamName = studentData.streamName || '';
+    if (studentData.streamId) {
+      const strm = this.getStreamById(tenantId, studentData.streamId);
+      if (strm) {
+        streamName = strm.fullName;
+        if (!gradeName && strm.gradeName) gradeName = strm.gradeName;
+      }
+    }
+
     const newStudent: Student = {
       id: `stud_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
@@ -3462,6 +4194,7 @@ class DatabaseStore {
       gender: studentData.gender || 'OTHER',
       dateOfBirth: studentData.dateOfBirth || '2004-01-01',
       nationalId: studentData.nationalId?.trim() || '',
+      assessmentNumber: studentData.assessmentNumber?.trim() || '',
       address: studentData.address?.trim() || '',
       programId: studentData.programId || '',
       programName,
@@ -3469,6 +4202,11 @@ class DatabaseStore {
       departmentName: deptName,
       classId: studentData.classId || '',
       className,
+      gradeId: studentData.gradeId || '',
+      gradeName,
+      streamId: studentData.streamId || '',
+      streamName,
+      learningStage,
       campusId: studentData.campusId || '',
       campusName,
       intake: studentData.intake || 'January 2026',
@@ -3494,7 +4232,7 @@ class DatabaseStore {
       'STUDENT_ADMITTED',
       'Student',
       newStudent.id,
-      `Admitted student "${newStudent.fullName}" (${newStudent.admissionNo})`
+      `Admitted student "${newStudent.fullName}" (${newStudent.admissionNo})${newStudent.gradeName ? ` to ${newStudent.gradeName} (${newStudent.streamName || ''})` : ''}`
     );
 
     return newStudent;
@@ -3517,6 +4255,7 @@ class DatabaseStore {
     if (data.gender) student.gender = data.gender;
     if (data.dateOfBirth) student.dateOfBirth = data.dateOfBirth;
     if (data.nationalId !== undefined) student.nationalId = data.nationalId.trim();
+    if (data.assessmentNumber !== undefined) student.assessmentNumber = data.assessmentNumber.trim();
     if (data.address !== undefined) student.address = data.address.trim();
 
     if (data.programId !== undefined) {
@@ -3539,6 +4278,22 @@ class DatabaseStore {
       const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === data.classId);
       if (cls) student.className = cls.name;
     }
+    if (data.gradeId !== undefined) {
+      student.gradeId = data.gradeId;
+      const grd = this.getGradeById(tenantId, data.gradeId);
+      if (grd) {
+        student.gradeName = grd.name;
+        student.learningStage = grd.category;
+      }
+    }
+    if (data.streamId !== undefined) {
+      student.streamId = data.streamId;
+      const strm = this.getStreamById(tenantId, data.streamId);
+      if (strm) {
+        student.streamName = strm.fullName;
+        if (!student.gradeName && strm.gradeName) student.gradeName = strm.gradeName;
+      }
+    }
 
     if (data.intake) student.intake = data.intake;
     if (data.academicYear) student.academicYear = data.academicYear;
@@ -3558,7 +4313,7 @@ class DatabaseStore {
   public bulkAddStudents(tenantId: string, studentsData: Array<Partial<Student>>, createdBy: User): { addedCount: number; students: Student[] } {
     const added: Student[] = [];
     const programs = this.getPrograms(tenantId);
-    const defaultProg = programs[0]?.name || 'Diploma Program';
+    const defaultProg = programs[0]?.name || 'Primary Education';
     const campuses = this.getCampuses(tenantId);
     const defaultCampus = campuses[0]?.name || 'Main Campus';
 
@@ -3568,6 +4323,25 @@ class DatabaseStore {
       const admissionNo = (sData.admissionNo || `ADM/${new Date().getFullYear()}/${randNum}`).toUpperCase();
       const cleanName = sData.fullName.trim();
       const defaultEmail = `${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`;
+
+      let gradeName = sData.gradeName || '';
+      let learningStage = sData.learningStage;
+      if (sData.gradeId) {
+        const grd = this.getGradeById(tenantId, sData.gradeId);
+        if (grd) {
+          gradeName = grd.name;
+          learningStage = grd.category;
+        }
+      }
+
+      let streamName = sData.streamName || '';
+      if (sData.streamId) {
+        const strm = this.getStreamById(tenantId, sData.streamId);
+        if (strm) {
+          streamName = strm.fullName;
+          if (!gradeName && strm.gradeName) gradeName = strm.gradeName;
+        }
+      }
 
       const student: Student = {
         id: `stud_${Date.now().toString(36)}_${idx}`,
@@ -3579,6 +4353,7 @@ class DatabaseStore {
         gender: sData.gender || 'OTHER',
         dateOfBirth: sData.dateOfBirth || '2004-01-01',
         nationalId: sData.nationalId?.trim() || '',
+        assessmentNumber: sData.assessmentNumber?.trim() || '',
         address: sData.address?.trim() || '',
         programId: sData.programId || programs[0]?.id || '',
         programName: sData.programName?.trim() || defaultProg,
@@ -3586,11 +4361,16 @@ class DatabaseStore {
         departmentName: sData.departmentName || '',
         classId: sData.classId || '',
         className: sData.className || '',
+        gradeId: sData.gradeId || '',
+        gradeName,
+        streamId: sData.streamId || '',
+        streamName,
+        learningStage,
         campusId: sData.campusId || campuses[0]?.id || '',
         campusName: sData.campusName?.trim() || defaultCampus,
         intake: sData.intake || 'January 2026',
         academicYear: sData.academicYear?.trim() || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
-        academicTerm: sData.academicTerm || 'Semester 1',
+        academicTerm: sData.academicTerm || 'Term 1',
         status: (sData.status as any) || 'ACTIVE',
         feeBalance: typeof sData.feeBalance === 'number' ? sData.feeBalance : (parseFloat(sData.feeBalance as any) || 0),
         guardianName: sData.guardianName?.trim() || '',
@@ -10739,6 +11519,427 @@ class DatabaseStore {
     this.saveToDiskBackup();
     return { application: app, letterNumber, verificationCode };
   }
+
+  // ==========================================
+  // CONTROLLED OFFLINE MODE ENGINE METHODS
+  // ==========================================
+
+  public getPlatformOfflineConfig(): PlatformOfflineConfig {
+    if (!this.platformSettings.offlineConfig) {
+      this.platformSettings.offlineConfig = { ...DEFAULT_PLATFORM_OFFLINE_CONFIG };
+    }
+    return { ...this.platformSettings.offlineConfig };
+  }
+
+  public updatePlatformOfflineConfig(updates: Partial<PlatformOfflineConfig>, actor?: User): PlatformOfflineConfig {
+    const current = this.getPlatformOfflineConfig();
+    const updated: PlatformOfflineConfig = {
+      ...current,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    this.platformSettings.offlineConfig = updated;
+    this.persistDoc('platformSettings', 'global_config', this.platformSettings);
+    this.saveToDiskBackup();
+
+    if (actor) {
+      this.logAction(
+        'platform_super_admin',
+        actor.id,
+        actor.name,
+        actor.role,
+        'PLATFORM_OFFLINE_CONFIG_UPDATED',
+        'PlatformSettings',
+        `Super Admin updated global offline configuration (Grace: ${updated.defaultGracePeriodHours}h, Max: ${updated.maxGracePeriodHours}h, Enabled: ${updated.enabled})`
+      );
+    }
+    return updated;
+  }
+
+  public getTenantOfflineConfig(tenantId: string): TenantOfflineConfig {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) {
+      throw new Error(`Tenant not found: ${tenantId}`);
+    }
+    if (!tenant.offlineConfig) {
+      tenant.offlineConfig = {
+        enabled: true,
+        gracePeriodHours: this.getPlatformOfflineConfig().defaultGracePeriodHours || 72,
+        allowedOfflineModules: (tenant.enabledModules || []).filter(m => 
+          ['pos', 'education', 'inventory', 'retail', 'wholesale', 'bookshop'].includes(m)
+        ),
+        enableOfflinePos: true,
+        enableOfflineEducation: true,
+        enableOfflineInventory: true,
+        offlineTransactionLimit: 500,
+        authorizedDevices: []
+      };
+      this.persistDoc('tenants', tenant.id, tenant);
+    }
+    return tenant.offlineConfig;
+  }
+
+  public updateTenantOfflineConfig(tenantId: string, updates: Partial<TenantOfflineConfig>, actor?: User): TenantOfflineConfig {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) throw new Error(`Tenant not found: ${tenantId}`);
+    const platformConfig = this.getPlatformOfflineConfig();
+
+    const currentConfig = this.getTenantOfflineConfig(tenantId);
+    let requestedGrace = updates.gracePeriodHours !== undefined ? updates.gracePeriodHours : currentConfig.gracePeriodHours;
+    
+    // ENFORCE PLATFORM RULE: Tenant cannot exceed platform max grace period!
+    if (requestedGrace > platformConfig.maxGracePeriodHours) {
+      requestedGrace = platformConfig.maxGracePeriodHours as OfflineGracePeriodHours;
+    }
+
+    const updatedConfig: TenantOfflineConfig = {
+      ...currentConfig,
+      ...updates,
+      gracePeriodHours: requestedGrace,
+      authorizedDevices: updates.authorizedDevices || currentConfig.authorizedDevices || []
+    };
+
+    tenant.offlineConfig = updatedConfig;
+    tenant.updatedAt = new Date().toISOString();
+    this.persistDoc('tenants', tenant.id, tenant);
+    this.saveToDiskBackup();
+
+    if (actor) {
+      this.logAction(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'TENANT_OFFLINE_CONFIG_UPDATED',
+        'Tenant',
+        `Offline configuration updated for tenant ${tenant.name} (Enabled: ${updatedConfig.enabled}, Grace: ${updatedConfig.gracePeriodHours}h)`
+      );
+    }
+    return updatedConfig;
+  }
+
+  public registerOrUpdateOfflineDevice(
+    tenantId: string,
+    deviceId: string,
+    deviceName: string = 'Authorized Workstation',
+    userAgent?: string,
+    ip?: string
+  ): AuthorizedOfflineDevice {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) throw new Error(`Tenant ${tenantId} not found`);
+    const config = this.getTenantOfflineConfig(tenantId);
+    const platformConfig = this.getPlatformOfflineConfig();
+
+    if (!config.authorizedDevices) {
+      config.authorizedDevices = [];
+    }
+
+    const existingDevice = config.authorizedDevices.find(d => d.deviceId === deviceId);
+    const now = new Date().toISOString();
+
+    if (existingDevice) {
+      if (existingDevice.status === 'REVOKED') {
+        throw new Error('DEVICE_REVOKED: This device has had its offline authorization revoked by the administrator.');
+      }
+      existingDevice.lastSeenAt = now;
+      if (deviceName) existingDevice.deviceName = deviceName;
+      if (userAgent) existingDevice.userAgent = userAgent;
+      if (ip) existingDevice.lastIp = ip;
+      this.persistDoc('tenants', tenant.id, tenant);
+      return existingDevice;
+    }
+
+    // Check device limit
+    const activeCount = config.authorizedDevices.filter(d => d.status === 'ACTIVE').length;
+    const limit = platformConfig.offlineDeviceLimit || 10;
+    if (activeCount >= limit) {
+      throw new Error(`DEVICE_LIMIT_EXCEEDED: Maximum of ${limit} offline devices reached for this organization.`);
+    }
+
+    const newDevice: AuthorizedOfflineDevice = {
+      id: `dev_${Date.now().toString(36)}_${crypto.randomBytes(3).toString('hex')}`,
+      deviceId,
+      deviceName,
+      registeredAt: now,
+      lastSeenAt: now,
+      lastSyncAt: now,
+      lastIp: ip,
+      userAgent,
+      status: 'ACTIVE'
+    };
+
+    config.authorizedDevices.push(newDevice);
+    this.persistDoc('tenants', tenant.id, tenant);
+    this.saveToDiskBackup();
+    return newDevice;
+  }
+
+  public revokeOfflineDevice(tenantId: string, deviceId: string, actor?: User): boolean {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) return false;
+    const config = this.getTenantOfflineConfig(tenantId);
+    const dev = (config.authorizedDevices || []).find(d => d.deviceId === deviceId || d.id === deviceId);
+    if (!dev) return false;
+
+    dev.status = 'REVOKED';
+    this.persistDoc('tenants', tenant.id, tenant);
+    this.saveToDiskBackup();
+
+    if (actor) {
+      this.logAction(
+        tenantId,
+        actor.id,
+        actor.name,
+        actor.role,
+        'OFFLINE_DEVICE_REVOKED',
+        'Device',
+        `Offline access revoked for device: ${dev.deviceName} (${dev.deviceId})`
+      );
+    }
+    return true;
+  }
+
+  public issueOfflineLease(
+    tenantId: string,
+    user: User,
+    deviceId: string,
+    deviceName: string = 'Workstation',
+    userAgent?: string,
+    ip?: string
+  ): { lease: OfflineLicenseLease; tenantConfig: TenantOfflineConfig } {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) {
+      throw new Error(`TENANT_NOT_FOUND: Tenant ${tenantId} does not exist`);
+    }
+
+    // STRICT SUBSCRIPTION / STATUS VALIDATION
+    if (tenant.status === 'SUSPENDED') {
+      throw new Error('TENANT_SUSPENDED: Your organization account is suspended. Offline authorization cannot be issued.');
+    }
+    if ((tenant as any).subscriptionStatus === 'EXPIRED') {
+      throw new Error('SUBSCRIPTION_EXPIRED: Your Davetech ERP subscription has expired. Please renew online to continue.');
+    }
+    if ((tenant as any).subscriptionStatus === 'CANCELLED') {
+      throw new Error('SUBSCRIPTION_CANCELLED: Your Davetech ERP subscription has been cancelled.');
+    }
+
+    const platformConfig = this.getPlatformOfflineConfig();
+    if (!platformConfig.enabled) {
+      throw new Error('OFFLINE_MODE_DISABLED: Offline mode is disabled globally by the platform administrator.');
+    }
+
+    const tenantConfig = this.getTenantOfflineConfig(tenantId);
+    if (!tenantConfig.enabled) {
+      throw new Error('TENANT_OFFLINE_DISABLED: Offline access is not enabled for your organization.');
+    }
+
+    // Register or update device & ensure not revoked
+    this.registerOrUpdateOfflineDevice(tenantId, deviceId, deviceName, userAgent, ip);
+
+    // Calculate effective grace period (cannot exceed platform max)
+    const effectiveGraceHours = Math.min(
+      tenantConfig.gracePeriodHours || 72,
+      platformConfig.maxGracePeriodHours || 168
+    );
+
+    // Filter allowed modules (intersection of tenant's enabled modules, tenant's allowed offline modules, and platform allowed)
+    const allowedOfflineModules = (tenant.enabledModules || []).filter(m =>
+      (tenantConfig.allowedOfflineModules || []).includes(m) &&
+      (platformConfig.allowedOfflineModules || []).includes(m)
+    );
+
+    const leaseId = `lease_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+    const issuedAt = Date.now();
+    const expiresAt = issuedAt + (effectiveGraceHours * 3600 * 1000);
+    const subStatus = (tenant as any).subscriptionStatus || (tenant.status === 'ACTIVE' ? 'ACTIVE' : 'PAYMENT_DUE');
+
+    // Cryptographically sign lease with server secret
+    const sigPayload = `${leaseId}:${tenantId}:${user.id}:${deviceId}:${issuedAt}:${expiresAt}:${effectiveGraceHours}:${subStatus}:${allowedOfflineModules.slice().sort().join(',')}`;
+    const signature = crypto.createHmac('sha256', SERVER_OFFLINE_SECRET).update(sigPayload).digest('hex');
+
+    const lease: OfflineLicenseLease = {
+      leaseId,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      userId: user.id,
+      userEmail: user.email,
+      deviceId,
+      issuedAt,
+      expiresAt,
+      gracePeriodHours: effectiveGraceHours,
+      allowedOfflineModules,
+      permissions: user.permissions || [],
+      subscriptionStatus: subStatus as any,
+      signature,
+      version: '1.0'
+    };
+
+    return { lease, tenantConfig };
+  }
+
+  public verifyOfflineLease(lease: OfflineLicenseLease): { valid: boolean; reason?: string } {
+    if (!lease || !lease.leaseId || !lease.tenantId || !lease.signature) {
+      return { valid: false, reason: 'MALFORMED_LEASE' };
+    }
+
+    const tenant = this.getTenant(lease.tenantId);
+    if (!tenant) return { valid: false, reason: 'TENANT_NOT_FOUND' };
+
+    if (tenant.status === 'SUSPENDED') return { valid: false, reason: 'TENANT_SUSPENDED' };
+
+    // Check device revocation
+    const tenantConfig = this.getTenantOfflineConfig(lease.tenantId);
+    const device = (tenantConfig.authorizedDevices || []).find(d => d.deviceId === lease.deviceId);
+    if (device && device.status === 'REVOKED') {
+      return { valid: false, reason: 'DEVICE_REVOKED' };
+    }
+
+    // Verify HMAC signature
+    const subStatus = lease.subscriptionStatus || (tenant.status === 'ACTIVE' ? 'ACTIVE' : 'PAYMENT_DUE');
+    const sigPayload = `${lease.leaseId}:${lease.tenantId}:${lease.userId}:${lease.deviceId}:${lease.issuedAt}:${lease.expiresAt}:${lease.gracePeriodHours}:${subStatus}:${lease.allowedOfflineModules.slice().sort().join(',')}`;
+    const expectedSig = crypto.createHmac('sha256', SERVER_OFFLINE_SECRET).update(sigPayload).digest('hex');
+
+    if (expectedSig !== lease.signature) {
+      return { valid: false, reason: 'INVALID_SIGNATURE_TAMPERED' };
+    }
+
+    // Check server-side time expiration
+    if (Date.now() > lease.expiresAt) {
+      return { valid: false, reason: 'LEASE_EXPIRED' };
+    }
+
+    return { valid: true };
+  }
+
+  public async syncOfflineBatchTransactions(
+    tenantId: string,
+    batch: OfflineSyncBatchPayload,
+    user: User
+  ): Promise<OfflineSyncBatchResult> {
+    const tenant = this.getTenant(tenantId);
+    if (!tenant) {
+      throw new Error(`TENANT_NOT_FOUND: Tenant ${tenantId} not found`);
+    }
+
+    if (tenant.status === 'SUSPENDED') {
+      throw new Error('TENANT_SUSPENDED: Your organization account is suspended. Synchronization rejected.');
+    }
+
+    const acceptedOperations: string[] = [];
+    const rejectedOperations: Array<{ operationId: string; reason: string }> = [];
+    const errors: string[] = [];
+
+    const tenantConfig = this.getTenantOfflineConfig(tenantId);
+    const allowedModules = tenantConfig.allowedOfflineModules || [];
+
+    for (const op of (batch.operations || [])) {
+      try {
+        if (!op.operationId) {
+          rejectedOperations.push({ operationId: 'unknown', reason: 'Missing operationId' });
+          continue;
+        }
+
+        // Validate module
+        if (!allowedModules.includes(op.module)) {
+          rejectedOperations.push({
+            operationId: op.operationId,
+            reason: `Module '${op.module}' is not authorized for offline sync in your organization.`
+          });
+          continue;
+        }
+
+        // Execute action based on type
+        if (op.action === 'pos.create_sale') {
+          const saleData = op.payload as PosSaleOrder;
+          // Check duplicate sale ID or receiptNo (Idempotency)
+          const existingSale = this.posSales.find(
+            s => s.tenantId === tenantId && (s.id === saleData.id || s.receiptNo === saleData.receiptNo)
+          );
+
+          if (!existingSale) {
+            // Apply sale and stock deduction server-side
+            this.recordPosSale(tenantId, saleData, user);
+          }
+          acceptedOperations.push(op.operationId);
+        } else if (op.action === 'education.record_attendance') {
+          const { records } = op.payload;
+          if (Array.isArray(records)) {
+            this.recordAttendance(tenantId, records, user);
+          }
+          acceptedOperations.push(op.operationId);
+        } else if (op.action === 'education.register_student') {
+          const studentData = op.payload;
+          // Check duplicate admissionNo
+          const existingStudent = this.students.find(
+            s => s.tenantId === tenantId && s.admissionNo === studentData.admissionNo
+          );
+          if (!existingStudent) {
+            this.addStudent(tenantId, studentData, user);
+          }
+          acceptedOperations.push(op.operationId);
+        } else if (op.action === 'inventory.adjust_stock') {
+          const { productId, quantityChange, notes } = op.payload;
+          const prod = this.posProducts.find(p => p.id === productId && p.tenantId === tenantId);
+          if (prod) {
+            prod.quantityInStock = Math.max(0, prod.quantityInStock + Number(quantityChange));
+            this.persistDoc('posProducts', prod.id, prod);
+          }
+          acceptedOperations.push(op.operationId);
+        } else {
+          // Unrecognized action
+          rejectedOperations.push({ operationId: op.operationId, reason: `Unknown sync action: ${op.action}` });
+        }
+      } catch (err: any) {
+        errors.push(`Op ${op.operationId}: ${err.message || 'Processing error'}`);
+        rejectedOperations.push({ operationId: op.operationId, reason: err.message || 'Internal processing error' });
+      }
+    }
+
+    // Update lastSyncAt for tenant and device
+    const nowIso = new Date().toISOString();
+    tenantConfig.lastSyncAt = nowIso;
+    if (tenantConfig.authorizedDevices && batch.deviceId) {
+      const dev = tenantConfig.authorizedDevices.find(d => d.deviceId === batch.deviceId);
+      if (dev) {
+        dev.lastSyncAt = nowIso;
+        dev.lastSeenAt = nowIso;
+      }
+    }
+    tenant.updatedAt = nowIso;
+    this.persistDoc('tenants', tenant.id, tenant);
+    this.saveToDiskBackup();
+
+    // Log batch audit
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'OFFLINE_SYNC_COMPLETED',
+      'OfflineSync',
+      `Synchronized ${acceptedOperations.length} offline operations from device ${batch.deviceId}. (Rejected: ${rejectedOperations.length})`
+    );
+
+    // Issue a fresh license lease so the grace period is extended/refreshed upon successful reconnection
+    let freshLease: OfflineLicenseLease | undefined;
+    try {
+      const issued = this.issueOfflineLease(tenantId, user, batch.deviceId);
+      freshLease = issued.lease;
+    } catch {
+      // Lease issue note
+    }
+
+    return {
+      success: true,
+      processedCount: acceptedOperations.length,
+      acceptedOperations,
+      rejectedOperations,
+      errors,
+      serverTimestamp: Date.now(),
+      freshLease
+    };
+  }
 }
 
 export const dbStore = new DatabaseStore();
+

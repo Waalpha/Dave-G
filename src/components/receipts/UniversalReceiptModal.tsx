@@ -378,7 +378,7 @@ export const UniversalReceiptModal: React.FC<UniversalReceiptModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {receipt.items.map((item, idx) => (
+                    {(receipt.items || []).map((item, idx) => (
                       <tr key={idx} className="align-top">
                         <td className="py-1 font-medium">{item.quantity}x</td>
                         <td className="py-1 pr-1">
@@ -652,7 +652,7 @@ export const UniversalReceiptModal: React.FC<UniversalReceiptModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                      {receipt.items.map((item, idx) => (
+                      {(receipt.items || []).map((item, idx) => (
                         <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                           <td className="p-3 text-center font-mono text-slate-400">{idx + 1}</td>
                           <td className="p-3">

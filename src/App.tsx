@@ -33,7 +33,7 @@ import { resolveHostname, ResolvedDomain } from './lib/domainResolver';
 import { Shield, ArrowLeft } from 'lucide-react';
 
 function MainAppContent() {
-  const { user, tenant, inspectingTenant, inspectTenant, clearInspection, isLoading } = useAuth();
+  const { user, tenant, inspectingTenant, inspectTenant, clearInspection, isLoading, isModuleEnabled } = useAuth();
   const [currentRoute, setCurrentRoute] = useState<string>('/app/dashboard');
   const [platformTab, setPlatformTab] = useState<string>('dashboard');
   const [domainResolution, setDomainResolution] = useState<ResolvedDomain>(() => resolveHostname());
@@ -314,26 +314,78 @@ function MainAppContent() {
 
       <TenantLayout currentRoute={currentRoute} onNavigate={navigateTo}>
         {currentRoute === '/app/dashboard' && <TenantDashboard onNavigate={navigateTo} />}
-        {currentRoute === '/app/education' && <EducationDashboard />}
+        
+        {currentRoute === '/app/education' && (
+          isModuleEnabled('education') ? (
+            <EducationDashboard />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Education / School ERP"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
+        )}
         
         {/* Brooks of Life UK - Theological Examination Management System (TEMS) & Media Hub */}
         {(currentRoute === '/app/theology' || currentRoute === '/app/tems') && (
-          <TemsHubView initialRoleView="admin" />
+          isModuleEnabled('theology') ? (
+            <TemsHubView initialRoleView="admin" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="TEMS & Theological Examination Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/candidate-portal' && (
-          <TemsHubView initialRoleView="candidate" />
+          isModuleEnabled('theology') ? (
+            <TemsHubView initialRoleView="candidate" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="TEMS Candidate Portal"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/examiner-portal' && (
-          <TemsHubView initialRoleView="examiner" />
+          isModuleEnabled('theology') ? (
+            <TemsHubView initialRoleView="examiner" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="TEMS Examiner Portal"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/moderator-portal' && (
-          <TemsHubView initialRoleView="moderator" />
+          isModuleEnabled('theology') ? (
+            <TemsHubView initialRoleView="moderator" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="TEMS Moderator Portal"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/rpl-portal' && (
-          <TemsHubView initialRoleView="rpl" />
+          isModuleEnabled('theology') ? (
+            <TemsHubView initialRoleView="rpl" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="TEMS RPL Recognition Portal"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/media' && (
-          <TemsHubView initialRoleView="media" />
+          isModuleEnabled('media') ? (
+            <TemsHubView initialRoleView="media" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Brooks of Life TV & Media"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
 
         {/* Settings Guard: TENANT_USER cannot access Organization Settings */}
@@ -355,63 +407,154 @@ function MainAppContent() {
 
         {/* Production-Ready Industry-Specific & Enterprise ERP Module Views */}
         {currentRoute === '/app/sacco' && (
-          <SaccoDashboard />
+          isModuleEnabled('sacco') ? (
+            <SaccoDashboard />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Chama & SACCO Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/pos' && (
-          <PosTerminalView
-            saleType="POS"
-            title="Point of Sale (POS) Terminal"
-            subtitle="Fast barcode scanner checkout, cash/M-Pesa payment split and receipts"
-          />
+          isModuleEnabled('pos') ? (
+            <PosTerminalView
+              saleType="POS"
+              title="Point of Sale (POS) Terminal"
+              subtitle="Fast barcode scanner checkout, cash/M-Pesa payment split and receipts"
+            />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Point of Sale (POS)"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/retail' && (
-          <PosTerminalView
-            saleType="RETAIL"
-            title="Retail Store Sales & Billing"
-            subtitle="Storefront inventory, retail pricing, discounts, and customer billing"
-          />
+          isModuleEnabled('retail') ? (
+            <PosTerminalView
+              saleType="RETAIL"
+              title="Retail Store Sales & Billing"
+              subtitle="Storefront inventory, retail pricing, discounts, and customer billing"
+            />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Retail Shop Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/wholesale' && (
-          <PosTerminalView
-            saleType="WHOLESALE"
-            title="Wholesale Trade & Distribution"
-            subtitle="Bulk item volume pricing, customer accounts, credit balances & dispatches"
-          />
+          isModuleEnabled('wholesale') ? (
+            <PosTerminalView
+              saleType="WHOLESALE"
+              title="Wholesale Trade & Distribution"
+              subtitle="Bulk item volume pricing, customer accounts, credit balances & dispatches"
+            />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Wholesale Trade & Distribution"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/bookshop' && (
-          <PosTerminalView
-            saleType="BOOKSHOP"
-            title="Bookshop & Stationeries POS"
-            subtitle="ISBN cataloging, textbooks, stationery sets and bulk school supplies"
-          />
+          isModuleEnabled('bookshop') ? (
+            <PosTerminalView
+              saleType="BOOKSHOP"
+              title="Bookshop & Stationeries POS"
+              subtitle="ISBN cataloging, textbooks, stationery sets and bulk school supplies"
+            />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Bookshop & Stationeries"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/bar' && (
-          <RestaurantBarDashboard />
+          isModuleEnabled('bar') ? (
+            <RestaurantBarDashboard />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Bar & Restaurant Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/church' && (
-          <ChurchDashboard />
+          isModuleEnabled('church') ? (
+            <ChurchDashboard />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Church & Christian Ministry Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/accounting' && (
-          <CoreEnterpriseDashboard defaultTab="accounting" />
+          isModuleEnabled('accounting') ? (
+            <CoreEnterpriseDashboard defaultTab="accounting" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Accounting & Financial Ledger"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/hr' && (
-          <CoreEnterpriseDashboard defaultTab="hr" />
+          isModuleEnabled('hr') ? (
+            <CoreEnterpriseDashboard defaultTab="hr" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="HR & Payroll Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/crm' && (
-          <CoreEnterpriseDashboard defaultTab="crm" />
+          isModuleEnabled('crm') ? (
+            <CoreEnterpriseDashboard defaultTab="crm" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="CRM & Pipeline"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/inventory' && (
-          <PosTerminalView
-            saleType="RETAIL"
-            title="Inventory & Stock Control"
-            subtitle="Real-time stock on hand, reorder thresholds, unit costs and item categories"
-          />
+          isModuleEnabled('inventory') ? (
+            <PosTerminalView
+              saleType="RETAIL"
+              title="Inventory & Stock Control"
+              subtitle="Real-time stock on hand, reorder thresholds, unit costs and item categories"
+            />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Inventory & Warehouse Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/hospital' && (
-          <HealthcareDashboard />
+          isModuleEnabled('hospital') ? (
+            <HealthcareDashboard />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="Hospital & Healthcare Management"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/general-erp' && (
-          <CoreEnterpriseDashboard defaultTab="accounting" />
+          isModuleEnabled('general_erp') ? (
+            <CoreEnterpriseDashboard defaultTab="accounting" />
+          ) : (
+            <AccessDeniedGuard
+              moduleName="General ERP"
+              onNavigateDashboard={() => navigateTo('/app/dashboard')}
+            />
+          )
         )}
         {currentRoute === '/app/reports' && (
           <CoreEnterpriseDashboard defaultTab="accounting" />

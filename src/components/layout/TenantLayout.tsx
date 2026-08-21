@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { ALL_ERP_MODULES } from '../../data/modulesCatalog';
 import { UserProfileModal } from '../profile/UserProfileModal';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { OfflineStatusIndicator } from '../offline/OfflineStatusIndicator';
+import { OfflineGraceBanner } from '../offline/OfflineGraceBanner';
 import {
   GraduationCap, Activity, ShoppingBag, Store, Truck, HeartHandshake,
   Coins, Wine, Briefcase, Calculator, Users, Package, UserCheck,
@@ -57,7 +59,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
   const currency = tenant?.branding?.currency || 'USD';
 
   // DYNAMIC SIDEBAR FILTERING: Only show modules enabled for this tenant!
-  const availableModules = ALL_ERP_MODULES.filter(m => enabledModules.includes(m.id));
+  const availableModules = ALL_ERP_MODULES.filter(m => (enabledModules || []).includes(m.id));
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans text-slate-800">
@@ -124,8 +126,9 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
           </div>
         </div>
 
-        {/* Right: Notifications & User Profile */}
-        <div className="flex items-center space-x-3 sm:space-x-4">
+        {/* Right: Notifications, Offline Status & User Profile */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3.5">
+          <OfflineStatusIndicator />
           <NotificationBell tenantId={tenant?.id} theme="tenant" />
 
           <div className="h-5 w-px bg-slate-200"></div>
@@ -223,6 +226,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
           </div>
         </div>
       </header>
+      <OfflineGraceBanner />
 
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden relative">
