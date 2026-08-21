@@ -4,8 +4,9 @@ import {
   Users, Plus, Search, Filter, Edit, Trash2, CheckCircle2, XCircle,
   Phone, Mail, User, Layers, Download, Upload, FileSpreadsheet,
   Calendar, DollarSign, X, Check, AlertCircle, FileText, ChevronRight,
-  TrendingUp, Award
+  TrendingUp, Award, Printer, UserPlus, Eye, ShieldCheck, BookOpen, Clock
 } from 'lucide-react';
+import { StudentAdmissionLetterModal } from './components/StudentAdmissionLetterModal';
 
 interface StudentManagementProps {
   currencySymbol?: string;
@@ -16,6 +17,9 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   currencySymbol = 'KSh',
   onOpenFeePayment
 }) => {
+  // Navigation Subtabs
+  const [activeTab, setActiveTab] = useState<'all' | 'admit' | 'applicants' | 'letters' | 'import'>('all');
+
   const [students, setStudents] = useState<Student[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [campuses, setCampuses] = useState<Campus[]>([]);
@@ -34,20 +38,20 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [classFilter, setClassFilter] = useState('ALL');
   const [gradeFilter, setGradeFilter] = useState('ALL');
 
-  // Modals
+  // Modals & Viewers
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<Student | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [admissionLetterStudent, setAdmissionLetterStudent] = useState<Student | null>(null);
 
   // Delete All State
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [deleteAllConfirmInput, setDeleteAllConfirmInput] = useState('');
 
-  // Bulk Import Modal State
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  // Bulk Import State
   const [importStep, setImportStep] = useState<'upload' | 'preview'>('upload');
   const [parsedStudents, setParsedStudents] = useState<Array<Partial<Student>>>([]);
   const [importFileName, setImportFileName] = useState('');
@@ -136,9 +140,15 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     fetchData();
   }, []);
 
+  const generateNextAdmNo = () => {
+    const year = new Date().getFullYear();
+    const count = students.length + 1;
+    return `ADM/${year}/${String(count).padStart(3, '0')}`;
+  };
+
   const resetForm = () => {
     setFormFullName('');
-    setFormAdmissionNo('');
+    setFormAdmissionNo(generateNextAdmNo());
     setFormLearnerAssessmentNo('');
     setFormEmail('');
     setFormPhone('');
@@ -162,7 +172,6 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setFormGuardianEmail('');
     setFormGuardianRelation('Parent');
     setEditingStudent(null);
-    setErrorMsg('');
   };
 
   const openAddModal = () => {
@@ -174,11 +183,11 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setEditingStudent(s);
     setFormFullName(s.fullName || '');
     setFormAdmissionNo(s.admissionNo || '');
-    setFormLearnerAssessmentNo(s.learnerAssessmentNo || '');
+    setFormLearnerAssessmentNo(s.learnerAssessmentNo || s.assessmentNumber || '');
     setFormEmail(s.email || '');
     setFormPhone(s.phone || '');
-    setFormGender((s.gender as any) || 'MALE');
-    setFormDob(s.dateOfBirth || '2014-01-01');
+    setFormGender((s.gender?.toUpperCase() as any) || 'MALE');
+    setFormDob(s.dateOfBirth ? s.dateOfBirth.slice(0, 10) : '2014-01-01');
     setFormNationalId(s.nationalId || '');
     setFormAddress(s.address || '');
     setFormGradeId(s.gradeId || '');
@@ -270,15 +279,44 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         throw new Error(data.error || 'Failed to save student record');
       }
 
+      const savedStudent = await res.json();
       setSuccessMsg(editingStudent ? 'Student details successfully updated.' : 'New student admitted successfully.');
       setTimeout(() => setSuccessMsg(''), 4000);
       setIsModalOpen(false);
       resetForm();
       fetchData();
+
+      // If user admitted on the dedicated "admit" tab, switch back to all list or offer admission letter
+      if (activeTab === 'admit') {
+        setActiveTab('all');
+        if (savedStudent && !editingStudent) {
+          setAdmissionLetterStudent(savedStudent);
+        }
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while saving.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleQuickEnrollApplicant = async (applicant: Student) => {
+    try {
+      const res = await fetch(`/api/app/education/students/${applicant.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          ...applicant,
+          status: 'ACTIVE'
+        })
+      });
+      if (res.ok) {
+        setSuccessMsg(`Student "${applicant.fullName}" has been officially enrolled.`);
+        setTimeout(() => setSuccessMsg(''), 4000);
+        fetchData();
+      }
+    } catch (err) {
+      console.error('Error approving applicant:', err);
     }
   };
 
@@ -340,19 +378,21 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     }
 
     const headers = [
-      'Admission No', 'Full Name', 'Email', 'Phone', 'Gender', 'Date of Birth',
-      'Program', 'Department', 'Class', 'Campus', 'Intake', 'Academic Year',
+      'Admission No', 'Full Name', 'UPI/Assessment No', 'Email', 'Phone', 'Gender', 'Date of Birth',
+      'Grade/Program', 'Stream', 'Department', 'Class', 'Campus', 'Intake', 'Academic Year',
       'Fee Balance', 'Status', 'Guardian Name', 'Guardian Phone'
     ];
 
     const rows = listToExport.map(s => [
       `"${(s.admissionNo || '').replace(/"/g, '""')}"`,
       `"${(s.fullName || '').replace(/"/g, '""')}"`,
+      `"${(s.learnerAssessmentNo || s.assessmentNumber || '').replace(/"/g, '""')}"`,
       `"${(s.email || '').replace(/"/g, '""')}"`,
       `"${(s.phone || '').replace(/"/g, '""')}"`,
       `"${(s.gender || '').replace(/"/g, '""')}"`,
       `"${(s.dateOfBirth || '').replace(/"/g, '""')}"`,
-      `"${(s.programName || '').replace(/"/g, '""')}"`,
+      `"${(s.gradeName || s.programName || '').replace(/"/g, '""')}"`,
+      `"${(s.streamName || '').replace(/"/g, '""')}"`,
       `"${(s.departmentName || '').replace(/"/g, '""')}"`,
       `"${(s.className || '').replace(/"/g, '""')}"`,
       `"${(s.campusName || '').replace(/"/g, '""')}"`,
@@ -369,7 +409,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `students_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `student_admissions_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -428,9 +468,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
           parsed.push({
             fullName,
             admissionNo: getCol(['admissionno', 'admno', 'admission']) || undefined,
+            learnerAssessmentNo: getCol(['upi', 'assessment', 'nemis', 'learner']),
             email: getCol(['email', 'mail']),
             phone: getCol(['phone', 'contact', 'mobile']),
-            programName: getCol(['program', 'course']) || programs[0]?.name || 'Diploma Program',
+            programName: getCol(['program', 'course', 'grade']) || grades[0]?.name || programs[0]?.name || 'Standard Curriculum',
             campusName: getCol(['campus']) || campuses[0]?.name || 'Main Campus',
             guardianName: getCol(['guardianname', 'parentname', 'guardian']),
             guardianPhone: getCol(['guardianphone', 'parentphone']),
@@ -461,9 +502,9 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
       });
       const data = await res.json();
       if (res.ok) {
-        setSuccessMsg(`Successfully imported ${data.addedCount || parsedStudents.length} students!`);
+        setSuccessMsg(`Successfully admitted ${data.addedCount || parsedStudents.length} students via bulk import!`);
         setTimeout(() => setSuccessMsg(''), 4000);
-        setIsImportModalOpen(false);
+        setActiveTab('all');
         setParsedStudents([]);
         fetchData();
       } else {
@@ -481,7 +522,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     const matchesSearch = !searchTerm.trim() ||
       (s.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.admissionNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (s.learnerAssessmentNo || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.learnerAssessmentNo || s.assessmentNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.phone || '').toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -493,271 +534,819 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     return matchesSearch && matchesGrade && matchesProg && matchesStatus && matchesClass;
   });
 
+  const applicantStudents = students.filter(s => s.status === 'APPLICANT' || s.status === 'DEFERRED');
+
   return (
     <div className="space-y-6">
       {/* Action Notifications */}
       {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center space-x-2">
+        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-2xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>{successMsg}</span>
         </div>
       )}
       {errorMsg && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-semibold flex items-center space-x-2">
+        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-2xs">
           <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
-      {/* Header Controls */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
-              <Users className="w-5 h-5 text-blue-600" />
-              <span>Student Admissions & Student Information System (SIS)</span>
-              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
-                {filteredStudents.length} of {students.length} Enrolled
-              </span>
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Complete student ledger, academic profile, class cohort registration, and fee statement tracking.
-            </p>
+      {/* Admissions Module Header Banner */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center font-bold">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Student Admissions & Student Information System (SIS)</h2>
+              <p className="text-xs text-slate-500">
+                Manage student admissions, learner enrollment, academic cohorts, fee ledger balance, and official joining letters.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center flex-wrap gap-2.5">
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Admit New Student</span>
+          </button>
+
+          <button
+            onClick={handleExportCSV}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-slate-600" />
+            <span>Export Admissions</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Admissions Sub-Navigation Tabs */}
+      <div className="flex overflow-x-auto border-b border-slate-200 bg-white px-3 rounded-xl shadow-2xs gap-1.5 py-1 text-xs font-medium text-slate-600">
+        {[
+          { id: 'all', label: 'Enrolled Students Register', count: students.length, icon: Users },
+          { id: 'admit', label: 'New Admission Desk (Form)', icon: UserPlus },
+          { id: 'applicants', label: 'Admission Inquiries & Applicants', count: applicantStudents.length, icon: Clock },
+          { id: 'letters', label: 'Admission Letters & Joining Forms', icon: Printer },
+          { id: 'import', label: 'Bulk CSV Student Import', icon: Upload }
+        ].map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                if (tab.id === 'admit') {
+                  resetForm();
+                }
+                setActiveTab(tab.id as any);
+              }}
+              className={`flex items-center space-x-2 py-2.5 px-3.5 border-b-2 font-medium transition-colors whitespace-nowrap cursor-pointer rounded-t-lg text-xs ${
+                isActive
+                  ? 'border-blue-600 text-blue-700 font-bold bg-blue-50/50'
+                  : 'border-transparent hover:text-slate-900 hover:border-slate-300'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{tab.label}</span>
+              {typeof tab.count === 'number' && (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* TAB 1: ALL ENROLLED STUDENTS REGISTER */}
+      {/* ========================================================================= */}
+      {activeTab === 'all' && (
+        <div className="space-y-4">
+          {/* Filter Bar */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by name, adm no, UPI..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div>
+                <select
+                  value={gradeFilter}
+                  onChange={e => setGradeFilter(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                >
+                  <option value="ALL">All Grades (Grades 1–9)</option>
+                  {grades.map(g => (
+                    <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={programFilter}
+                  onChange={e => setProgramFilter(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="ALL">All Programs / Courses</option>
+                  {programs.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={classFilter}
+                  onChange={e => setClassFilter(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="ALL">All Classes / Streams</option>
+                  {classes.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-semibold"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="APPLICANT">APPLICANT</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                  <option value="ALUMNI">ALUMNI / GRADUATED</option>
+                  <option value="DEFERRED">DEFERRED</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+              <span>Showing <strong>{filteredStudents.length}</strong> of <strong>{students.length}</strong> admitted students</span>
+              <button
+                onClick={() => {
+                  setDeleteAllConfirmInput('');
+                  setIsDeleteAllModalOpen(true);
+                }}
+                disabled={students.length === 0}
+                className="text-red-600 hover:text-red-800 font-semibold flex items-center space-x-1 cursor-pointer disabled:opacity-40"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete All Records</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center flex-wrap gap-2.5">
-            <button
-              onClick={handleExportCSV}
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-slate-600" />
-              <span>Export CSV</span>
-            </button>
+          {/* Student List Table */}
+          <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="p-3.5">Admission / UPI</th>
+                    <th className="p-3.5">Student Full Name</th>
+                    <th className="p-3.5">Grade / Stream / Program</th>
+                    <th className="p-3.5">Campus</th>
+                    <th className="p-3.5">Fee Balance</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Admissions Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-slate-400">
+                        <Users className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                        <p className="font-semibold text-slate-600">No student admission records found.</p>
+                        <p className="text-xs text-slate-400 mt-1">Click "Admit New Student" to enroll your first student.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map(s => (
+                      <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3.5 font-mono">
+                          <span className="font-bold text-blue-700 block">{s.admissionNo || 'PENDING'}</span>
+                          {(s.learnerAssessmentNo || s.assessmentNumber) && (
+                            <span className="text-[10px] text-slate-400 block font-mono">UPI: {s.learnerAssessmentNo || s.assessmentNumber}</span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-bold text-slate-900 text-sm">{s.fullName}</div>
+                          <div className="text-[11px] text-slate-400 flex items-center space-x-2 mt-0.5">
+                            {s.phone && <span>{s.phone}</span>}
+                            {s.gender && <span>• {s.gender}</span>}
+                            {s.academicYear && <span>• {s.academicYear}</span>}
+                          </div>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-semibold text-slate-800">
+                            {s.gradeName ? (
+                              <span>{s.gradeName} {s.streamName ? `• Stream ${s.streamName}` : ''}</span>
+                            ) : (
+                              <span>{s.programName || 'Basic Curriculum'}</span>
+                            )}
+                          </div>
+                          {s.className && <div className="text-[10px] text-slate-500 font-mono">Class: {s.className}</div>}
+                        </td>
+                        <td className="p-3.5 text-slate-600">{s.campusName || 'Main Campus'}</td>
+                        <td className="p-3.5 font-mono font-bold">
+                          <span className={s.feeBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}>
+                            {currencySymbol} {(s.feeBalance || 0).toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            s.status === 'ACTIVE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : s.status === 'APPLICANT'
+                              ? 'bg-blue-100 text-blue-800'
+                              : s.status === 'SUSPENDED'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-slate-100 text-slate-800'
+                          }`}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="flex items-center justify-end space-x-1.5">
+                            <button
+                              onClick={() => setAdmissionLetterStudent(s)}
+                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-bold transition-colors cursor-pointer flex items-center space-x-1"
+                              title="Generate & Print Official Admission Letter"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>Letter</span>
+                            </button>
 
+                            {onOpenFeePayment && (
+                              <button
+                                onClick={() => onOpenFeePayment(s.id)}
+                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                                title="Record fee payment receipt"
+                              >
+                                Fee
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => setViewingStudent(s)}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                              title="View Full Student Profile"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => openEditModal(s)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                              title="Edit Student Record"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              onClick={() => setDeleteCandidate(s)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              title="Delete Record"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 2: NEW ADMISSION FORM (DEDICATED FULL-PAGE DESK) */}
+      {/* ========================================================================= */}
+      {activeTab === 'admit' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <UserPlus className="w-5 h-5 text-blue-600" />
+                <span>Student Admission Registration Desk</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Register a new learner, assign academic grade/program cohort, configure fee obligations, and issue joining instructions.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('all')}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold"
+            >
+              Back to Register
+            </button>
+          </div>
+
+          <form onSubmit={handleSaveStudent} className="space-y-6 text-xs">
+            {/* 1. Student Personal Demographics */}
+            <div className="space-y-3">
+              <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] text-blue-800 flex items-center space-x-1.5">
+                <span>1. Personal Demographics & Identification</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Samuel Maina Mwangi"
+                    value={formFullName}
+                    onChange={e => setFormFullName(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Admission Number</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ADM/2026/001"
+                    value={formAdmissionNo}
+                    onChange={e => setFormAdmissionNo(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">UPI / NEMIS / Assessment No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. KICD-9812-402"
+                    value={formLearnerAssessmentNo}
+                    onChange={e => setFormLearnerAssessmentNo(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Gender</label>
+                  <select
+                    value={formGender}
+                    onChange={e => setFormGender(e.target.value as any)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  >
+                    <option value="MALE">MALE</option>
+                    <option value="FEMALE">FEMALE</option>
+                    <option value="OTHER">OTHER</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={formDob}
+                    onChange={e => setFormDob(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">National ID / Birth Cert No</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 38291044 / BC-10294"
+                    value={formNationalId}
+                    onChange={e => setFormNationalId(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="s.maina@student.ac.ke"
+                    value={formEmail}
+                    onChange={e => setFormEmail(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Student Phone Contact</label>
+                  <input
+                    type="text"
+                    placeholder="+254 700 111 222"
+                    value={formPhone}
+                    onChange={e => setFormPhone(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Physical Address / Hometown</label>
+                  <input
+                    type="text"
+                    placeholder="P.O. Box 102 - 00100 Nairobi"
+                    value={formAddress}
+                    onChange={e => setFormAddress(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Academic Placement & Cohort */}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] text-blue-800 flex items-center space-x-1.5">
+                <span>2. Academic Placement & Cohort Assignment</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700">Basic School Grade (Grades 1–9)</label>
+                  <select
+                    value={formGradeId}
+                    onChange={e => {
+                      setFormGradeId(e.target.value);
+                      setFormStreamId('');
+                    }}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                  >
+                    <option value="">-- Select Grade (Optional) --</option>
+                    {grades.map(g => (
+                      <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Grade Stream (e.g. 4A, 4 Blue)</label>
+                  <select
+                    value={formStreamId}
+                    onChange={e => setFormStreamId(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                  >
+                    <option value="">-- Select Stream --</option>
+                    {streams.filter(s => !formGradeId || s.gradeId === formGradeId).map(s => (
+                      <option key={s.id} value={s.id}>Stream {s.name} ({s.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Program / Curriculum Course</label>
+                  <select
+                    value={formProgramId}
+                    onChange={e => setFormProgramId(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  >
+                    <option value="">-- Select Program --</option>
+                    {programs.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Academic Year & Term</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <select
+                      value={formAcademicYear}
+                      onChange={e => setFormAcademicYear(e.target.value)}
+                      className="p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                    >
+                      <option value="2025/2026">2025/2026</option>
+                      <option value="2026/2027">2026/2027</option>
+                      <option value="2024/2025">2024/2025</option>
+                    </select>
+                    <select
+                      value={formAcademicTerm}
+                      onChange={e => setFormAcademicTerm(e.target.value)}
+                      className="p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                    >
+                      <option value="Term 1">Term 1</option>
+                      <option value="Term 2">Term 2</option>
+                      <option value="Term 3">Term 3</option>
+                      <option value="Semester 1">Semester 1</option>
+                      <option value="Semester 2">Semester 2</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Campus / Center</label>
+                  <select
+                    value={formCampusId}
+                    onChange={e => setFormCampusId(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  >
+                    <option value="">-- Select Campus --</option>
+                    {campuses.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Initial Fee Balance ({currencySymbol})</label>
+                  <input
+                    type="number"
+                    value={formFeeBalance}
+                    onChange={e => setFormFeeBalance(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Guardian & Emergency Contacts */}
+            <div className="space-y-3 pt-4 border-t border-slate-100">
+              <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] text-blue-800 flex items-center space-x-1.5">
+                <span>3. Parent / Guardian Contact Details</span>
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="font-semibold text-slate-700">Guardian Name</label>
+                  <input
+                    type="text"
+                    placeholder="Mary W. Mwangi"
+                    value={formGuardianName}
+                    onChange={e => setFormGuardianName(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Guardian Phone *</label>
+                  <input
+                    type="text"
+                    placeholder="+254 722 000 111"
+                    value={formGuardianPhone}
+                    onChange={e => setFormGuardianPhone(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Guardian Email</label>
+                  <input
+                    type="email"
+                    placeholder="guardian@gmail.com"
+                    value={formGuardianEmail}
+                    onChange={e => setFormGuardianEmail(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-semibold text-slate-700">Relationship</label>
+                  <input
+                    type="text"
+                    placeholder="Mother / Father / Guardian"
+                    value={formGuardianRelation}
+                    onChange={e => setFormGuardianRelation(e.target.value)}
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Action Row */}
+            <div className="flex items-center justify-end space-x-3 pt-6 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setActiveTab('all')}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs cursor-pointer flex items-center space-x-2"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{submitting ? 'Admitting Student...' : 'Confirm & Complete Admission'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: ADMISSION INQUIRIES & APPLICANTS PIPELINE */}
+      {/* ========================================================================= */}
+      {activeTab === 'applicants' && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base">Admissions & Applicant Inquiries Pipeline</h3>
+              <p className="text-xs text-slate-500">Review prospective learners, approve admission offers, and enroll onto the active register.</p>
+            </div>
             <button
               onClick={() => {
-                setImportStep('upload');
-                setImportError('');
-                setParsedStudents([]);
-                setIsImportModalOpen(true);
+                resetForm();
+                setFormStatus('APPLICANT');
+                setIsModalOpen(true);
               }}
-              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
-            >
-              <Upload className="w-4 h-4 text-indigo-600" />
-              <span>Bulk Import</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setDeleteAllConfirmInput('');
-                setIsDeleteAllModalOpen(true);
-              }}
-              disabled={students.length === 0}
-              className="px-3.5 py-2 bg-red-50 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed text-red-700 border border-red-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
-              title={students.length === 0 ? "No student records to delete" : "Delete all student records for this institution"}
-            >
-              <Trash2 className="w-4 h-4 text-red-600" />
-              <span>Delete All Students</span>
-            </button>
-
-            <button
-              onClick={openAddModal}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5"
             >
               <Plus className="w-4 h-4" />
-              <span>Admit Student</span>
+              <span>Log New Application</span>
             </button>
           </div>
-        </div>
 
-        {/* Filter Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2 border-t border-slate-100">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="Search by name, adm no, assessment no..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <select
-              value={gradeFilter}
-              onChange={e => setGradeFilter(e.target.value)}
-              className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
-            >
-              <option value="ALL">All Grades (1–9)</option>
-              {grades.map(g => (
-                <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={programFilter}
-              onChange={e => setProgramFilter(e.target.value)}
-              className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Programs / Courses</option>
-              {programs.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={classFilter}
-              onChange={e => setClassFilter(e.target.value)}
-              className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Classes / Cohorts</option>
-              {classes.map(c => (
-                <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500"
-            >
-              <option value="ALL">All Academic Statuses</option>
-              <option value="ACTIVE">ACTIVE</option>
-              <option value="APPLICANT">APPLICANT</option>
-              <option value="SUSPENDED">SUSPENDED</option>
-              <option value="ALUMNI">ALUMNI / GRADUATED</option>
-              <option value="DEFERRED">DEFERRED</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Student List Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-700">
-            <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
-              <tr>
-                <th className="p-3.5">Admission / UPI</th>
-                <th className="p-3.5">Student Full Name</th>
-                <th className="p-3.5">Grade / Stream / Program</th>
-                <th className="p-3.5">Contact Details</th>
-                <th className="p-3.5">Campus</th>
-                <th className="p-3.5">Fee Balance</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">Loading student directory...</td>
+                  <th className="p-3">Applicant Name</th>
+                  <th className="p-3">Target Grade / Program</th>
+                  <th className="p-3">Contact Details</th>
+                  <th className="p-3">Parent / Guardian</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3 text-right">Actions</th>
                 </tr>
-              ) : filteredStudents.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-slate-400">
-                    No student records found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredStudents.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-3.5">
-                      <div className="font-mono font-bold text-blue-700">{s.admissionNo}</div>
-                      {s.learnerAssessmentNo && (
-                        <div className="font-mono text-[10px] text-slate-400">UPI: {s.learnerAssessmentNo}</div>
-                      )}
-                    </td>
-                    <td className="p-3.5">
-                      <div className="font-semibold text-slate-900">{s.fullName}</div>
-                      <div className="text-[10px] text-slate-400">{s.gender} • DOB: {s.dateOfBirth}</div>
-                    </td>
-                    <td className="p-3.5">
-                      {s.gradeName ? (
-                        <div>
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                            {s.gradeName} {s.streamName ? `(${s.streamName})` : ''}
-                          </span>
-                          {s.className && <div className="text-[10px] text-slate-400 mt-0.5">{s.className}</div>}
-                        </div>
-                      ) : (
-                        <div>
-                          <div className="font-medium text-slate-900">{s.programName}</div>
-                          <div className="text-[11px] text-slate-500">{s.className || 'No Class Assigned'}</div>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-slate-500">
-                      <div>{s.email}</div>
-                      <div className="text-[11px] font-mono text-slate-400">{s.phone || 'No phone'}</div>
-                    </td>
-                    <td className="p-3.5 text-slate-600">{s.campusName || 'Main Campus'}</td>
-                    <td className="p-3.5 font-mono font-bold">
-                      <span className={s.feeBalance > 0 ? 'text-amber-600' : 'text-emerald-600'}>
-                        {currencySymbol} {(s.feeBalance || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        s.status === 'ACTIVE'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : s.status === 'APPLICANT'
-                          ? 'bg-blue-100 text-blue-800'
-                          : s.status === 'SUSPENDED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-slate-100 text-slate-800'
-                      }`}>
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        {onOpenFeePayment && (
-                          <button
-                            onClick={() => onOpenFeePayment(s.id)}
-                            className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded text-[11px] font-semibold transition-colors cursor-pointer"
-                            title="Record fee payment"
-                          >
-                            Receive Fee
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setViewingStudent(s)}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                          title="View Details"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => openEditModal(s)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Student Record"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteCandidate(s)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {applicantStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-10 text-slate-400">
+                      <Clock className="w-7 h-7 mx-auto mb-2 text-slate-300" />
+                      <p className="font-semibold text-slate-600">No pending applicants found.</p>
+                      <p className="text-xs text-slate-400 mt-0.5">All prospective learners have been admitted or enrolled.</p>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  applicantStudents.map(ap => (
+                    <tr key={ap.id} className="hover:bg-slate-50">
+                      <td className="p-3">
+                        <strong className="text-slate-900 block">{ap.fullName}</strong>
+                        <span className="text-[10px] text-slate-400 font-mono">{ap.admissionNo || 'Ref: APP-' + ap.id.slice(0, 6)}</span>
+                      </td>
+                      <td className="p-3 font-semibold text-slate-800">
+                        {ap.gradeName || ap.programName || 'General Placement'}
+                      </td>
+                      <td className="p-3 text-slate-600">
+                        <div>{ap.phone || 'No phone'}</div>
+                        <div className="text-[10px] text-slate-400">{ap.email}</div>
+                      </td>
+                      <td className="p-3">
+                        <div>{ap.guardianName || 'N/A'}</div>
+                        <div className="text-[10px] text-slate-400">{ap.guardianPhone}</div>
+                      </td>
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded font-bold text-[10px]">
+                          {ap.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => handleQuickEnrollApplicant(ap)}
+                            className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-xs cursor-pointer"
+                          >
+                            Approve & Enroll
+                          </button>
+                          <button
+                            onClick={() => setAdmissionLetterStudent(ap)}
+                            className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg text-[11px] font-semibold hover:bg-blue-100"
+                          >
+                            Admission Letter
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: ADMISSION LETTERS & JOINING FORMS HUB */}
+      {/* ========================================================================= */}
+      {activeTab === 'letters' && (
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
+                <Printer className="w-5 h-5 text-blue-600" />
+                <span>Official Admission Letters & Joining Instructions Hub</span>
+              </h3>
+              <p className="text-xs text-slate-500">
+                Select any enrolled student to generate and print their official institutional admission offer letter.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {students.slice(0, 15).map(st => (
+              <div key={st.id} className="p-3.5 border border-slate-200 rounded-xl bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-slate-900 text-xs">{st.fullName}</p>
+                  <p className="font-mono text-[10px] text-blue-700 font-semibold">{st.admissionNo}</p>
+                  <p className="text-[10px] text-slate-500">{st.gradeName || st.programName}</p>
+                </div>
+                <button
+                  onClick={() => setAdmissionLetterStudent(st)}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center space-x-1 cursor-pointer shadow-xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Letter</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 5: BULK CSV IMPORT */}
+      {/* ========================================================================= */}
+      {activeTab === 'import' && (
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-5">
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Bulk Student CSV Import</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Upload a CSV spreadsheet with learner rows to admit multiple students at once.</p>
+          </div>
+
+          {importError && (
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs">
+              {importError}
+            </div>
+          )}
+
+          {importStep === 'upload' ? (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-blue-500 transition-colors">
+                <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <label className="block text-xs font-semibold text-blue-600 cursor-pointer">
+                  <span className="px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg inline-block">Choose CSV file to upload</span>
+                  <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
+                </label>
+                <p className="text-[11px] text-slate-400 mt-2">CSV must include columns: fullName, email, phone, grade/program, feeBalance</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900">Parsed {parsedStudents.length} Students Preview:</span>
+                <span className="text-slate-500 font-mono text-[11px]">{importFileName}</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
+                {parsedStudents.map((st, i) => (
+                  <div key={i} className="p-2.5 bg-white rounded-lg border border-slate-200 flex justify-between items-center text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900">{st.fullName}</span>
+                      <div className="text-[10px] text-slate-500">{st.email || st.phone} • {st.programName}</div>
+                    </div>
+                    <span className="font-mono font-bold text-slate-700">{currencySymbol} {st.feeBalance}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-end space-x-3 pt-2">
+                <button
+                  onClick={() => setImportStep('upload')}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleExecuteImport}
+                  disabled={importing}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  {importing ? 'Importing...' : `Import ${parsedStudents.length} Students`}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ADMIT / EDIT STUDENT MODAL */}
       {isModalOpen && (
@@ -786,7 +1375,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Admission Number (Auto if blank)</label>
+                <label className="font-semibold text-slate-700">Admission Number</label>
                 <input
                   type="text"
                   placeholder="e.g. ADM/2026/049"
@@ -797,7 +1386,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Learner Assessment No / NEMIS / UPI</label>
+                <label className="font-semibold text-slate-700">Learner Assessment No / UPI</label>
                 <input
                   type="text"
                   placeholder="e.g. KICD-9812-402"
@@ -839,25 +1428,17 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Email Address</label>
-                <input
-                  type="email"
-                  placeholder="s.maina@student.ac.ke"
-                  value={formEmail}
-                  onChange={e => setFormEmail(e.target.value)}
+                <label className="font-semibold text-slate-700">Program / Course</label>
+                <select
+                  value={formProgramId}
+                  onChange={e => setFormProgramId(e.target.value)}
                   className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="+254 700 111 222"
-                  value={formPhone}
-                  onChange={e => setFormPhone(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
+                >
+                  <option value="">-- Select Program --</option>
+                  {programs.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -884,90 +1465,12 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">National ID / Birth Certificate</label>
+                <label className="font-semibold text-slate-700">Phone Number</label>
                 <input
                   type="text"
-                  placeholder="38291044"
-                  value={formNationalId}
-                  onChange={e => setFormNationalId(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Physical Address / Hometown</label>
-                <input
-                  type="text"
-                  placeholder="P.O Box 102 - Nairobi"
-                  value={formAddress}
-                  onChange={e => setFormAddress(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Program / Course (Higher Ed / TVET)</label>
-                <select
-                  value={formProgramId}
-                  onChange={e => setFormProgramId(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                >
-                  <option value="">-- Select Program --</option>
-                  {programs.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Department</label>
-                <select
-                  value={formDepartmentId}
-                  onChange={e => setFormDepartmentId(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                >
-                  <option value="">-- Select Department --</option>
-                  {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Class / Cohort (Higher Ed / TVET)</label>
-                <select
-                  value={formClassId}
-                  onChange={e => setFormClassId(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                >
-                  <option value="">-- Select Class --</option>
-                  {classes.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Campus</label>
-                <select
-                  value={formCampusId}
-                  onChange={e => setFormCampusId(e.target.value)}
-                  className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
-                >
-                  <option value="">-- Select Campus --</option>
-                  {campuses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="font-semibold text-slate-700">Intake Batch</label>
-                <input
-                  type="text"
-                  placeholder="January 2026"
-                  value={formIntake}
-                  onChange={e => setFormIntake(e.target.value)}
+                  placeholder="+254 700 111 222"
+                  value={formPhone}
+                  onChange={e => setFormPhone(e.target.value)}
                   className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
                 />
               </div>
@@ -1044,7 +1547,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         </div>
       )}
 
-      {/* VIEW STUDENT DETAILS DRAWER / MODAL */}
+      {/* VIEW STUDENT DETAILS MODAL */}
       {viewingStudent && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl text-xs">
@@ -1077,20 +1580,12 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-medium">Assessment / UPI No</span>
                 <p className="font-bold text-slate-900 font-mono">
-                  {viewingStudent.learnerAssessmentNo || <span className="text-slate-400 font-normal">N/A</span>}
+                  {viewingStudent.learnerAssessmentNo || viewingStudent.assessmentNumber || <span className="text-slate-400 font-normal">N/A</span>}
                 </p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-medium">Program / Course</span>
                 <p className="font-bold text-slate-900">{viewingStudent.programName || 'Basic School Curriculum'}</p>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Class / Cohort</span>
-                <p className="font-bold text-slate-900">{viewingStudent.className || 'Not Assigned'}</p>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Campus</span>
-                <p className="font-bold text-slate-900">{viewingStudent.campusName || 'Main Campus'}</p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
                 <span className="text-[10px] text-slate-400 font-medium">Fee Balance</span>
@@ -1099,11 +1594,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                 </p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Email</span>
-                <p className="font-mono text-slate-800">{viewingStudent.email || 'N/A'}</p>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Phone</span>
+                <span className="text-[10px] text-slate-400 font-medium">Contact Phone</span>
                 <p className="font-mono text-slate-800">{viewingStudent.phone || 'N/A'}</p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
@@ -1111,32 +1602,51 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                 <p className="text-slate-800">{viewingStudent.guardianName || 'N/A'} ({viewingStudent.guardianRelation || 'Parent'})</p>
                 <p className="font-mono text-[10px] text-slate-500">{viewingStudent.guardianPhone}</p>
               </div>
-              <div className="p-2.5 bg-slate-50 rounded-lg space-y-0.5">
-                <span className="text-[10px] text-slate-400 font-medium">Enrolled At</span>
-                <p className="text-slate-800">{viewingStudent.enrolledAt ? new Date(viewingStudent.enrolledAt).toLocaleDateString() : 'N/A'}</p>
-              </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               <button
                 onClick={() => {
                   const s = viewingStudent;
                   setViewingStudent(null);
-                  openEditModal(s);
+                  setAdmissionLetterStudent(s);
                 }}
-                className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-xl hover:bg-indigo-100"
+                className="px-3.5 py-2 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 flex items-center space-x-1.5"
               >
-                Edit Student
+                <Printer className="w-3.5 h-3.5" />
+                <span>Admission Letter</span>
               </button>
-              <button
-                onClick={() => setViewingStudent(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200"
-              >
-                Close
-              </button>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const s = viewingStudent;
+                    setViewingStudent(null);
+                    openEditModal(s);
+                  }}
+                  className="px-4 py-2 bg-indigo-50 text-indigo-700 font-semibold rounded-xl hover:bg-indigo-100"
+                >
+                  Edit Student
+                </button>
+                <button
+                  onClick={() => setViewingStudent(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* PRINT OFFICIAL ADMISSION LETTER MODAL */}
+      {admissionLetterStudent && (
+        <StudentAdmissionLetterModal
+          student={admissionLetterStudent}
+          onClose={() => setAdmissionLetterStudent(null)}
+          currencySymbol={currencySymbol}
+        />
       )}
 
       {/* DELETE CONFIRMATION MODAL */}
@@ -1238,75 +1748,6 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                 )}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* BULK IMPORT MODAL */}
-      {isImportModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-xl text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900">Bulk Import Students from CSV</h3>
-              <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {importError && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs">
-                {importError}
-              </div>
-            )}
-
-            {importStep === 'upload' ? (
-              <div className="space-y-4">
-                <p className="text-slate-600">
-                  Upload a CSV file containing columns for <code>fullName</code>, <code>email</code>, <code>phone</code>, <code>programName</code>, <code>feeBalance</code>, etc.
-                </p>
-                <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors">
-                  <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                  <label className="block text-xs font-semibold text-blue-600 cursor-pointer">
-                    <span>Click to browse and upload CSV file</span>
-                    <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" />
-                  </label>
-                  <p className="text-[11px] text-slate-400 mt-1">Standard comma-separated spreadsheet file</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900">Parsed {parsedStudents.length} Students Preview:</span>
-                  <span className="text-slate-500 font-mono text-[11px]">{importFileName}</span>
-                </div>
-                <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl p-3 bg-slate-50 space-y-2">
-                  {parsedStudents.map((st, i) => (
-                    <div key={i} className="p-2 bg-white rounded-lg border border-slate-200 flex justify-between items-center text-xs">
-                      <div>
-                        <span className="font-bold text-slate-900">{st.fullName}</span>
-                        <div className="text-[10px] text-slate-500">{st.email} • {st.programName}</div>
-                      </div>
-                      <span className="font-mono font-bold text-slate-700">{currencySymbol} {st.feeBalance}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex items-center justify-end space-x-3 pt-2">
-                  <button
-                    onClick={() => setImportStep('upload')}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-semibold"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handleExecuteImport}
-                    disabled={importing}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs"
-                  >
-                    {importing ? 'Importing...' : `Import ${parsedStudents.length} Students`}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

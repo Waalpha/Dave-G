@@ -228,10 +228,10 @@ export const EducationDashboard: React.FC = () => {
       <div className="flex overflow-x-auto border-b border-slate-200 bg-white px-3 rounded-xl shadow-2xs gap-1.5 py-1 text-xs font-medium text-slate-600">
         {[
           { id: 'overview', label: 'Overview', icon: Layers },
+          { id: 'students', label: 'Student Admissions & SIS', icon: Users },
           { id: 'student_portal', label: 'Student Portal', icon: Sparkles },
           { id: 'teacher_portal', label: 'Teacher / Faculty Portal', icon: Award },
           { id: 'documents', label: 'Transcripts & Certificates', icon: FileText },
-          { id: 'students', label: 'Students & Admissions', icon: Users },
           { id: 'grades_streams', label: 'Grades & Streams (1–9)', icon: Layers },
           { id: 'classes', label: 'Classes & Cohorts', icon: Layers },
           { id: 'faculty', label: 'Lecturers & Staff', icon: Award },

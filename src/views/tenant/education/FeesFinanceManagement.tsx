@@ -158,6 +158,7 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
   const getHeaders = () => ({
     'Content-Type': 'application/json',
     'x-tenant-id': localStorage.getItem('erp_tenant_id') || '',
+    'x-user-id': localStorage.getItem('erp_user_id') || '',
     Authorization: `Bearer ${localStorage.getItem('erp_token') || ''}`
   });
 

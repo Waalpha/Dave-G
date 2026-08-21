@@ -481,12 +481,63 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 export const DEFAULT_GRADE_TEMPLATES = [
   {
+    name: 'Playgroup',
+    code: 'PG',
+    levelNumber: 0,
+    category: 'EARLY_YEARS' as const,
+    description: 'Early Childhood Development & Playgroup Foundation (Age 3-4)',
+    orderIndex: 1,
+    learningAreas: [
+      'Language Activities & Communication',
+      'Mathematical & Number Play',
+      'Environmental & Sensory Discovery',
+      'Psychomotor & Movement Activities',
+      'Creative & Art Activities',
+      'Social & Emotional Care'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
+    name: 'PP1',
+    code: 'PP1',
+    levelNumber: 0,
+    category: 'EARLY_YEARS' as const,
+    description: 'Early Years Pre-Primary 1 (PP1 - Age 4-5)',
+    orderIndex: 2,
+    learningAreas: [
+      'Language Activities',
+      'Mathematical Activities',
+      'Environmental Activities',
+      'Psychomotor and Creative Activities',
+      'Religious Education Activities (CRE/IRE/HRE)',
+      'Pastoral Care & Hygiene'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
+    name: 'PP2',
+    code: 'PP2',
+    levelNumber: 0,
+    category: 'EARLY_YEARS' as const,
+    description: 'Early Years Pre-Primary 2 (PP2 - Age 5-6)',
+    orderIndex: 3,
+    learningAreas: [
+      'Language Activities',
+      'Mathematical Activities',
+      'Environmental Activities',
+      'Psychomotor and Creative Activities',
+      'Religious Education Activities (CRE/IRE/HRE)',
+      'Pre-Reading & Pre-Writing Readiness'
+    ],
+    defaultStreams: ['A', 'B']
+  },
+  {
     name: 'Grade 1',
     code: 'G1',
     levelNumber: 1,
     category: 'LOWER_PRIMARY' as const,
     description: 'Foundation Lower Primary (Grade 1)',
-    orderIndex: 1,
+    orderIndex: 4,
     learningAreas: [
       'Mathematics Activities',
       'English Language Activities',
@@ -505,7 +556,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 2,
     category: 'LOWER_PRIMARY' as const,
     description: 'Foundation Lower Primary (Grade 2)',
-    orderIndex: 2,
+    orderIndex: 5,
     learningAreas: [
       'Mathematics Activities',
       'English Language Activities',
@@ -524,7 +575,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 3,
     category: 'LOWER_PRIMARY' as const,
     description: 'Foundation Lower Primary (Grade 3)',
-    orderIndex: 3,
+    orderIndex: 6,
     learningAreas: [
       'Mathematics Activities',
       'English Language Activities',
@@ -543,7 +594,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 4,
     category: 'UPPER_PRIMARY' as const,
     description: 'Middle School Upper Primary (Grade 4)',
-    orderIndex: 4,
+    orderIndex: 7,
     learningAreas: [
       'Mathematics',
       'English Language',
@@ -563,7 +614,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 5,
     category: 'UPPER_PRIMARY' as const,
     description: 'Middle School Upper Primary (Grade 5)',
-    orderIndex: 5,
+    orderIndex: 8,
     learningAreas: [
       'Mathematics',
       'English Language',
@@ -583,7 +634,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 6,
     category: 'UPPER_PRIMARY' as const,
     description: 'Upper Primary Stage & Transition (Grade 6)',
-    orderIndex: 6,
+    orderIndex: 9,
     learningAreas: [
       'Mathematics',
       'English Language',
@@ -603,7 +654,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 7,
     category: 'JUNIOR_SCHOOL' as const,
     description: 'Junior Secondary Comprehensive (Grade 7)',
-    orderIndex: 7,
+    orderIndex: 10,
     learningAreas: [
       'Mathematics',
       'English',
@@ -626,7 +677,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 8,
     category: 'JUNIOR_SCHOOL' as const,
     description: 'Junior Secondary Intermediate (Grade 8)',
-    orderIndex: 8,
+    orderIndex: 11,
     learningAreas: [
       'Mathematics',
       'English',
@@ -649,7 +700,7 @@ export const DEFAULT_GRADE_TEMPLATES = [
     levelNumber: 9,
     category: 'JUNIOR_SCHOOL' as const,
     description: 'Junior Secondary Graduation & Senior Transition (Grade 9)',
-    orderIndex: 9,
+    orderIndex: 12,
     learningAreas: [
       'Mathematics',
       'English',
@@ -3796,63 +3847,63 @@ class DatabaseStore {
     return true;
   }
 
-  public seedDefaultGrades(tenantId: string, user: User): { success: boolean; grades: SchoolGrade[]; streams: GradeStream[] } {
-    const existing = this.schoolGrades.filter(g => g.tenantId === tenantId);
-    if (existing.length > 0) {
-      return {
-        success: true,
-        grades: existing,
-        streams: this.gradeStreams.filter(s => s.tenantId === tenantId)
-      };
-    }
-
+  public seedDefaultGrades(tenantId: string, user: User, forceAll: boolean = false): { success: boolean; grades: SchoolGrade[]; streams: GradeStream[]; addedGradesCount: number; addedStreamsCount: number } {
+    const existingGrades = this.schoolGrades.filter(g => g.tenantId === tenantId);
     const createdGrades: SchoolGrade[] = [];
     const createdStreams: GradeStream[] = [];
     const now = new Date().toISOString();
     const currentYear = `${new Date().getFullYear()}`;
 
     DEFAULT_GRADE_TEMPLATES.forEach((tpl) => {
-      const gradeId = `grd_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
-      const grade: SchoolGrade = {
-        id: gradeId,
-        tenantId,
-        name: tpl.name,
-        code: tpl.code,
-        levelNumber: tpl.levelNumber,
-        category: tpl.category,
-        description: tpl.description,
-        learningAreas: [...tpl.learningAreas],
-        orderIndex: tpl.orderIndex,
-        status: 'ACTIVE',
-        createdAt: now,
-        updatedAt: now
-      };
-      this.schoolGrades.push(grade);
-      createdGrades.push(grade);
-      saveDocToFirestore('schoolGrades', grade.id, grade).catch(() => {});
-
-      // Create default streams for this grade (e.g. 4A, 4B, 4C)
-      tpl.defaultStreams.forEach((streamSuffix) => {
-        const streamId = `strm_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${streamSuffix.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
-        const stream: GradeStream = {
-          id: streamId,
+      let grade = existingGrades.find(g => g.name.toLowerCase() === tpl.name.toLowerCase() || g.code.toLowerCase() === tpl.code.toLowerCase());
+      if (!grade) {
+        const gradeId = `grd_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
+        grade = {
+          id: gradeId,
           tenantId,
-          gradeId: grade.id,
-          gradeName: grade.name,
-          name: streamSuffix,
-          fullName: `${grade.name}${streamSuffix}`,
-          code: `${grade.code}-${streamSuffix}`,
-          academicYear: currentYear,
-          academicTerm: 'Term 1',
-          capacity: 40,
-          enrolledCount: 0,
+          name: tpl.name,
+          code: tpl.code,
+          levelNumber: tpl.levelNumber,
+          category: tpl.category,
+          stage: tpl.category,
+          description: tpl.description,
+          learningAreas: [...tpl.learningAreas],
+          orderIndex: tpl.orderIndex,
           status: 'ACTIVE',
           createdAt: now,
           updatedAt: now
         };
-        this.gradeStreams.push(stream);
-        createdStreams.push(stream);
-        saveDocToFirestore('gradeStreams', stream.id, stream).catch(() => {});
+        this.schoolGrades.push(grade);
+        createdGrades.push(grade);
+        saveDocToFirestore('schoolGrades', grade.id, grade).catch(() => {});
+      }
+
+      // Check streams for this grade
+      const existingGradeStreams = this.gradeStreams.filter(s => s.tenantId === tenantId && s.gradeId === grade!.id);
+      tpl.defaultStreams.forEach((streamSuffix) => {
+        const hasStream = existingGradeStreams.some(s => s.name.toLowerCase() === streamSuffix.toLowerCase());
+        if (!hasStream) {
+          const streamId = `strm_${Date.now().toString(36)}_${tpl.code.toLowerCase()}_${streamSuffix.toLowerCase()}_${Math.random().toString(36).substring(2, 5)}`;
+          const stream: GradeStream = {
+            id: streamId,
+            tenantId,
+            gradeId: grade!.id,
+            gradeName: grade!.name,
+            name: streamSuffix,
+            fullName: `${grade!.name}${streamSuffix.length === 1 ? '' + streamSuffix : ' ' + streamSuffix}`,
+            code: `${grade!.code}-${streamSuffix}`,
+            academicYear: currentYear,
+            academicTerm: 'Term 1',
+            capacity: 40,
+            enrolledCount: 0,
+            status: 'ACTIVE',
+            createdAt: now,
+            updatedAt: now
+          };
+          this.gradeStreams.push(stream);
+          createdStreams.push(stream);
+          saveDocToFirestore('gradeStreams', stream.id, stream).catch(() => {});
+        }
       });
     });
 
@@ -3864,13 +3915,15 @@ class DatabaseStore {
       'SEED_DEFAULT_GRADES',
       'SchoolGrade',
       `tenant_${tenantId}`,
-      `Seeded default Grades 1 through 9 with CBC learning areas and streams.`
+      `Seeded/verified standard Primary & Basic Education levels (Playgroup to Grade 9) with streams.`
     );
 
     return {
       success: true,
-      grades: createdGrades,
-      streams: createdStreams
+      grades: this.getGrades(tenantId),
+      streams: this.getStreams(tenantId),
+      addedGradesCount: createdGrades.length,
+      addedStreamsCount: createdStreams.length
     };
   }
 
@@ -4122,6 +4175,107 @@ class DatabaseStore {
 
   public getPromotionHistory(tenantId: string): StudentPromotionRecord[] {
     return this.studentPromotions.filter(p => p.tenantId === tenantId);
+  }
+
+  // ==========================================
+  // STUDENT TRANSFER ENGINE (Level & Stream Transfers)
+  // ==========================================
+  public transferStudent(
+    tenantId: string,
+    studentId: string,
+    payload: {
+      toGradeId?: string;
+      toStreamId?: string;
+      toClassId?: string;
+      toCampusId?: string;
+      reason?: string;
+    },
+    user: User
+  ): { success: boolean; student: Student; transferRecord: StudentPromotionRecord } {
+    const student = this.getStudentById(tenantId, studentId);
+    if (!student) throw new Error('Student record not found.');
+
+    const fromGradeId = student.gradeId;
+    const fromGradeName = student.gradeName;
+    const fromStreamId = student.streamId;
+    const fromStreamName = student.streamName;
+
+    if (payload.toGradeId) {
+      const targetGrade = this.getGradeById(tenantId, payload.toGradeId);
+      if (targetGrade) {
+        student.gradeId = targetGrade.id;
+        student.gradeName = targetGrade.name;
+        student.learningStage = targetGrade.category;
+      }
+    }
+
+    if (payload.toStreamId) {
+      const targetStream = this.getStreamById(tenantId, payload.toStreamId);
+      if (targetStream) {
+        student.streamId = targetStream.id;
+        student.streamName = targetStream.fullName;
+        if (!student.gradeId || (payload.toGradeId && student.gradeId !== targetStream.gradeId)) {
+          student.gradeId = targetStream.gradeId;
+          student.gradeName = targetStream.gradeName;
+        }
+      }
+    } else if (payload.toGradeId && payload.toStreamId === '') {
+      student.streamId = '';
+      student.streamName = '';
+    }
+
+    if (payload.toClassId !== undefined) {
+      student.classId = payload.toClassId;
+      const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === payload.toClassId);
+      if (cls) student.className = cls.name;
+    }
+
+    if (payload.toCampusId !== undefined) {
+      student.campusId = payload.toCampusId;
+      const camp = this.campuses.find(c => c.tenantId === tenantId && c.id === payload.toCampusId);
+      if (camp) student.campusName = camp.name;
+    }
+
+    saveDocToFirestore('students', student.id, student).catch(() => {});
+
+    // Create promotion / transfer audit record
+    const transferRecord: StudentPromotionRecord = {
+      id: `trn_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      fromGradeId,
+      fromGradeName,
+      fromStreamId,
+      fromStreamName,
+      toGradeId: student.gradeId,
+      toGradeName: student.gradeName,
+      toStreamId: student.streamId,
+      toStreamName: student.streamName,
+      fromAcademicYear: student.academicYear,
+      toAcademicYear: student.academicYear,
+      promotionType: 'TRANSFERRED',
+      promotedAt: new Date().toISOString(),
+      promotedBy: user.name || 'System Admin',
+      notes: payload.reason || `Transferred to ${student.gradeName || ''} ${student.streamName || ''}`
+    };
+
+    this.studentPromotions.unshift(transferRecord);
+    saveDocToFirestore('studentPromotions', transferRecord.id, transferRecord).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'STUDENT_TRANSFERRED',
+      'Student',
+      student.id,
+      `Transferred student "${student.fullName}" (${student.admissionNo}) from ${fromGradeName || 'Current'} (${fromStreamName || 'Stream'}) to ${student.gradeName || 'Target'} (${student.streamName || 'Stream'})`
+    );
+
+    return { success: true, student, transferRecord };
   }
 
   public getStudents(tenantId: string): Student[] {

@@ -2161,6 +2161,18 @@ async function startServer() {
     }
   });
 
+  // Student Transfer between levels / streams
+  app.post('/api/app/education/students/:id/transfer', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.transferStudent(tenantId, req.params.id, req.body, user);
+      return res.json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   // Faculty / Staff
   app.post('/api/app/education/faculty', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
