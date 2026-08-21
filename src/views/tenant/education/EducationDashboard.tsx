@@ -232,7 +232,7 @@ export const EducationDashboard: React.FC = () => {
           { id: 'student_portal', label: 'Student Portal', icon: Sparkles },
           { id: 'teacher_portal', label: 'Teacher / Faculty Portal', icon: Award },
           { id: 'documents', label: 'Transcripts & Certificates', icon: FileText },
-          { id: 'grades_streams', label: 'Grades & Streams (1–9)', icon: Layers },
+          { id: 'grades_streams', label: 'Academic Levels & Streams (Playgroup → Grade 9)', icon: Layers },
           { id: 'classes', label: 'Classes & Cohorts', icon: Layers },
           { id: 'faculty', label: 'Lecturers & Staff', icon: Award },
           { id: 'departments', label: 'Departments', icon: Building2 },
@@ -594,7 +594,7 @@ export const EducationDashboard: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs max-w-2xl space-y-6">
           <h3 className="font-bold text-slate-900 text-base">Institution Type & Academic Structure Setup</h3>
           <p className="text-xs text-slate-500">
-            Configure your academic structure mode. Davetech ERP seamlessly supports both modern Grade-based Basic Education (Grades 1–9 with Streams) and Higher Education/TVET structures (Courses, Classes, Departments & Units).
+            Configure your academic structure mode. Davetech ERP seamlessly supports both Complete Early Years & Basic Education (Playgroup → PP1 → PP2 → Grade 1 through Grade 9 with Streams) and Higher Education/TVET structures (Courses, Classes, Departments & Units).
           </p>
 
           <div className="space-y-4">
@@ -605,10 +605,10 @@ export const EducationDashboard: React.FC = () => {
                 onChange={e => setEducationType(e.target.value as EducationType)}
                 className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 font-medium"
               >
-                <option value="PRIMARY_SCHOOL">Primary School (CBC Grade 1–6)</option>
-                <option value="BASIC_EDUCATION">Basic Education (CBC Grade 1–9 & Streams)</option>
+                <option value="BASIC_EDUCATION">Basic Education (Playgroup → PP1 → PP2 → Grades 1–9 & Streams)</option>
+                <option value="PRIMARY_SCHOOL">Primary & Early Years School (Playgroup – Grade 6)</option>
                 <option value="JUNIOR_SECONDARY">Junior Secondary School (Grade 7–9)</option>
-                <option value="COMPREHENSIVE_SCHOOL">Comprehensive School (Grade 1–9 & Secondary)</option>
+                <option value="COMPREHENSIVE_SCHOOL">Comprehensive School (Playgroup – Grade 9 & Senior Secondary)</option>
                 <option value="TVET">TVET / Vocational Training Institute</option>
                 <option value="COLLEGE">College (Higher Diplomas & Certificates)</option>
                 <option value="UNIVERSITY">University (Degrees & Master Programs)</option>

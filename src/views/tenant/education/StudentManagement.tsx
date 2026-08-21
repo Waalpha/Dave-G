@@ -652,7 +652,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                   onChange={e => setGradeFilter(e.target.value)}
                   className="w-full py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
                 >
-                  <option value="ALL">All Grades (Grades 1–9)</option>
+                  <option value="ALL">All Academic Levels (Playgroup → Grade 9)</option>
                   {grades.map(g => (
                     <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
                   ))}
@@ -984,7 +984,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="font-semibold text-slate-700">Basic School Grade (Grades 1–9)</label>
+                  <label className="font-semibold text-slate-700">Academic Level (Playgroup → Grade 9)</label>
                   <select
                     value={formGradeId}
                     onChange={e => {
@@ -993,7 +993,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                     }}
                     className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
                   >
-                    <option value="">-- Select Grade (Optional) --</option>
+                    <option value="">-- Select Academic Level (Playgroup to Grade 9) --</option>
                     {grades.map(g => (
                       <option key={g.id} value={g.id}>{g.name} ({g.code})</option>
                     ))}

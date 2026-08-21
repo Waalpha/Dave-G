@@ -2306,7 +2306,7 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                     }}
                     className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900"
                   >
-                    <option value="GRADE">School Grade (Grade 1 - 9)</option>
+                    <option value="GRADE">Academic Level (Playgroup → Grade 9)</option>
                     <option value="PROGRAM">Academic Program (College / Higher)</option>
                     <option value="ALL">All General Students</option>
                   </select>
