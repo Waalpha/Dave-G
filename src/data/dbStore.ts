@@ -7,6 +7,7 @@ import {
   Program, UnitSubject, SchoolClass, SchoolGrade, GradeStream, StudentPromotionRecord, AcademicStructureMode,
   Student, LecturerStaff, TimetableEntry,
   StudentAttendance, FeeStructure, StudentInvoice, FeePayment, StudentGradeRecord,
+  FeeStatementEntry, StudentFeeStatement,
   LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
   TenantDomain, TenantDnsRecord, DomainType, DomainVerificationStatus, DomainSslStatus,
@@ -4638,8 +4639,20 @@ class DatabaseStore {
     return { recordedCount: count };
   }
 
-  public getFeeStructures(tenantId: string): FeeStructure[] {
-    return this.feeStructures.filter(f => f.tenantId === tenantId);
+  public getFeeStructures(tenantId: string, filters?: { targetType?: string; gradeId?: string; programId?: string; academicYear?: string; academicTerm?: string }): FeeStructure[] {
+    let list = this.feeStructures.filter(f => f.tenantId === tenantId);
+    if (filters) {
+      if (filters.targetType) list = list.filter(f => f.targetType === filters.targetType);
+      if (filters.gradeId) list = list.filter(f => f.gradeId === filters.gradeId);
+      if (filters.programId) list = list.filter(f => f.programId === filters.programId);
+      if (filters.academicYear) list = list.filter(f => f.academicYear === filters.academicYear);
+      if (filters.academicTerm) list = list.filter(f => (f.academicTerm === filters.academicTerm || f.term === filters.academicTerm));
+    }
+    return list;
+  }
+
+  public getFeeStructureById(tenantId: string, id: string): FeeStructure | undefined {
+    return this.feeStructures.find(f => f.tenantId === tenantId && f.id === id);
   }
 
   public addFeeStructure(tenantId: string, data: Partial<FeeStructure>, user: User): FeeStructure {
@@ -4649,32 +4662,83 @@ class DatabaseStore {
       if (prog) programName = prog.name;
     }
 
+    let gradeName = data.gradeName || '';
+    if (data.gradeId) {
+      const grd = this.schoolGrades.find(g => g.tenantId === tenantId && g.id === data.gradeId);
+      if (grd) gradeName = grd.name;
+    }
+
+    let className = data.className || '';
+    if (data.classId) {
+      const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === data.classId);
+      if (cls) className = cls.name;
+    }
+
     const tuition = Number(data.tuitionFee) || 0;
     const exam = Number(data.examFee) || 0;
     const library = Number(data.libraryFee) || 0;
     const activity = Number(data.activityFee) || 0;
+    const boarding = Number(data.boardingFee) || 0;
+    const transport = Number(data.transportFee) || 0;
+    const lab = Number(data.labFee) || 0;
+    const development = Number(data.developmentFee) || 0;
     const other = Number(data.otherFees) || 0;
-    const total = tuition + exam + library + activity + other;
+
+    let items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
+    if (items.length === 0) {
+      if (tuition > 0) items.push({ name: 'Tuition Fee', feeType: 'Tuition Fee', amount: tuition, isMandatory: true });
+      if (exam > 0) items.push({ name: 'Exam & Assessment', feeType: 'Exam & Assessment', amount: exam, isMandatory: true });
+      if (library > 0) items.push({ name: 'Library & Learning Materials', feeType: 'Library & Learning Materials', amount: library, isMandatory: false });
+      if (activity > 0) items.push({ name: 'Activity & Co-Curricular', feeType: 'Activity & Co-Curricular', amount: activity, isMandatory: false });
+      if (boarding > 0) items.push({ name: 'Boarding & Accommodation', feeType: 'Boarding & Accommodation', amount: boarding, isMandatory: false });
+      if (transport > 0) items.push({ name: 'Transport & Bus', feeType: 'Transport & Bus', amount: transport, isMandatory: false });
+      if (lab > 0) items.push({ name: 'Science / Computer Lab', feeType: 'Science / Computer Lab', amount: lab, isMandatory: false });
+      if (development > 0) items.push({ name: 'Development Levy', feeType: 'Development Levy', amount: development, isMandatory: false });
+      if (other > 0) items.push({ name: 'Other Contingencies', feeType: 'Other Contingencies', amount: other, isMandatory: false });
+    }
+
+    const total = items.length > 0 
+      ? items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0)
+      : (tuition + exam + library + activity + boarding + transport + lab + development + other);
+
+    const termVal = data.academicTerm || data.term || 'Term 1';
+    const yearVal = data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+    const nameVal = data.name?.trim() || `${gradeName || programName || className || 'General'} - ${termVal} (${yearVal})`;
 
     const struct: FeeStructure = {
       id: `fee_struct_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
+      name: nameVal,
+      targetType: data.targetType || (data.gradeId ? 'GRADE' : data.programId ? 'PROGRAM' : 'ALL'),
       programId: data.programId || '',
       programName,
-      academicYear: data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
-      academicTerm: data.academicTerm || 'Semester 1',
+      gradeId: data.gradeId || '',
+      gradeName,
+      classId: data.classId || '',
+      className,
+      academicYear: yearVal,
+      academicTerm: termVal,
+      term: termVal,
       tuitionFee: tuition,
       examFee: exam,
       libraryFee: library,
       activityFee: activity,
+      boardingFee: boarding,
+      transportFee: transport,
+      labFee: lab,
+      developmentFee: development,
       otherFees: other,
+      items,
       totalFee: total,
-      createdAt: new Date().toISOString()
+      description: data.description?.trim() || '',
+      status: data.status || 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
     this.feeStructures.unshift(struct);
     saveDocToFirestore('feeStructures', struct.id, struct).catch(() => {});
-    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Created fee structure for ${struct.programName}`);
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Created fee structure "${struct.name}" (Total: ${struct.totalFee})`);
     return struct;
   }
 
@@ -4682,50 +4746,110 @@ class DatabaseStore {
     const struct = this.feeStructures.find(f => f.tenantId === tenantId && f.id === id);
     if (!struct) throw new Error('Fee structure not found.');
 
+    if (data.name) struct.name = data.name.trim();
+    if (data.targetType) struct.targetType = data.targetType;
+
     if (data.programId !== undefined) {
       struct.programId = data.programId;
       const prog = this.programs.find(p => p.tenantId === tenantId && p.id === data.programId);
-      if (prog) struct.programName = prog.name;
+      struct.programName = prog ? prog.name : '';
     }
+    if (data.gradeId !== undefined) {
+      struct.gradeId = data.gradeId;
+      const grd = this.schoolGrades.find(g => g.tenantId === tenantId && g.id === data.gradeId);
+      struct.gradeName = grd ? grd.name : '';
+    }
+    if (data.classId !== undefined) {
+      struct.classId = data.classId;
+      const cls = this.schoolClasses.find(c => c.tenantId === tenantId && c.id === data.classId);
+      struct.className = cls ? cls.name : '';
+    }
+
     if (data.academicYear) struct.academicYear = data.academicYear;
-    if (data.academicTerm) struct.academicTerm = data.academicTerm;
+    if (data.academicTerm || data.term) {
+      const t = data.academicTerm || data.term || 'Term 1';
+      struct.academicTerm = t;
+      struct.term = t;
+    }
+
     if (data.tuitionFee !== undefined) struct.tuitionFee = Number(data.tuitionFee);
     if (data.examFee !== undefined) struct.examFee = Number(data.examFee);
     if (data.libraryFee !== undefined) struct.libraryFee = Number(data.libraryFee);
     if (data.activityFee !== undefined) struct.activityFee = Number(data.activityFee);
+    if (data.boardingFee !== undefined) struct.boardingFee = Number(data.boardingFee);
+    if (data.transportFee !== undefined) struct.transportFee = Number(data.transportFee);
+    if (data.labFee !== undefined) struct.labFee = Number(data.labFee);
+    if (data.developmentFee !== undefined) struct.developmentFee = Number(data.developmentFee);
     if (data.otherFees !== undefined) struct.otherFees = Number(data.otherFees);
-    struct.totalFee = struct.tuitionFee + struct.examFee + struct.libraryFee + struct.activityFee + (struct.otherFees || 0);
+    if (data.description !== undefined) struct.description = data.description.trim();
+    if (data.status) struct.status = data.status;
 
+    if (Array.isArray(data.items)) {
+      struct.items = data.items;
+      struct.totalFee = data.items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+    } else {
+      struct.totalFee = struct.tuitionFee + struct.examFee + struct.libraryFee + struct.activityFee + (struct.boardingFee || 0) + (struct.transportFee || 0) + (struct.labFee || 0) + (struct.developmentFee || 0) + (struct.otherFees || 0);
+    }
+
+    struct.updatedAt = new Date().toISOString();
     saveDocToFirestore('feeStructures', struct.id, struct).catch(() => {});
-    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Updated fee structure for ${struct.programName}`);
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_FEE_STRUCTURE', 'FeeStructure', struct.id, `Updated fee structure "${struct.name}" (Total: ${struct.totalFee})`);
     return struct;
   }
 
   public deleteFeeStructure(tenantId: string, id: string, user: User): boolean {
     const idx = this.feeStructures.findIndex(f => f.tenantId === tenantId && f.id === id);
     if (idx === -1) throw new Error('Fee structure not found.');
+    const struct = this.feeStructures[idx];
     this.feeStructures.splice(idx, 1);
     deleteDocFromFirestore('feeStructures', id).catch(() => {});
-    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_FEE_STRUCTURE', 'FeeStructure', id, `Deleted fee structure`);
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_FEE_STRUCTURE', 'FeeStructure', id, `Deleted fee structure "${struct.name || id}"`);
     return true;
   }
 
-  public getInvoices(tenantId: string, studentId?: string): StudentInvoice[] {
+  public getInvoices(tenantId: string, filters?: { studentId?: string; gradeId?: string; classId?: string; programId?: string; academicYear?: string; academicTerm?: string; status?: string; search?: string }): StudentInvoice[] {
     let list = this.studentInvoices.filter(i => i.tenantId === tenantId);
-    if (studentId) list = list.filter(i => i.studentId === studentId);
+    if (filters) {
+      if (filters.studentId) list = list.filter(i => i.studentId === filters.studentId);
+      if (filters.gradeId) list = list.filter(i => i.gradeId === filters.gradeId);
+      if (filters.classId) list = list.filter(i => i.classId === filters.classId);
+      if (filters.programId) list = list.filter(i => i.programId === filters.programId);
+      if (filters.academicYear) list = list.filter(i => i.academicYear === filters.academicYear);
+      if (filters.academicTerm) list = list.filter(i => (i.academicTerm === filters.academicTerm || i.term === filters.academicTerm));
+      if (filters.status && filters.status !== 'ALL') list = list.filter(i => i.status === filters.status);
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        list = list.filter(i => 
+          i.invoiceNo.toLowerCase().includes(q) ||
+          i.studentName.toLowerCase().includes(q) ||
+          i.admissionNo.toLowerCase().includes(q)
+        );
+      }
+    }
     return list;
+  }
+
+  public getInvoiceById(tenantId: string, id: string): StudentInvoice | undefined {
+    return this.studentInvoices.find(i => i.tenantId === tenantId && i.id === id);
   }
 
   public createInvoice(tenantId: string, data: Partial<StudentInvoice>, user: User): StudentInvoice {
     const student = this.students.find(s => s.tenantId === tenantId && s.id === data.studentId);
-    if (!student) throw new Error('Student not found.');
+    if (!student) throw new Error('Student record not found for this institution.');
 
-    const items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [
+    let items = Array.isArray(data.items) && data.items.length > 0 ? data.items : [
       { description: 'Tuition Fee', amount: Number(data.totalAmount) || 25000 }
     ];
-    const total = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+
+    const subtotal = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+    const discount = Number(data.discountAmount) || 0;
+    const total = Math.max(0, subtotal - discount);
+
     const randNum = Math.floor(1000 + Math.random() * 9000);
-    const invoiceNo = data.invoiceNo || `INV-${new Date().getFullYear()}-${randNum}`;
+    const invoiceNo = (data.invoiceNo?.trim() || `INV-${new Date().getFullYear()}-${randNum}`).toUpperCase();
+
+    const termVal = data.academicTerm || data.term || student.academicTerm || 'Term 1';
+    const yearVal = data.academicYear || student.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
 
     const inv: StudentInvoice = {
       id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
@@ -4734,34 +4858,164 @@ class DatabaseStore {
       studentId: student.id,
       studentName: student.fullName,
       admissionNo: student.admissionNo,
-      programId: student.programId,
-      programName: student.programName,
-      academicTerm: data.academicTerm || 'Semester 1',
-      academicYear: data.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+      gradeId: student.gradeId || data.gradeId || '',
+      gradeName: student.gradeName || data.gradeName || '',
+      streamId: student.streamId || data.streamId || '',
+      streamName: student.streamName || data.streamName || '',
+      programId: student.programId || data.programId || '',
+      programName: student.programName || data.programName || '',
+      classId: student.classId || data.classId || '',
+      className: student.className || data.className || '',
+      academicTerm: termVal,
+      term: termVal,
+      academicYear: yearVal,
       feeStructureId: data.feeStructureId || '',
+      feeStructureName: data.feeStructureName || '',
       items,
+      subtotal,
+      discountAmount: discount,
+      discountReason: data.discountReason?.trim() || '',
       totalAmount: total,
       amountPaid: 0,
       balance: total,
       issueDate: data.issueDate || new Date().toISOString().split('T')[0],
       dueDate: data.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       status: 'UNPAID',
-      createdAt: new Date().toISOString()
+      notes: data.notes?.trim() || '',
+      paymentInstructions: data.paymentInstructions?.trim() || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    student.feeBalance += total;
+    // Increase student outstanding balance
+    student.feeBalance = (Number(student.feeBalance) || 0) + total;
+
     this.studentInvoices.unshift(inv);
     saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
     saveDocToFirestore('students', student.id, student).catch(() => {});
 
-    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_INVOICE', 'StudentInvoice', inv.id, `Generated invoice ${inv.invoiceNo} of ${inv.totalAmount} for ${student.fullName}`);
+    this.logAction(tenantId, user.id, user.name, user.role, 'CREATE_INVOICE', 'StudentInvoice', inv.id, `Generated invoice ${inv.invoiceNo} of ${inv.totalAmount} for ${student.fullName} (${student.admissionNo})`);
     return inv;
   }
 
-  public generateClassInvoices(tenantId: string, params: { classId?: string; programId?: string; academicTerm: string; academicYear: string; feeStructureId?: string; totalAmount?: number }, user: User): { count: number; invoices: StudentInvoice[] } {
+  public updateInvoice(tenantId: string, id: string, data: Partial<StudentInvoice>, user: User): StudentInvoice {
+    const inv = this.getInvoiceById(tenantId, id);
+    if (!inv) throw new Error('Invoice record not found.');
+
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === inv.studentId);
+
+    const oldBalance = inv.balance;
+
+    if (data.invoiceNo) inv.invoiceNo = data.invoiceNo.trim().toUpperCase();
+    if (data.academicYear) inv.academicYear = data.academicYear;
+    if (data.academicTerm || data.term) {
+      const t = data.academicTerm || data.term || 'Term 1';
+      inv.academicTerm = t;
+      inv.term = t;
+    }
+    if (data.issueDate) inv.issueDate = data.issueDate;
+    if (data.dueDate) inv.dueDate = data.dueDate;
+    if (data.notes !== undefined) inv.notes = data.notes.trim();
+    if (data.paymentInstructions !== undefined) inv.paymentInstructions = data.paymentInstructions.trim();
+    if (data.discountReason !== undefined) inv.discountReason = data.discountReason.trim();
+
+    if (Array.isArray(data.items)) {
+      inv.items = data.items;
+      inv.subtotal = data.items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+      const discount = data.discountAmount !== undefined ? Number(data.discountAmount) : (inv.discountAmount || 0);
+      inv.discountAmount = discount;
+      inv.totalAmount = Math.max(0, inv.subtotal - discount);
+      inv.balance = Math.max(0, inv.totalAmount - inv.amountPaid);
+    } else if (data.totalAmount !== undefined) {
+      inv.totalAmount = Number(data.totalAmount);
+      inv.balance = Math.max(0, inv.totalAmount - inv.amountPaid);
+    }
+
+    // Update status based on current amountPaid and balance
+    if (inv.balance === 0 && inv.totalAmount > 0) {
+      inv.status = 'PAID';
+    } else if (inv.amountPaid > 0 && inv.balance > 0) {
+      inv.status = 'PARTIAL';
+    } else {
+      const isPastDue = new Date(inv.dueDate).getTime() < new Date().setHours(0,0,0,0);
+      inv.status = isPastDue ? 'OVERDUE' : 'UNPAID';
+    }
+
+    inv.updatedAt = new Date().toISOString();
+
+    // Adjust student total balance with the delta
+    if (student) {
+      const balanceDelta = inv.balance - oldBalance;
+      student.feeBalance = Math.max(0, (Number(student.feeBalance) || 0) + balanceDelta);
+      saveDocToFirestore('students', student.id, student).catch(() => {});
+    }
+
+    saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_INVOICE', 'StudentInvoice', inv.id, `Updated invoice ${inv.invoiceNo} (New Total: ${inv.totalAmount}, Balance: ${inv.balance})`);
+    return inv;
+  }
+
+  public deleteInvoice(tenantId: string, id: string, user: User): boolean {
+    const idx = this.studentInvoices.findIndex(i => i.tenantId === tenantId && i.id === id);
+    if (idx === -1) throw new Error('Invoice record not found.');
+    const inv = this.studentInvoices[idx];
+
+    // Revert student balance
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === inv.studentId);
+    if (student) {
+      student.feeBalance = Math.max(0, (Number(student.feeBalance) || 0) - inv.balance);
+      saveDocToFirestore('students', student.id, student).catch(() => {});
+    }
+
+    this.studentInvoices.splice(idx, 1);
+    deleteDocFromFirestore('studentInvoices', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_INVOICE', 'StudentInvoice', id, `Deleted invoice ${inv.invoiceNo} of ${inv.totalAmount} for ${inv.studentName}`);
+    return true;
+  }
+
+  public generateClassInvoices(tenantId: string, params: { gradeId?: string; streamId?: string; classId?: string; programId?: string; academicTerm: string; academicYear: string; feeStructureId?: string; items?: Array<{ description: string; amount: number }>; totalAmount?: number; dueDate?: string }, user: User): { count: number; invoices: StudentInvoice[] } {
     let targetStudents = this.students.filter(s => s.tenantId === tenantId && s.status === 'ACTIVE');
-    if (params.classId) targetStudents = targetStudents.filter(s => s.classId === params.classId);
-    if (params.programId) targetStudents = targetStudents.filter(s => s.programId === params.programId);
+
+    if (params.streamId) {
+      targetStudents = targetStudents.filter(s => s.streamId === params.streamId);
+    } else if (params.gradeId) {
+      targetStudents = targetStudents.filter(s => s.gradeId === params.gradeId);
+    } else if (params.classId) {
+      targetStudents = targetStudents.filter(s => s.classId === params.classId);
+    } else if (params.programId) {
+      targetStudents = targetStudents.filter(s => s.programId === params.programId);
+    }
+
+    if (targetStudents.length === 0) {
+      return { count: 0, invoices: [] };
+    }
+
+    // Determine line items from fee structure template or manual items
+    let feeItems = params.items || [];
+    let structName = '';
+    if (params.feeStructureId) {
+      const fs = this.feeStructures.find(f => f.tenantId === tenantId && f.id === params.feeStructureId);
+      if (fs) {
+        structName = fs.name || '';
+        if (Array.isArray(fs.items) && fs.items.length > 0) {
+          feeItems = fs.items.map(it => ({
+            description: it.feeType || it.name || it.description || 'School Fee',
+            amount: Number(it.amount) || 0
+          }));
+        } else {
+          feeItems = [
+            { description: 'Tuition Fee', amount: fs.tuitionFee || 0 },
+            { description: 'Exam Fee', amount: fs.examFee || 0 },
+            { description: 'Library Fee', amount: fs.libraryFee || 0 },
+            { description: 'Activity Fee', amount: fs.activityFee || 0 }
+          ].filter(i => i.amount > 0);
+        }
+      }
+    }
+
+    if (feeItems.length === 0) {
+      feeItems = [{ description: 'Term Tuition Fee', amount: params.totalAmount || 25000 }];
+    }
 
     const generated: StudentInvoice[] = [];
     targetStudents.forEach(st => {
@@ -4770,18 +5024,46 @@ class DatabaseStore {
         academicTerm: params.academicTerm,
         academicYear: params.academicYear,
         feeStructureId: params.feeStructureId,
-        totalAmount: params.totalAmount || 30000
+        feeStructureName: structName,
+        dueDate: params.dueDate,
+        items: feeItems
       }, user);
       generated.push(inv);
     });
 
+    this.logAction(tenantId, user.id, user.name, user.role, 'BATCH_INVOICE_GENERATED', 'StudentInvoice', `batch_${Date.now()}`, `Batch generated ${generated.length} invoices for term ${params.academicTerm} (${params.academicYear})`);
     return { count: generated.length, invoices: generated };
   }
 
-  public getFeePayments(tenantId: string, studentId?: string): FeePayment[] {
+  public getFeePayments(tenantId: string, filters?: { studentId?: string; gradeId?: string; classId?: string; invoiceId?: string; paymentMethod?: string; fromDate?: string; toDate?: string; search?: string }): FeePayment[] {
     let list = this.feePayments.filter(f => f.tenantId === tenantId);
-    if (studentId) list = list.filter(f => f.studentId === studentId);
+    if (filters) {
+      if (filters.studentId) list = list.filter(f => f.studentId === filters.studentId);
+      if (filters.gradeId) list = list.filter(f => f.gradeId === filters.gradeId);
+      if (filters.classId) list = list.filter(f => f.classId === filters.classId);
+      if (filters.invoiceId) list = list.filter(f => f.invoiceId === filters.invoiceId);
+      if (filters.paymentMethod && filters.paymentMethod !== 'ALL') list = list.filter(f => f.paymentMethod === filters.paymentMethod);
+      if (filters.fromDate) {
+        list = list.filter(f => new Date(f.paidAt).getTime() >= new Date(filters.fromDate!).getTime());
+      }
+      if (filters.toDate) {
+        list = list.filter(f => new Date(f.paidAt).getTime() <= new Date(`${filters.toDate!}T23:59:59`).getTime());
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        list = list.filter(f => 
+          f.receiptNo.toLowerCase().includes(q) ||
+          f.referenceNo.toLowerCase().includes(q) ||
+          f.studentName.toLowerCase().includes(q) ||
+          f.admissionNo.toLowerCase().includes(q)
+        );
+      }
+    }
     return list;
+  }
+
+  public getFeePaymentById(tenantId: string, id: string): FeePayment | undefined {
+    return this.feePayments.find(f => f.tenantId === tenantId && f.id === id);
   }
 
   public recordFeePayment(
@@ -4794,48 +5076,91 @@ class DatabaseStore {
       receivedBy?: string;
       invoiceId?: string;
       bankName?: string;
+      chequeNo?: string;
       notes?: string;
+      paidAt?: string;
+      academicYear?: string;
+      academicTerm?: string;
     },
     createdBy: User
   ): FeePayment {
     const student = this.students.find(s => s.id === data.studentId && s.tenantId === tenantId);
-    if (!student) throw new Error('Student not found for this institution');
+    if (!student) throw new Error('Student record not found for this institution.');
 
     const paymentAmount = Number(data.amount) || 0;
     if (paymentAmount <= 0) throw new Error('Payment amount must be greater than zero.');
 
     let invNo = '';
+    let linkedInv: StudentInvoice | undefined;
+
     if (data.invoiceId) {
-      const invoice = this.studentInvoices.find(i => i.tenantId === tenantId && i.id === data.invoiceId);
-      if (invoice) {
-        invNo = invoice.invoiceNo;
-        invoice.amountPaid += paymentAmount;
-        invoice.balance = Math.max(0, invoice.totalAmount - invoice.amountPaid);
-        invoice.status = invoice.balance === 0 ? 'PAID' : (invoice.amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
-        saveDocToFirestore('studentInvoices', invoice.id, invoice).catch(() => {});
+      linkedInv = this.studentInvoices.find(i => i.tenantId === tenantId && i.id === data.invoiceId);
+      if (linkedInv) {
+        invNo = linkedInv.invoiceNo;
+        linkedInv.amountPaid = (Number(linkedInv.amountPaid) || 0) + paymentAmount;
+        linkedInv.balance = Math.max(0, linkedInv.totalAmount - linkedInv.amountPaid);
+        linkedInv.status = linkedInv.balance === 0 ? 'PAID' : 'PARTIAL';
+        linkedInv.updatedAt = new Date().toISOString();
+        saveDocToFirestore('studentInvoices', linkedInv.id, linkedInv).catch(() => {});
+      }
+    } else {
+      // Automatic FIFO payment allocation across unpaid student invoices
+      let remainingToAllocate = paymentAmount;
+      const unpaidInvoices = this.studentInvoices
+        .filter(i => i.tenantId === tenantId && i.studentId === student.id && i.balance > 0)
+        .sort((a, b) => new Date(a.issueDate || a.createdAt || '').getTime() - new Date(b.issueDate || b.createdAt || '').getTime());
+
+      for (const inv of unpaidInvoices) {
+        if (remainingToAllocate <= 0) break;
+        const alloc = Math.min(inv.balance, remainingToAllocate);
+        inv.amountPaid += alloc;
+        inv.balance = Math.max(0, inv.totalAmount - inv.amountPaid);
+        inv.status = inv.balance === 0 ? 'PAID' : 'PARTIAL';
+        inv.updatedAt = new Date().toISOString();
+        remainingToAllocate -= alloc;
+        saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+        if (!invNo) invNo = inv.invoiceNo;
       }
     }
+
+    // Deduct student's total fee balance
+    student.feeBalance = Math.max(0, (Number(student.feeBalance) || 0) - paymentAmount);
+
+    const randNum = Math.floor(1000 + Math.random() * 9000);
+    const receiptNo = `RCT-${new Date().getFullYear()}-${randNum}`;
+    const paidDate = data.paidAt || new Date().toISOString();
 
     const payment: FeePayment = {
       id: `pay_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
       tenantId,
-      receiptNo: `RCT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      receiptNo,
       studentId: student.id,
       studentName: student.fullName,
       admissionNo: student.admissionNo,
-      invoiceId: data.invoiceId,
-      invoiceNo: invNo,
+      gradeId: student.gradeId || '',
+      gradeName: student.gradeName || '',
+      streamId: student.streamId || '',
+      streamName: student.streamName || '',
+      programId: student.programId || '',
+      programName: student.programName || '',
+      classId: student.classId || '',
+      className: student.className || '',
+      invoiceId: data.invoiceId || linkedInv?.id || '',
+      invoiceNo: invNo || linkedInv?.invoiceNo || '',
+      academicYear: data.academicYear || student.academicYear,
+      academicTerm: data.academicTerm || student.academicTerm,
       amount: paymentAmount,
       paymentMethod: data.paymentMethod,
-      referenceNo: data.referenceNo?.trim() || `TXN${Date.now().toString(36).toUpperCase()}`,
-      paidAt: new Date().toISOString(),
-      receivedBy: data.receivedBy || createdBy.name,
+      referenceNo: data.referenceNo?.trim().toUpperCase() || `TXN${Date.now().toString(36).toUpperCase()}`,
+      paidAt: paidDate,
+      receivedBy: data.receivedBy || createdBy.name || 'Accounts Bursar',
       bankName: data.bankName?.trim() || '',
-      notes: data.notes?.trim() || ''
+      chequeNo: data.chequeNo?.trim() || '',
+      notes: data.notes?.trim() || '',
+      balanceAfterPayment: student.feeBalance,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
-
-    // Deduct student's total fee balance
-    student.feeBalance = Math.max(0, student.feeBalance - paymentAmount);
 
     this.feePayments.unshift(payment);
     saveDocToFirestore('feePayments', payment.id, payment).catch(() => {});
@@ -4861,7 +5186,7 @@ class DatabaseStore {
         currency: 'KES',
         currencySymbol: 'KSh',
         items: [{
-          name: `Tuition & School Fee Payment - ${payment.invoiceNo || 'Fee Account'}`,
+          name: `Academic Fee Payment (${payment.invoiceNo || 'General Fee Account'})`,
           quantity: 1,
           unitPrice: paymentAmount,
           total: paymentAmount,
@@ -4897,6 +5222,315 @@ class DatabaseStore {
     );
 
     return payment;
+  }
+
+  public updateFeePayment(tenantId: string, id: string, data: Partial<FeePayment>, user: User): FeePayment {
+    const payment = this.getFeePaymentById(tenantId, id);
+    if (!payment) throw new Error('Payment record not found.');
+
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === payment.studentId);
+    const oldAmount = payment.amount;
+
+    if (data.referenceNo) payment.referenceNo = data.referenceNo.trim().toUpperCase();
+    if (data.paymentMethod) payment.paymentMethod = data.paymentMethod;
+    if (data.receivedBy) payment.receivedBy = data.receivedBy.trim();
+    if (data.bankName !== undefined) payment.bankName = data.bankName.trim();
+    if (data.chequeNo !== undefined) payment.chequeNo = data.chequeNo.trim();
+    if (data.notes !== undefined) payment.notes = data.notes.trim();
+    if (data.paidAt) payment.paidAt = data.paidAt;
+
+    if (data.amount !== undefined && Number(data.amount) !== oldAmount) {
+      const newAmount = Number(data.amount);
+      if (newAmount <= 0) throw new Error('Payment amount must be greater than zero.');
+      const diff = newAmount - oldAmount; // positive if paid more, negative if paid less
+
+      payment.amount = newAmount;
+
+      if (student) {
+        student.feeBalance = Math.max(0, (Number(student.feeBalance) || 0) - diff);
+        payment.balanceAfterPayment = student.feeBalance;
+        saveDocToFirestore('students', student.id, student).catch(() => {});
+      }
+
+      if (payment.invoiceId) {
+        const inv = this.studentInvoices.find(i => i.tenantId === tenantId && i.id === payment.invoiceId);
+        if (inv) {
+          inv.amountPaid = Math.max(0, (Number(inv.amountPaid) || 0) + diff);
+          inv.balance = Math.max(0, inv.totalAmount - inv.amountPaid);
+          inv.status = inv.balance === 0 ? 'PAID' : (inv.amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+          inv.updatedAt = new Date().toISOString();
+          saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+        }
+      }
+    }
+
+    payment.updatedAt = new Date().toISOString();
+    saveDocToFirestore('feePayments', payment.id, payment).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_FEE_PAYMENT', 'FeePayment', payment.id, `Updated payment receipt ${payment.receiptNo} (${payment.amount})`);
+    return payment;
+  }
+
+  public deleteFeePayment(tenantId: string, id: string, user: User): boolean {
+    const idx = this.feePayments.findIndex(f => f.tenantId === tenantId && f.id === id);
+    if (idx === -1) throw new Error('Payment record not found.');
+    const payment = this.feePayments[idx];
+
+    // Restore student's fee balance
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === payment.studentId);
+    if (student) {
+      student.feeBalance = (Number(student.feeBalance) || 0) + payment.amount;
+      saveDocToFirestore('students', student.id, student).catch(() => {});
+    }
+
+    // Restore linked invoice balance if any
+    if (payment.invoiceId) {
+      const inv = this.studentInvoices.find(i => i.tenantId === tenantId && i.id === payment.invoiceId);
+      if (inv) {
+        inv.amountPaid = Math.max(0, (Number(inv.amountPaid) || 0) - payment.amount);
+        inv.balance = Math.max(0, inv.totalAmount - inv.amountPaid);
+        inv.status = inv.balance === 0 ? 'PAID' : (inv.amountPaid > 0 ? 'PARTIAL' : 'UNPAID');
+        inv.updatedAt = new Date().toISOString();
+        saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+      }
+    }
+
+    this.feePayments.splice(idx, 1);
+    deleteDocFromFirestore('feePayments', id).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'DELETE_FEE_PAYMENT', 'FeePayment', id, `Reversed and deleted fee payment ${payment.receiptNo} of ${payment.amount}`);
+    return true;
+  }
+
+  public getStudentFeeStatement(tenantId: string, studentId: string, filters?: { academicYear?: string; academicTerm?: string; fromDate?: string; toDate?: string }): StudentFeeStatement {
+    const student = this.students.find(s => s.tenantId === tenantId && s.id === studentId);
+    if (!student) throw new Error('Student not found.');
+
+    let studentInvoices = this.studentInvoices.filter(i => i.tenantId === tenantId && i.studentId === studentId);
+    let studentPayments = this.feePayments.filter(p => p.tenantId === tenantId && p.studentId === studentId);
+
+    if (filters) {
+      if (filters.academicYear) {
+        studentInvoices = studentInvoices.filter(i => i.academicYear === filters.academicYear);
+        studentPayments = studentPayments.filter(p => !p.academicYear || p.academicYear === filters.academicYear);
+      }
+      if (filters.academicTerm) {
+        studentInvoices = studentInvoices.filter(i => i.academicTerm === filters.academicTerm || i.term === filters.academicTerm);
+        studentPayments = studentPayments.filter(p => !p.academicTerm || p.academicTerm === filters.academicTerm);
+      }
+      if (filters.fromDate) {
+        studentInvoices = studentInvoices.filter(i => new Date(i.issueDate || i.createdAt || '').getTime() >= new Date(filters.fromDate!).getTime());
+        studentPayments = studentPayments.filter(p => new Date(p.paidAt).getTime() >= new Date(filters.fromDate!).getTime());
+      }
+      if (filters.toDate) {
+        studentInvoices = studentInvoices.filter(i => new Date(i.issueDate || i.createdAt || '').getTime() <= new Date(`${filters.toDate!}T23:59:59`).getTime());
+        studentPayments = studentPayments.filter(p => new Date(p.paidAt).getTime() <= new Date(`${filters.toDate!}T23:59:59`).getTime());
+      }
+    }
+
+    // Convert to statement ledger entries
+    const rawEntries: Array<{
+      id: string;
+      date: string;
+      type: 'INVOICE' | 'PAYMENT';
+      referenceNo: string;
+      description: string;
+      term?: string;
+      academicYear?: string;
+      debit: number;
+      credit: number;
+    }> = [];
+
+    studentInvoices.forEach(inv => {
+      rawEntries.push({
+        id: inv.id,
+        date: inv.issueDate || inv.createdAt || '',
+        type: 'INVOICE',
+        referenceNo: inv.invoiceNo,
+        description: `Fee Invoice - ${inv.academicTerm} (${inv.academicYear}) [${inv.items?.map(i => i.description).join(', ') || 'Tuition'}]`,
+        term: inv.academicTerm,
+        academicYear: inv.academicYear,
+        debit: inv.totalAmount,
+        credit: 0
+      });
+    });
+
+    studentPayments.forEach(pay => {
+      rawEntries.push({
+        id: pay.id,
+        date: pay.paidAt,
+        type: 'PAYMENT',
+        referenceNo: pay.receiptNo,
+        description: `Fee Payment - ${pay.paymentMethod} (Ref: ${pay.referenceNo}) ${pay.invoiceNo ? `[Inv: ${pay.invoiceNo}]` : ''}`,
+        term: pay.academicTerm,
+        academicYear: pay.academicYear,
+        debit: 0,
+        credit: pay.amount
+      });
+    });
+
+    // Sort chronologically ascending
+    rawEntries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let running = 0;
+    const entries: FeeStatementEntry[] = rawEntries.map(e => {
+      running += (e.debit - e.credit);
+      return {
+        ...e,
+        runningBalance: running
+      };
+    });
+
+    const totalInvoiced = studentInvoices.reduce((sum, i) => sum + i.totalAmount, 0);
+    const totalPaid = studentPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalWaivers = studentInvoices.reduce((sum, i) => sum + (i.discountAmount || 0), 0);
+    const currentBalance = student.feeBalance;
+
+    let status: 'SETTLED' | 'PARTIAL' | 'ARREARS' | 'OVERPAID' = 'SETTLED';
+    if (currentBalance > 0 && totalPaid > 0) status = 'PARTIAL';
+    else if (currentBalance > 0 && totalPaid === 0) status = 'ARREARS';
+    else if (currentBalance < 0) status = 'OVERPAID';
+
+    const lastPayment = studentPayments.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+
+    return {
+      student,
+      summary: {
+        totalInvoiced,
+        totalPaid,
+        totalWaivers,
+        currentBalance,
+        lastPaymentDate: lastPayment?.paidAt,
+        lastPaymentAmount: lastPayment?.amount,
+        status
+      },
+      entries,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  public getFeeReportsSummary(tenantId: string, filters?: { academicYear?: string; academicTerm?: string; gradeId?: string; classId?: string; programId?: string }): {
+    totalInvoiced: number;
+    totalCollected: number;
+    totalOutstanding: number;
+    collectionRate: number;
+    invoicesCount: number;
+    paymentsCount: number;
+    debtorsCount: number;
+    paymentMethodBreakdown: Record<string, number>;
+    statusBreakdown: {
+      fullyPaidStudents: number;
+      partialPaidStudents: number;
+      zeroPaidStudents: number;
+    };
+    topDebtors: Array<{
+      studentId: string;
+      studentName: string;
+      admissionNo: string;
+      gradeName?: string;
+      streamName?: string;
+      programName?: string;
+      className?: string;
+      guardianName?: string;
+      guardianPhone?: string;
+      feeBalance: number;
+    }>;
+  } {
+    let invoices = this.studentInvoices.filter(i => i.tenantId === tenantId);
+    let payments = this.feePayments.filter(p => p.tenantId === tenantId);
+    let students = this.students.filter(s => s.tenantId === tenantId && s.status === 'ACTIVE');
+
+    if (filters) {
+      if (filters.academicYear) {
+        invoices = invoices.filter(i => i.academicYear === filters.academicYear);
+        payments = payments.filter(p => !p.academicYear || p.academicYear === filters.academicYear);
+        students = students.filter(s => s.academicYear === filters.academicYear);
+      }
+      if (filters.academicTerm) {
+        invoices = invoices.filter(i => i.academicTerm === filters.academicTerm || i.term === filters.academicTerm);
+        payments = payments.filter(p => !p.academicTerm || p.academicTerm === filters.academicTerm);
+      }
+      if (filters.gradeId) {
+        invoices = invoices.filter(i => i.gradeId === filters.gradeId);
+        students = students.filter(s => s.gradeId === filters.gradeId);
+      }
+      if (filters.classId) {
+        invoices = invoices.filter(i => i.classId === filters.classId);
+        students = students.filter(s => s.classId === filters.classId);
+      }
+      if (filters.programId) {
+        invoices = invoices.filter(i => i.programId === filters.programId);
+        students = students.filter(s => s.programId === filters.programId);
+      }
+    }
+
+    const totalInvoiced = invoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
+    const totalCollected = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const totalOutstanding = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
+    const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : (totalCollected > 0 ? 100 : 0);
+
+    const paymentMethodBreakdown: Record<string, number> = {
+      'M-PESA': 0,
+      'BANK_TRANSFER': 0,
+      'CHEQUE': 0,
+      'CASH': 0,
+      'CARD': 0
+    };
+
+    payments.forEach(p => {
+      const pm = p.paymentMethod || 'CASH';
+      paymentMethodBreakdown[pm] = (paymentMethodBreakdown[pm] || 0) + p.amount;
+    });
+
+    let fullyPaidStudents = 0;
+    let partialPaidStudents = 0;
+    let zeroPaidStudents = 0;
+
+    students.forEach(s => {
+      const bal = Number(s.feeBalance) || 0;
+      const sPayments = payments.filter(p => p.studentId === s.id);
+      const paidSum = sPayments.reduce((sum, p) => sum + p.amount, 0);
+
+      if (bal <= 0) {
+        fullyPaidStudents++;
+      } else if (paidSum > 0) {
+        partialPaidStudents++;
+      } else {
+        zeroPaidStudents++;
+      }
+    });
+
+    const topDebtors = students
+      .filter(s => (s.feeBalance || 0) > 0)
+      .sort((a, b) => (b.feeBalance || 0) - (a.feeBalance || 0))
+      .slice(0, 30)
+      .map(s => ({
+        studentId: s.id,
+        studentName: s.fullName,
+        admissionNo: s.admissionNo,
+        gradeName: s.gradeName,
+        streamName: s.streamName,
+        programName: s.programName,
+        className: s.className,
+        guardianName: s.guardianName,
+        guardianPhone: s.guardianPhone,
+        feeBalance: s.feeBalance || 0
+      }));
+
+    return {
+      totalInvoiced,
+      totalCollected,
+      totalOutstanding,
+      collectionRate,
+      invoicesCount: invoices.length,
+      paymentsCount: payments.length,
+      debtorsCount: students.filter(s => (s.feeBalance || 0) > 0).length,
+      paymentMethodBreakdown,
+      statusBreakdown: {
+        fullyPaidStudents,
+        partialPaidStudents,
+        zeroPaidStudents
+      },
+      topDebtors
+    };
   }
 
   public getStudentGrades(tenantId: string, studentId?: string, unitId?: string): StudentGradeRecord[] {

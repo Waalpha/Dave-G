@@ -1738,7 +1738,16 @@ async function startServer() {
   app.get('/api/app/education/payments', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
-    return res.json(dbStore.getFeePayments(tenantId));
+    const filters = req.query as any;
+    return res.json(dbStore.getFeePayments(tenantId, filters));
+  });
+
+  app.get('/api/app/education/payments/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const payment = dbStore.getFeePaymentById(tenantId, req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Fee payment not found' });
+    return res.json(payment);
   });
 
   app.post('/api/app/education/payments', requireAuth, requireModule('education'), (req, res) => {
@@ -1747,6 +1756,28 @@ async function startServer() {
     try {
       const payment = dbStore.recordFeePayment(tenantId, req.body, user);
       return res.status(201).json(payment);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/education/payments/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const payment = dbStore.updateFeePayment(tenantId, req.params.id, req.body, user);
+      return res.json(payment);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/payments/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteFeePayment(tenantId, req.params.id, user);
+      return res.json({ success: true });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
@@ -2446,7 +2477,16 @@ async function startServer() {
   app.get('/api/app/education/fee-structures', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
-    return res.json(dbStore.getFeeStructures(tenantId));
+    const filters = req.query as any;
+    return res.json(dbStore.getFeeStructures(tenantId, filters));
+  });
+
+  app.get('/api/app/education/fee-structures/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const struct = dbStore.getFeeStructureById(tenantId, req.params.id);
+    if (!struct) return res.status(404).json({ error: 'Fee structure not found' });
+    return res.json(struct);
   });
 
   app.post('/api/app/education/fee-structures', requireAuth, requireModule('education'), (req, res) => {
@@ -2486,8 +2526,16 @@ async function startServer() {
   app.get('/api/app/education/invoices', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
-    const { studentId } = req.query as { studentId?: string };
-    return res.json(dbStore.getInvoices(tenantId, studentId));
+    const filters = req.query as any;
+    return res.json(dbStore.getInvoices(tenantId, filters));
+  });
+
+  app.get('/api/app/education/invoices/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const inv = dbStore.getInvoiceById(tenantId, req.params.id);
+    if (!inv) return res.status(404).json({ error: 'Invoice not found' });
+    return res.json(inv);
   });
 
   app.post('/api/app/education/invoices', requireAuth, requireModule('education'), (req, res) => {
@@ -2501,12 +2549,60 @@ async function startServer() {
     }
   });
 
+  app.put('/api/app/education/invoices/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const inv = dbStore.updateInvoice(tenantId, req.params.id, req.body, user);
+      return res.json(inv);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/education/invoices/:id', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteInvoice(tenantId, req.params.id, user);
+      return res.json({ success: true });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   app.post('/api/app/education/invoices/batch-generate', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
       const result = dbStore.generateClassInvoices(tenantId, req.body, user);
       return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Student Fee Statement Ledger
+  app.get('/api/app/education/students/:id/fee-statement', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const filters = req.query as any;
+    try {
+      const statement = dbStore.getStudentFeeStatement(tenantId, req.params.id, filters);
+      return res.json(statement);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // Fee Reports Summary & Debtors
+  app.get('/api/app/education/fee-reports/summary', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const filters = req.query as any;
+    try {
+      const summary = dbStore.getFeeReportsSummary(tenantId, filters);
+      return res.json(summary);
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }

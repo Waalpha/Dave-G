@@ -775,17 +775,32 @@ export interface StudentAttendance {
 export interface FeeStructure {
   id: string;
   tenantId: string;
-  programId: string;
-  programName: string;
+  name?: string;
+  targetType?: 'PROGRAM' | 'GRADE' | 'CLASS' | 'ALL';
+  programId?: string;
+  programName?: string;
+  gradeId?: string;
+  gradeName?: string;
+  classId?: string;
+  className?: string;
   academicYear?: string;
-  academicTerm: string;
+  academicTerm?: string;
+  term?: string; // alias
   tuitionFee: number;
   examFee: number;
   libraryFee: number;
   activityFee: number;
+  boardingFee?: number;
+  transportFee?: number;
+  labFee?: number;
+  developmentFee?: number;
   otherFees?: number;
+  items?: Array<{ feeType?: string; description?: string; name?: string; amount: number; isMandatory?: boolean; category?: string }>;
   totalFee: number;
+  description?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface StudentInvoice {
@@ -795,19 +810,33 @@ export interface StudentInvoice {
   studentId: string;
   studentName: string;
   admissionNo: string;
-  programId: string;
-  programName: string;
+  programId?: string;
+  programName?: string;
+  gradeId?: string;
+  gradeName?: string;
+  streamId?: string;
+  streamName?: string;
+  classId?: string;
+  className?: string;
   academicTerm: string;
+  term?: string; // alias
   academicYear: string;
   feeStructureId?: string;
-  items: Array<{ description: string; amount: number }>;
+  feeStructureName?: string;
+  items: Array<{ description: string; name?: string; amount: number; category?: string }>;
+  discountAmount?: number;
+  discountReason?: string;
+  subtotal?: number;
   totalAmount: number;
   amountPaid: number;
   balance: number;
   issueDate: string;
   dueDate: string;
   status: 'PAID' | 'PARTIAL' | 'UNPAID' | 'OVERDUE';
+  notes?: string;
+  paymentInstructions?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FeePayment {
@@ -817,15 +846,57 @@ export interface FeePayment {
   studentId: string;
   studentName: string;
   admissionNo: string;
+  gradeId?: string;
+  gradeName?: string;
+  streamId?: string;
+  streamName?: string;
+  programId?: string;
+  programName?: string;
+  classId?: string;
+  className?: string;
   invoiceId?: string;
   invoiceNo?: string;
+  academicYear?: string;
+  academicTerm?: string;
   amount: number;
   paymentMethod: 'M-PESA' | 'BANK_TRANSFER' | 'CHEQUE' | 'CARD' | 'CASH';
   referenceNo: string;
   paidAt: string;
   receivedBy: string;
   bankName?: string;
+  chequeNo?: string;
   notes?: string;
+  balanceAfterPayment?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FeeStatementEntry {
+  id: string;
+  date: string;
+  type: 'INVOICE' | 'PAYMENT' | 'WAIVER' | 'REFUND';
+  referenceNo: string;
+  description: string;
+  term?: string;
+  academicYear?: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
+export interface StudentFeeStatement {
+  student: Student;
+  summary: {
+    totalInvoiced: number;
+    totalPaid: number;
+    totalWaivers: number;
+    currentBalance: number;
+    lastPaymentDate?: string;
+    lastPaymentAmount?: number;
+    status: 'SETTLED' | 'PARTIAL' | 'ARREARS' | 'OVERPAID';
+  };
+  entries: FeeStatementEntry[];
+  generatedAt: string;
 }
 
 export interface StudentGradeRecord {
