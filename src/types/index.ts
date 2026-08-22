@@ -1435,9 +1435,97 @@ export interface EmployeeRecord {
   email: string;
   hireDate: string;
   basicSalary: number;
-  employmentStatus: 'FULL_TIME' | 'CONTRACT' | 'PROBATION' | 'TERMINATED';
+  employmentStatus: 'FULL_TIME' | 'CONTRACT' | 'PROBATION' | 'TERMINATED' | 'ON_LEAVE' | 'SUSPENDED';
   allowances: number;
   deductions: number;
+  contractEndDate?: string;
+  kraPin?: string;
+  nssfNo?: string;
+  nhifShifNo?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type WarningLevel = 'FIRST_WARNING' | 'SECOND_WARNING' | 'FINAL_WARNING' | 'PERFORMANCE_IMPROVEMENT_PLAN';
+export type InfractionCategory = 
+  | 'ATTENDANCE_TARDINESS'
+  | 'INSUBORDINATION'
+  | 'POLICY_VIOLATION'
+  | 'NEGLIGENCE_OF_DUTY'
+  | 'GROSS_MISCONDUCT'
+  | 'FINANCIAL_IRREGULARITY'
+  | 'POOR_PERFORMANCE'
+  | 'CONFIDENTIALITY_BREACH'
+  | 'WORKPLACE_SAFETY'
+  | 'OTHER';
+
+export interface StaffWarningLetter {
+  id: string;
+  tenantId: string;
+  letterNumber: string; // e.g. WRN-2026-0001
+  employeeId: string;
+  employeeName: string;
+  employeeNo: string;
+  department: string;
+  jobTitle: string;
+  warningLevel: WarningLevel;
+  infractionCategory: InfractionCategory;
+  incidentDate: string;
+  incidentDescription: string;
+  priorDiscussionDate?: string;
+  requiredCorrectiveActions: string;
+  improvementTimelineDays: number; // e.g. 30
+  consequenceSummary: string;
+  issuedBy: string;
+  issuedByTitle: string;
+  issuedAt: string;
+  status: 'ISSUED' | 'ACKNOWLEDGED' | 'RESOLVED' | 'ESCALATED';
+  employeeSignatureDate?: string;
+  employeeRemarks?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TerminationType = 
+  | 'SUMMARY_DISMISSAL'
+  | 'TERMINATION_WITH_NOTICE'
+  | 'REDUNDANCY'
+  | 'END_OF_CONTRACT'
+  | 'PROBATION_FAILURE'
+  | 'MUTUAL_SEPARATION'
+  | 'RESIGNATION_ACCEPTANCE';
+
+export interface StaffTerminationLetter {
+  id: string;
+  tenantId: string;
+  letterNumber: string; // e.g. TRM-2026-0001
+  employeeId: string;
+  employeeName: string;
+  employeeNo: string;
+  department: string;
+  jobTitle: string;
+  terminationType: TerminationType;
+  effectiveDate: string;
+  lastWorkingDate: string;
+  groundsForTermination: string;
+  noticePeriodProvidedDays: number;
+  severanceOrFinalDuesDescription?: string;
+  finalSettlementAmount?: number;
+  clearanceRequirements: string[];
+  certificateOfServiceIssued: boolean;
+  issuedBy: string;
+  issuedByTitle: string;
+  issuedAt: string;
+  status: 'ISSUED' | 'ACCEPTED' | 'SETTLED';
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CrmLeadCustomer {

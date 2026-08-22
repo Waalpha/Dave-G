@@ -17,6 +17,7 @@ import {
   PosProduct, PosSaleOrder, PosSaleItem, RestaurantTable, RestaurantMenuItem,
   InventoryMovement, AccountingLedgerEntry, EmployeeRecord, CrmLeadCustomer,
   ChurchMemberRecord, ChurchGivingRecord,
+  StaffWarningLetter, StaffTerminationLetter, WarningLevel, InfractionCategory, TerminationType,
   PosBusinessType, PosEnabledFeatures, PosTenantConfig, ClothingAttributes, ProductVariant,
   Warehouse, Branch, PosCustomer, PosCustomerTransaction, PosSupplier,
   PurchaseOrderItem, PurchaseOrder, GoodsReceivedItem, GoodsReceivedNote, SupplierPayment,
@@ -766,6 +767,8 @@ class DatabaseStore {
   private inventoryMovements: InventoryMovement[] = [];
   private ledgerEntries: AccountingLedgerEntry[] = [];
   private employees: EmployeeRecord[] = [];
+  private warningLetters: StaffWarningLetter[] = [];
+  private terminationLetters: StaffTerminationLetter[] = [];
   private crmLeads: CrmLeadCustomer[] = [];
   private churchMembers: ChurchMemberRecord[] = [];
   private churchGivings: ChurchGivingRecord[] = [];
@@ -950,6 +953,8 @@ class DatabaseStore {
         inventoryMovements: this.inventoryMovements,
         ledgerEntries: this.ledgerEntries,
         employees: this.employees,
+        warningLetters: this.warningLetters,
+        terminationLetters: this.terminationLetters,
         crmLeads: this.crmLeads,
         churchMembers: this.churchMembers,
         churchGivings: this.churchGivings,
@@ -1100,6 +1105,8 @@ class DatabaseStore {
         if (Array.isArray(data.inventoryMovements)) this.inventoryMovements = data.inventoryMovements;
         if (Array.isArray(data.ledgerEntries)) this.ledgerEntries = data.ledgerEntries;
         if (Array.isArray(data.employees)) this.employees = data.employees;
+        if (Array.isArray(data.warningLetters)) this.warningLetters = data.warningLetters;
+        if (Array.isArray(data.terminationLetters)) this.terminationLetters = data.terminationLetters;
         if (Array.isArray(data.crmLeads)) this.crmLeads = data.crmLeads;
         if (Array.isArray(data.churchMembers)) this.churchMembers = data.churchMembers;
         if (Array.isArray(data.churchGivings)) this.churchGivings = data.churchGivings;
@@ -1377,6 +1384,12 @@ class DatabaseStore {
 
       const dbEmployees = await loadCollectionFromFirestore<EmployeeRecord>('employees');
       this.employees = Array.isArray(dbEmployees) ? dbEmployees : [];
+
+      const dbWarningLetters = await loadCollectionFromFirestore<StaffWarningLetter>('warningLetters');
+      this.warningLetters = Array.isArray(dbWarningLetters) ? dbWarningLetters : [];
+
+      const dbTerminationLetters = await loadCollectionFromFirestore<StaffTerminationLetter>('terminationLetters');
+      this.terminationLetters = Array.isArray(dbTerminationLetters) ? dbTerminationLetters : [];
 
       const dbCrm = await loadCollectionFromFirestore<CrmLeadCustomer>('crmLeads');
       this.crmLeads = Array.isArray(dbCrm) ? dbCrm : [];
@@ -5596,16 +5609,28 @@ class DatabaseStore {
     totalInvoiced: number;
     totalCollected: number;
     totalOutstanding: number;
+    totalDiscounts?: number;
     collectionRate: number;
     invoicesCount: number;
     paymentsCount: number;
     debtorsCount: number;
     paymentMethodBreakdown: Record<string, number>;
+    feeCategoryBreakdown?: Record<string, { invoiced: number; count: number }>;
     statusBreakdown: {
       fullyPaidStudents: number;
       partialPaidStudents: number;
       zeroPaidStudents: number;
     };
+    cohortBreakdown?: Array<{
+      name: string;
+      studentCount: number;
+      totalInvoiced: number;
+      totalCollected: number;
+      totalBalance: number;
+      clearedCount: number;
+      arrearsCount: number;
+      collectionRate: number;
+    }>;
     topDebtors: Array<{
       studentId: string;
       studentName: string;
@@ -5618,6 +5643,7 @@ class DatabaseStore {
       guardianPhone?: string;
       feeBalance: number;
     }>;
+    allStudentReports?: any[];
   } {
     let invoices = this.studentInvoices.filter(i => i.tenantId === tenantId);
     let payments = this.feePayments.filter(p => p.tenantId === tenantId);
@@ -5650,6 +5676,7 @@ class DatabaseStore {
     const totalInvoiced = invoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0);
     const totalCollected = payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
     const totalOutstanding = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
+    const totalDiscounts = invoices.reduce((sum, i) => sum + (Number(i.discountAmount) || 0), 0);
     const collectionRate = totalInvoiced > 0 ? Math.round((totalCollected / totalInvoiced) * 100) : (totalCollected > 0 ? 100 : 0);
 
     const paymentMethodBreakdown: Record<string, number> = {
@@ -5665,56 +5692,146 @@ class DatabaseStore {
       paymentMethodBreakdown[pm] = (paymentMethodBreakdown[pm] || 0) + p.amount;
     });
 
+    // Itemized fee category breakdown (Tuition, Exam, Activity, Library, Transport, etc.)
+    const feeCategoryBreakdown: Record<string, { invoiced: number; count: number }> = {
+      'Tuition': { invoiced: 0, count: 0 },
+      'Examination & Assessment': { invoiced: 0, count: 0 },
+      'Activity & Co-Curricular': { invoiced: 0, count: 0 },
+      'Library & Materials': { invoiced: 0, count: 0 },
+      'Boarding & Catering': { invoiced: 0, count: 0 },
+      'Transport & Logistics': { invoiced: 0, count: 0 },
+      'Other Institutional Fees': { invoiced: 0, count: 0 }
+    };
+
+    invoices.forEach(inv => {
+      if (Array.isArray(inv.items) && inv.items.length > 0) {
+        inv.items.forEach(item => {
+          const desc = (item.description || '').toLowerCase();
+          let category = 'Other Institutional Fees';
+          if (desc.includes('tuition') || desc.includes('course') || desc.includes('instruction')) category = 'Tuition';
+          else if (desc.includes('exam') || desc.includes('assess') || desc.includes('cat') || desc.includes('eval')) category = 'Examination & Assessment';
+          else if (desc.includes('activit') || desc.includes('sport') || desc.includes('co-curric')) category = 'Activity & Co-Curricular';
+          else if (desc.includes('librar') || desc.includes('book') || desc.includes('material')) category = 'Library & Materials';
+          else if (desc.includes('board') || desc.includes('cater') || desc.includes('meal') || desc.includes('hostel') || desc.includes('food')) category = 'Boarding & Catering';
+          else if (desc.includes('transport') || desc.includes('bus') || desc.includes('van')) category = 'Transport & Logistics';
+
+          feeCategoryBreakdown[category].invoiced += (Number(item.amount) || 0);
+          feeCategoryBreakdown[category].count += 1;
+        });
+      } else {
+        feeCategoryBreakdown['Tuition'].invoiced += (Number(inv.totalAmount) || 0);
+        feeCategoryBreakdown['Tuition'].count += 1;
+      }
+    });
+
     let fullyPaidStudents = 0;
     let partialPaidStudents = 0;
     let zeroPaidStudents = 0;
 
-    students.forEach(s => {
+    const allStudentReports = students.map(s => {
       const bal = Number(s.feeBalance) || 0;
       const sPayments = payments.filter(p => p.studentId === s.id);
-      const paidSum = sPayments.reduce((sum, p) => sum + p.amount, 0);
+      const sInvoices = invoices.filter(i => i.studentId === s.id);
+      const sPaidSum = sPayments.reduce((sum, p) => sum + p.amount, 0);
+      const sInvoicedSum = sInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0) || (sPaidSum + bal);
 
+      let status: 'SETTLED' | 'PARTIAL' | 'ARREARS' = 'SETTLED';
       if (bal <= 0) {
         fullyPaidStudents++;
-      } else if (paidSum > 0) {
+        status = 'SETTLED';
+      } else if (sPaidSum > 0) {
         partialPaidStudents++;
+        status = 'PARTIAL';
       } else {
         zeroPaidStudents++;
+        status = 'ARREARS';
       }
-    });
 
-    const topDebtors = students
-      .filter(s => (s.feeBalance || 0) > 0)
-      .sort((a, b) => (b.feeBalance || 0) - (a.feeBalance || 0))
-      .slice(0, 30)
-      .map(s => ({
+      const lastPayment = sPayments.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+
+      return {
         studentId: s.id,
         studentName: s.fullName,
         admissionNo: s.admissionNo,
-        gradeName: s.gradeName,
-        streamName: s.streamName,
-        programName: s.programName,
-        className: s.className,
-        guardianName: s.guardianName,
-        guardianPhone: s.guardianPhone,
-        feeBalance: s.feeBalance || 0
-      }));
+        gradeId: s.gradeId,
+        gradeName: s.gradeName || s.className || s.programName || 'General',
+        streamName: s.streamName || '',
+        programName: s.programName || '',
+        className: s.className || '',
+        guardianName: s.guardianName || '',
+        guardianPhone: s.guardianPhone || '',
+        guardianEmail: s.guardianEmail || '',
+        totalInvoiced: sInvoicedSum,
+        totalPaid: sPaidSum,
+        feeBalance: bal,
+        status,
+        lastPaymentDate: lastPayment?.paidAt || null,
+        lastPaymentAmount: lastPayment?.amount || null,
+        lastPaymentMethod: lastPayment?.paymentMethod || null,
+        lastReceiptNo: lastPayment?.receiptNo || null
+      };
+    });
+
+    // Group by Grade / Cohort
+    const cohortMap = new Map<string, {
+      name: string;
+      studentCount: number;
+      totalInvoiced: number;
+      totalCollected: number;
+      totalBalance: number;
+      clearedCount: number;
+      arrearsCount: number;
+    }>();
+
+    allStudentReports.forEach(st => {
+      const cohortName = st.gradeName || 'General Cohort';
+      const existing = cohortMap.get(cohortName) || {
+        name: cohortName,
+        studentCount: 0,
+        totalInvoiced: 0,
+        totalCollected: 0,
+        totalBalance: 0,
+        clearedCount: 0,
+        arrearsCount: 0
+      };
+      existing.studentCount += 1;
+      existing.totalInvoiced += st.totalInvoiced;
+      existing.totalCollected += st.totalPaid;
+      existing.totalBalance += st.feeBalance;
+      if (st.status === 'SETTLED') existing.clearedCount += 1;
+      else existing.arrearsCount += 1;
+      cohortMap.set(cohortName, existing);
+    });
+
+    const cohortBreakdown = Array.from(cohortMap.values()).map(c => ({
+      ...c,
+      collectionRate: c.totalInvoiced > 0 ? Math.round((c.totalCollected / c.totalInvoiced) * 100) : (c.totalCollected > 0 ? 100 : 0)
+    }));
+
+    const topDebtors = allStudentReports
+      .filter(s => s.feeBalance > 0)
+      .sort((a, b) => b.feeBalance - a.feeBalance)
+      .slice(0, 30);
 
     return {
       totalInvoiced,
       totalCollected,
       totalOutstanding,
+      totalDiscounts,
       collectionRate,
       invoicesCount: invoices.length,
       paymentsCount: payments.length,
       debtorsCount: students.filter(s => (s.feeBalance || 0) > 0).length,
       paymentMethodBreakdown,
+      feeCategoryBreakdown,
       statusBreakdown: {
         fullyPaidStudents,
         partialPaidStudents,
         zeroPaidStudents
       },
-      topDebtors
+      cohortBreakdown,
+      topDebtors,
+      allStudentReports
     };
   }
 
@@ -6586,6 +6703,43 @@ class DatabaseStore {
     const totalInvoiced = invoices.reduce((sum, i) => sum + i.totalAmount, 0);
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
     const liveFeeBalance = student.feeBalance !== undefined ? student.feeBalance : Math.max(0, totalInvoiced - totalPaid);
+    const totalFeeAmount = totalInvoiced > 0 ? totalInvoiced : (totalPaid + liveFeeBalance);
+    const clearedPercentage = totalFeeAmount > 0 ? Math.min(100, Math.round((totalPaid / totalFeeAmount) * 100)) : (liveFeeBalance === 0 ? 100 : 0);
+    const clearanceStatus: 'CLEARED' | 'PARTIAL' | 'ARREARS' = liveFeeBalance <= 0 ? 'CLEARED' : (totalPaid > 0 ? 'PARTIAL' : 'ARREARS');
+
+    // Matching Fee Structure
+    const feeStructure = this.feeStructures.find(
+      fs => fs.tenantId === tenantId && (
+        (student.gradeId && fs.gradeId === student.gradeId) ||
+        (student.programId && fs.programId === student.programId) ||
+        (student.classId && fs.classId === student.classId) ||
+        fs.targetType === 'ALL'
+      )
+    );
+
+    // All itemized fee items across invoices
+    const allInvoiceItems: Array<{ description: string; amount: number; invoiceNo: string; term?: string }> = [];
+    invoices.forEach(inv => {
+      if (Array.isArray(inv.items) && inv.items.length > 0) {
+        inv.items.forEach(item => {
+          allInvoiceItems.push({
+            description: item.description,
+            amount: item.amount,
+            invoiceNo: inv.invoiceNo,
+            term: inv.academicTerm
+          });
+        });
+      }
+    });
+
+    const paymentInstructions = {
+      paybillNumber: (tenant as any)?.mpesaPaybill || (tenant as any)?.paybillNumber || '522522',
+      accountNumber: student.admissionNo,
+      bankName: (tenant as any)?.bankName || 'Kenya Commercial Bank (KCB)',
+      bankBranch: (tenant as any)?.bankBranch || 'University / CBD Branch',
+      bankAccountNumber: (tenant as any)?.bankAccount || '1289456789',
+      recipientName: tenant?.name || 'Institution Bursary / Accounts'
+    };
 
     // Authorized Documents
     const transcripts = this.academicTranscripts.filter(t => t.tenantId === tenantId && t.studentId === student.id);
@@ -6628,7 +6782,13 @@ class DatabaseStore {
         payments,
         totalInvoiced,
         totalPaid,
-        balance: liveFeeBalance
+        balance: liveFeeBalance,
+        totalFeeAmount,
+        clearedPercentage,
+        clearanceStatus,
+        feeStructure,
+        allInvoiceItems,
+        paymentInstructions
       },
       documents: {
         transcripts,
@@ -8604,22 +8764,441 @@ class DatabaseStore {
   }
 
   public getEmployees(tenantId: string): EmployeeRecord[] {
-    return this.employees.filter(e => e.tenantId === tenantId);
+    const list = this.employees.filter(e => e.tenantId === tenantId);
+    if (list.length === 0) {
+      // Seed high quality initial staff records if empty
+      const initial: EmployeeRecord[] = [
+        {
+          id: `emp_${tenantId}_1`,
+          tenantId,
+          employeeNo: 'EMP-101',
+          fullName: 'Dr. Arthur Mwangi',
+          nationalId: '28475912',
+          department: 'Academic Affairs & Operations',
+          jobTitle: 'Senior Operations Director',
+          phone: '+254 712 345 678',
+          email: 'arthur.mwangi@enterprise.org',
+          hireDate: '2023-01-15',
+          basicSalary: 145000,
+          employmentStatus: 'FULL_TIME',
+          allowances: 25000,
+          deductions: 18500,
+          kraPin: 'A003847291Z',
+          nssfNo: 'NSSF-849201',
+          nhifShifNo: 'SHIF-94021',
+          bankName: 'Standard Chartered Bank',
+          bankAccountNo: '010293847501',
+          emergencyContactName: 'Grace Mwangi (Spouse)',
+          emergencyContactPhone: '+254 722 998 877',
+          createdAt: new Date(Date.now() - 365 * 86400000).toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: `emp_${tenantId}_2`,
+          tenantId,
+          employeeNo: 'EMP-102',
+          fullName: 'Sarah Chebet Kimutai',
+          nationalId: '31948201',
+          department: 'Finance & Accounts',
+          jobTitle: 'Chief Accountant',
+          phone: '+254 723 456 789',
+          email: 'sarah.kimutai@enterprise.org',
+          hireDate: '2023-06-01',
+          basicSalary: 110000,
+          employmentStatus: 'FULL_TIME',
+          allowances: 18000,
+          deductions: 14200,
+          kraPin: 'A004928104K',
+          nssfNo: 'NSSF-582019',
+          nhifShifNo: 'SHIF-11029',
+          bankName: 'KCB Bank Kenya',
+          bankAccountNo: '1120938472',
+          emergencyContactName: 'Daniel Kimutai (Brother)',
+          emergencyContactPhone: '+254 733 112 233',
+          createdAt: new Date(Date.now() - 280 * 86400000).toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: `emp_${tenantId}_3`,
+          tenantId,
+          employeeNo: 'EMP-103',
+          fullName: 'Victor Odhiambo',
+          nationalId: '33491820',
+          department: 'Information Technology & Systems',
+          jobTitle: 'Senior Systems Engineer',
+          phone: '+254 734 567 890',
+          email: 'victor.odhiambo@enterprise.org',
+          hireDate: '2024-02-10',
+          basicSalary: 95000,
+          employmentStatus: 'FULL_TIME',
+          allowances: 15000,
+          deductions: 11500,
+          kraPin: 'A005928192P',
+          nssfNo: 'NSSF-920184',
+          nhifShifNo: 'SHIF-55921',
+          bankName: 'Equity Bank Kenya',
+          bankAccountNo: '02401928475',
+          emergencyContactName: 'Mary Atieno (Mother)',
+          emergencyContactPhone: '+254 701 445 566',
+          createdAt: new Date(Date.now() - 150 * 86400000).toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: `emp_${tenantId}_4`,
+          tenantId,
+          employeeNo: 'EMP-104',
+          fullName: 'Brenda Nyambura Gitau',
+          nationalId: '35194827',
+          department: 'Human Resources & Administration',
+          jobTitle: 'HR Officer',
+          phone: '+254 798 123 456',
+          email: 'brenda.gitau@enterprise.org',
+          hireDate: '2024-05-15',
+          basicSalary: 65000,
+          employmentStatus: 'PROBATION',
+          allowances: 8000,
+          deductions: 7500,
+          kraPin: 'A006819203T',
+          nssfNo: 'NSSF-301948',
+          nhifShifNo: 'SHIF-77291',
+          bankName: 'Co-operative Bank',
+          bankAccountNo: '01129384756',
+          emergencyContactName: 'John Gitau (Father)',
+          emergencyContactPhone: '+254 721 889 900',
+          createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+      this.employees.push(...initial);
+      initial.forEach(e => saveDocToFirestore('employees', e.id, e).catch(() => {}));
+      return initial;
+    }
+    return list;
   }
 
   public addEmployee(tenantId: string, data: Omit<EmployeeRecord, 'id' | 'tenantId'>, createdBy?: User): EmployeeRecord {
     const actorId = createdBy?.id || 'sys_admin';
     const actorName = createdBy?.name || 'HR Manager';
     const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const now = new Date().toISOString();
     const emp: EmployeeRecord = {
       ...data,
       id: `emp_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
-      tenantId
+      tenantId,
+      createdAt: now,
+      updatedAt: now
     };
     this.employees.unshift(emp);
     saveDocToFirestore('employees', emp.id, emp).catch(() => {});
+    this.saveToDiskBackup();
     this.logAction(tenantId, actorId, actorName, actorRole, 'EMPLOYEE_ADDED', 'EmployeeRecord', `Added staff member "${emp.fullName}" (${emp.employeeNo})`, emp.id);
     return emp;
+  }
+
+  public updateEmployee(tenantId: string, id: string, data: Partial<EmployeeRecord>, updatedBy?: User): EmployeeRecord {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'HR Manager';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.employees.findIndex(e => e.id === id && e.tenantId === tenantId);
+    if (idx === -1) {
+      throw new Error(`Staff member with ID "${id}" was not found.`);
+    }
+    const updated: EmployeeRecord = {
+      ...this.employees[idx],
+      ...data,
+      id: this.employees[idx].id,
+      tenantId,
+      updatedAt: new Date().toISOString()
+    };
+    this.employees[idx] = updated;
+    saveDocToFirestore('employees', updated.id, updated).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(tenantId, actorId, actorName, actorRole, 'EMPLOYEE_UPDATED', 'EmployeeRecord', `Updated staff record for "${updated.fullName}" (${updated.employeeNo})`, updated.id);
+    return updated;
+  }
+
+  public deleteEmployee(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'HR Manager';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.employees.findIndex(e => e.id === id && e.tenantId === tenantId);
+    if (idx === -1) {
+      throw new Error(`Staff member with ID "${id}" was not found.`);
+    }
+    const removed = this.employees[idx];
+    this.employees.splice(idx, 1);
+    deleteDocFromFirestore('employees', id).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(tenantId, actorId, actorName, actorRole, 'EMPLOYEE_DELETED', 'EmployeeRecord', `Deleted staff record "${removed.fullName}" (${removed.employeeNo})`, id);
+    return true;
+  }
+
+  public bulkDeleteEmployees(tenantId: string, ids: string[], deletedBy?: User): { successCount: number; failedCount: number } {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'HR Manager';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    let successCount = 0;
+    let failedCount = 0;
+
+    const idSet = new Set(ids);
+    const remaining: EmployeeRecord[] = [];
+    const removedNames: string[] = [];
+
+    for (const emp of this.employees) {
+      if (emp.tenantId === tenantId && idSet.has(emp.id)) {
+        deleteDocFromFirestore('employees', emp.id).catch(() => {});
+        removedNames.push(emp.fullName);
+        successCount++;
+      } else {
+        remaining.push(emp);
+      }
+    }
+
+    this.employees = remaining;
+    failedCount = ids.length - successCount;
+    this.saveToDiskBackup();
+    this.logAction(tenantId, actorId, actorName, actorRole, 'EMPLOYEES_BULK_DELETED', 'EmployeeRecord', `Bulk deleted ${successCount} staff member(s): ${removedNames.slice(0, 5).join(', ')}${removedNames.length > 5 ? '...' : ''}`);
+    return { successCount, failedCount };
+  }
+
+  // ========================================================
+  // HR WARNING LETTERS MANAGEMENT
+  // ========================================================
+  public getWarningLetters(tenantId: string, employeeId?: string): StaffWarningLetter[] {
+    let list = this.warningLetters.filter(w => w.tenantId === tenantId);
+    if (employeeId) {
+      list = list.filter(w => w.employeeId === employeeId);
+    }
+    if (list.length === 0 && !employeeId) {
+      // Seed sample warning letter for demonstrative compliance
+      const emps = this.getEmployees(tenantId);
+      const targetEmp = emps[2] || emps[0];
+      if (targetEmp) {
+        const initialWarning: StaffWarningLetter = {
+          id: `wrn_${tenantId}_1`,
+          tenantId,
+          letterNumber: `WRN-${new Date().getFullYear()}-0001`,
+          employeeId: targetEmp.id,
+          employeeName: targetEmp.fullName,
+          employeeNo: targetEmp.employeeNo,
+          department: targetEmp.department,
+          jobTitle: targetEmp.jobTitle,
+          warningLevel: 'FIRST_WARNING',
+          infractionCategory: 'ATTENDANCE_TARDINESS',
+          incidentDate: new Date(Date.now() - 14 * 86400000).toISOString().split('T')[0],
+          incidentDescription: 'Repeated unexcused late arrivals recorded across consecutive business morning shifts without prior supervisor notification.',
+          priorDiscussionDate: new Date(Date.now() - 20 * 86400000).toISOString().split('T')[0],
+          requiredCorrectiveActions: 'Maintain 100% punctuality on designated work schedule, clock in prior to 8:00 AM, and provide prompt notice in the event of unforeseen transit delays.',
+          improvementTimelineDays: 30,
+          consequenceSummary: 'Failure to show consistent improvement within the 30-day evaluation period will escalate this matter to a Second Formal Warning and disciplinary review.',
+          issuedBy: 'Director of Human Resources',
+          issuedByTitle: 'Head of People & Operations',
+          issuedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+          status: 'ISSUED',
+          notes: 'Standard formal attendance caution issued following departmental log audit.',
+          createdAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+          updatedAt: new Date(Date.now() - 10 * 86400000).toISOString()
+        };
+        this.warningLetters.push(initialWarning);
+        saveDocToFirestore('warningLetters', initialWarning.id, initialWarning).catch(() => {});
+        return [initialWarning];
+      }
+    }
+    return list;
+  }
+
+  public getWarningLetterById(tenantId: string, id: string): StaffWarningLetter | null {
+    return this.warningLetters.find(w => w.id === id && w.tenantId === tenantId) || null;
+  }
+
+  public createWarningLetter(
+    tenantId: string,
+    data: Omit<StaffWarningLetter, 'id' | 'tenantId' | 'letterNumber' | 'createdAt' | 'updatedAt'>,
+    createdBy?: User
+  ): StaffWarningLetter {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'HR Manager';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const currentYear = new Date().getFullYear();
+    const countInYear = this.warningLetters.filter(w => w.tenantId === tenantId && w.letterNumber?.includes(`WRN-${currentYear}`)).length + 1;
+    const letterNumber = `WRN-${currentYear}-${String(countInYear).padStart(4, '0')}`;
+    const now = new Date().toISOString();
+
+    const letter: StaffWarningLetter = {
+      ...data,
+      id: `wrn_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      letterNumber,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.warningLetters.unshift(letter);
+    saveDocToFirestore('warningLetters', letter.id, letter).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(
+      tenantId,
+      actorId,
+      actorName,
+      actorRole,
+      'WARNING_LETTER_ISSUED',
+      'StaffWarningLetter',
+      `Issued ${letter.warningLevel.replace(/_/g, ' ')} (${letter.letterNumber}) to "${letter.employeeName}" (${letter.employeeNo})`,
+      letter.id
+    );
+    return letter;
+  }
+
+  public updateWarningLetter(
+    tenantId: string,
+    id: string,
+    data: Partial<StaffWarningLetter>,
+    updatedBy?: User
+  ): StaffWarningLetter {
+    const actorId = updatedBy?.id || 'sys_admin';
+    const actorName = updatedBy?.name || 'HR Manager';
+    const actorRole = updatedBy?.role || 'TENANT_ADMIN';
+    const idx = this.warningLetters.findIndex(w => w.id === id && w.tenantId === tenantId);
+    if (idx === -1) {
+      throw new Error(`Warning letter with ID "${id}" was not found.`);
+    }
+    const updated: StaffWarningLetter = {
+      ...this.warningLetters[idx],
+      ...data,
+      id: this.warningLetters[idx].id,
+      tenantId,
+      letterNumber: this.warningLetters[idx].letterNumber,
+      updatedAt: new Date().toISOString()
+    };
+    this.warningLetters[idx] = updated;
+    saveDocToFirestore('warningLetters', updated.id, updated).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(
+      tenantId,
+      actorId,
+      actorName,
+      actorRole,
+      'WARNING_LETTER_UPDATED',
+      'StaffWarningLetter',
+      `Updated warning letter "${updated.letterNumber}" for "${updated.employeeName}" (Status: ${updated.status})`,
+      updated.id
+    );
+    return updated;
+  }
+
+  public deleteWarningLetter(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'HR Manager';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.warningLetters.findIndex(w => w.id === id && w.tenantId === tenantId);
+    if (idx === -1) {
+      throw new Error(`Warning letter with ID "${id}" was not found.`);
+    }
+    const removed = this.warningLetters[idx];
+    this.warningLetters.splice(idx, 1);
+    deleteDocFromFirestore('warningLetters', id).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(
+      tenantId,
+      actorId,
+      actorName,
+      actorRole,
+      'WARNING_LETTER_DELETED',
+      'StaffWarningLetter',
+      `Deleted warning letter record "${removed.letterNumber}" for "${removed.employeeName}"`,
+      id
+    );
+    return true;
+  }
+
+  // ========================================================
+  // HR TERMINATION LETTERS MANAGEMENT
+  // ========================================================
+  public getTerminationLetters(tenantId: string, employeeId?: string): StaffTerminationLetter[] {
+    let list = this.terminationLetters.filter(t => t.tenantId === tenantId);
+    if (employeeId) {
+      list = list.filter(t => t.employeeId === employeeId);
+    }
+    return list;
+  }
+
+  public getTerminationLetterById(tenantId: string, id: string): StaffTerminationLetter | null {
+    return this.terminationLetters.find(t => t.id === id && t.tenantId === tenantId) || null;
+  }
+
+  public createTerminationLetter(
+    tenantId: string,
+    data: Omit<StaffTerminationLetter, 'id' | 'tenantId' | 'letterNumber' | 'createdAt' | 'updatedAt'>,
+    createdBy?: User,
+    updateEmployeeStatus: boolean = true
+  ): StaffTerminationLetter {
+    const actorId = createdBy?.id || 'sys_admin';
+    const actorName = createdBy?.name || 'HR Manager';
+    const actorRole = createdBy?.role || 'TENANT_ADMIN';
+    const currentYear = new Date().getFullYear();
+    const countInYear = this.terminationLetters.filter(t => t.tenantId === tenantId && t.letterNumber?.includes(`TRM-${currentYear}`)).length + 1;
+    const letterNumber = `TRM-${currentYear}-${String(countInYear).padStart(4, '0')}`;
+    const now = new Date().toISOString();
+
+    const letter: StaffTerminationLetter = {
+      ...data,
+      id: `trm_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      letterNumber,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this.terminationLetters.unshift(letter);
+    saveDocToFirestore('terminationLetters', letter.id, letter).catch(() => {});
+
+    // Automatically update employee record status to TERMINATED if requested
+    if (updateEmployeeStatus && letter.employeeId) {
+      const emp = this.employees.find(e => e.id === letter.employeeId && e.tenantId === tenantId);
+      if (emp) {
+        emp.employmentStatus = 'TERMINATED';
+        emp.updatedAt = now;
+        saveDocToFirestore('employees', emp.id, emp).catch(() => {});
+      }
+    }
+
+    this.saveToDiskBackup();
+    this.logAction(
+      tenantId,
+      actorId,
+      actorName,
+      actorRole,
+      'TERMINATION_LETTER_ISSUED',
+      'StaffTerminationLetter',
+      `Issued official termination letter (${letter.letterNumber}) to "${letter.employeeName}" (${letter.employeeNo}) - Type: ${letter.terminationType}`,
+      letter.id
+    );
+    return letter;
+  }
+
+  public deleteTerminationLetter(tenantId: string, id: string, deletedBy?: User): boolean {
+    const actorId = deletedBy?.id || 'sys_admin';
+    const actorName = deletedBy?.name || 'HR Manager';
+    const actorRole = deletedBy?.role || 'TENANT_ADMIN';
+    const idx = this.terminationLetters.findIndex(t => t.id === id && t.tenantId === tenantId);
+    if (idx === -1) {
+      throw new Error(`Termination letter with ID "${id}" was not found.`);
+    }
+    const removed = this.terminationLetters[idx];
+    this.terminationLetters.splice(idx, 1);
+    deleteDocFromFirestore('terminationLetters', id).catch(() => {});
+    this.saveToDiskBackup();
+    this.logAction(
+      tenantId,
+      actorId,
+      actorName,
+      actorRole,
+      'TERMINATION_LETTER_DELETED',
+      'StaffTerminationLetter',
+      `Deleted termination letter record "${removed.letterNumber}" for "${removed.employeeName}"`,
+      id
+    );
+    return true;
   }
 
   public getCrmLeads(tenantId: string): CrmLeadCustomer[] {

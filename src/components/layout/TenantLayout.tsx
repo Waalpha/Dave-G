@@ -202,8 +202,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                     <button
                       onClick={() => {
                         setProfileOpen(false);
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=website';
+                        onNavigate('/app/settings?tab=website');
                       }}
                       className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer font-medium text-blue-700"
                     >
@@ -214,8 +213,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                     <button
                       onClick={() => {
                         setProfileOpen(false);
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=users';
+                        onNavigate('/app/settings?tab=users');
                       }}
                       className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
                     >
@@ -226,8 +224,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                     <button
                       onClick={() => {
                         setProfileOpen(false);
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=branding';
+                        onNavigate('/app/settings?tab=branding');
                       }}
                       className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
                     >
@@ -363,30 +360,32 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                   <>
                     <button
                       onClick={() => {
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=website';
+                        onNavigate('/app/settings?tab=website');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all cursor-pointer group"
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer group ${
+                        currentRoute.includes('tab=website')
+                          ? 'bg-blue-600 text-white font-bold'
+                          : 'text-slate-700 hover:text-blue-700 hover:bg-blue-50'
+                      }`}
                     >
                       <div className="flex items-center space-x-2.5">
-                        <Globe className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                        <Globe className={`w-4 h-4 ${currentRoute.includes('tab=website') ? 'text-white' : 'text-blue-600 group-hover:scale-110'} transition-transform`} />
                         <span className="font-bold">Public Website &amp; CMS</span>
                       </div>
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-blue-100 text-blue-800">
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold ${currentRoute.includes('tab=website') ? 'bg-blue-800 text-white' : 'bg-blue-100 text-blue-800'}`}>
                         LIVE
                       </span>
                     </button>
 
                     <button
                       onClick={() => {
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=branding';
+                        onNavigate('/app/settings?tab=branding');
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
-                        currentRoute === '/app/settings'
-                          ? 'bg-slate-900 text-white'
+                        currentRoute.startsWith('/app/settings') && (currentRoute.includes('tab=branding') || (!currentRoute.includes('tab=website') && !currentRoute.includes('tab=users')))
+                          ? 'bg-slate-900 text-white font-bold'
                           : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                       }`}
                     >
@@ -396,11 +395,14 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
 
                     <button
                       onClick={() => {
-                        onNavigate('/app/settings');
-                        window.location.hash = '/app/settings?tab=users';
+                        onNavigate('/app/settings?tab=users');
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer"
+                      className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        currentRoute.includes('tab=users')
+                          ? 'bg-slate-900 text-white font-bold'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
                     >
                       <Users className="w-4 h-4 text-slate-500" />
                       <span>Team &amp; User Accounts</span>

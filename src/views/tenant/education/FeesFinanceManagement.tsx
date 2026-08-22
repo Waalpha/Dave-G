@@ -6,10 +6,13 @@ import {
 import {
   DollarSign, FileText, Plus, Search, Filter, CheckCircle2, AlertCircle,
   Receipt, Download, Printer, Layers, Clock, Check, X, Eye, Edit, Trash2,
-  Send, Users, ChevronRight, ArrowUpDown, Calendar, HelpCircle, FileCheck, Copy
+  Send, Users, ChevronRight, ArrowUpDown, Calendar, HelpCircle, FileCheck, Copy,
+  PieChart, RefreshCw, AlertTriangle
 } from 'lucide-react';
 import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
 import { printService } from '../../../lib/printService';
+import { FeesPieChart } from './components/FeesPieChart';
+import { SchoolFeesReportModal } from './components/SchoolFeesReportModal';
 
 interface FeesFinanceManagementProps {
   currencySymbol?: string;
@@ -97,9 +100,13 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
 
   // Reports Tab State
   const [reportSummary, setReportSummary] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [reportYearFilter, setReportYearFilter] = useState('ALL');
   const [reportTermFilter, setReportTermFilter] = useState('ALL');
   const [reportGradeFilter, setReportGradeFilter] = useState('ALL');
+  const [reportStatusFilter, setReportStatusFilter] = useState<'ALL' | 'SETTLED' | 'PARTIAL' | 'ARREARS'>('ALL');
+  const [reportSearch, setReportSearch] = useState('');
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   // Fee Structure Filters State
   const [fsSearch, setFsSearch] = useState('');
@@ -228,12 +235,21 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
   // Fetch Report summary
   const fetchReports = async () => {
     try {
-      const res = await fetch('/api/app/education/fee-reports/summary', { headers: getHeaders() });
+      setReportLoading(true);
+      const params = new URLSearchParams();
+      if (reportYearFilter && reportYearFilter !== 'ALL') params.append('academicYear', reportYearFilter);
+      if (reportTermFilter && reportTermFilter !== 'ALL') params.append('academicTerm', reportTermFilter);
+      if (reportGradeFilter && reportGradeFilter !== 'ALL') params.append('gradeId', reportGradeFilter);
+
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/app/education/fee-reports/summary${qs}`, { headers: getHeaders() });
       if (res.ok) {
         setReportSummary(await res.json());
       }
     } catch (err) {
       console.warn('Error fetching fee report summary', err);
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -241,7 +257,7 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
     if (subTab === 'reports') {
       fetchReports();
     }
-  }, [subTab]);
+  }, [subTab, reportYearFilter, reportTermFilter, reportGradeFilter]);
 
   // Universal Receipt Launcher
   const openUniversalReceipt = async (payment: FeePayment) => {
@@ -711,7 +727,7 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
           { id: 'invoices', label: `Student Invoices (${invoices.length})`, icon: FileText },
           { id: 'structures', label: `Fee Structures (${feeStructures.length})`, icon: Layers },
           { id: 'statements', label: 'Student Fee Statements', icon: FileCheck },
-          { id: 'reports', label: 'Paid / Unpaid & Arrears Reports', icon: ArrowUpDown }
+          { id: 'reports', label: 'School Fees & Financial Reports', icon: PieChart }
         ].map(t => {
           const Icon = t.icon;
           const isActive = subTab === t.id;
@@ -1508,163 +1524,655 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: PAID / UNPAID & ARREARS REPORTS                                    */}
+      {/* TAB 5: SCHOOL FEES & FINANCIAL REPORTS (WITH PIE CHARTS)                   */}
       {/* ========================================================================= */}
-      {subTab === 'reports' && (
-        <div className="space-y-5">
-          {/* Top KPI row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-2">
-              <span className="text-xs font-semibold text-slate-500">Fully Settled Students</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-emerald-700 font-mono">
-                  {students.filter(s => (s.feeBalance || 0) <= 0).length}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded">
-                  {students.length > 0 ? Math.round((students.filter(s => (s.feeBalance || 0) <= 0).length / students.length) * 100) : 0}% of cohort
-                </span>
+      {subTab === 'reports' && (() => {
+        const totalInv = reportSummary?.totalInvoiced ?? totalBilled;
+        const totalCol = reportSummary?.totalCollected ?? totalCollected;
+        const totalOut = reportSummary?.totalOutstanding ?? totalOutstanding;
+        const colRate = reportSummary?.collectionRate ?? collectionPercentage;
+        const fullyPaid = reportSummary?.statusBreakdown?.fullyPaidStudents ?? students.filter(s => (s.feeBalance || 0) <= 0).length;
+        const partialPaid = reportSummary?.statusBreakdown?.partialPaidStudents ?? students.filter(s => (s.feeBalance || 0) > 0 && payments.some(p => p.studentId === s.id)).length;
+        const zeroPaid = reportSummary?.statusBreakdown?.zeroPaidStudents ?? students.filter(s => (s.feeBalance || 0) > 0 && !payments.some(p => p.studentId === s.id)).length;
+
+        // Pie Chart 1: Revenue Collection & Outstanding Arrears
+        const revenueSlices = [
+          {
+            label: 'Fees Collected',
+            value: totalCol,
+            color: '#10B981',
+            sublabel: `${payments.length} receipts processed`
+          },
+          {
+            label: 'Outstanding Balances',
+            value: totalOut,
+            color: '#EF4444',
+            sublabel: `${students.filter(s => (s.feeBalance || 0) > 0).length} student balances`
+          }
+        ];
+        if (reportSummary?.totalDiscounts > 0) {
+          revenueSlices.push({
+            label: 'Waivers / Discounts',
+            value: reportSummary.totalDiscounts,
+            color: '#F59E0B',
+            sublabel: 'Granted fee concessions'
+          });
+        }
+
+        // Pie Chart 2: Payment Methods Allocation
+        const pmBreakdown = reportSummary?.paymentMethodBreakdown || {
+          'M-PESA': payments.filter(p => p.paymentMethod === 'M-PESA').reduce((s, p) => s + p.amount, 0),
+          'BANK_TRANSFER': payments.filter(p => p.paymentMethod === 'BANK_TRANSFER').reduce((s, p) => s + p.amount, 0),
+          'CASH': payments.filter(p => p.paymentMethod === 'CASH').reduce((s, p) => s + p.amount, 0),
+          'CHEQUE': payments.filter(p => p.paymentMethod === 'CHEQUE').reduce((s, p) => s + p.amount, 0),
+          'CARD': payments.filter(p => p.paymentMethod === 'CARD').reduce((s, p) => s + p.amount, 0)
+        };
+
+        const paymentMethodSlices = [
+          { label: 'M-PESA Express', value: pmBreakdown['M-PESA'] || 0, color: '#10B981', sublabel: 'Mobile Money' },
+          { label: 'Bank Transfer', value: pmBreakdown['BANK_TRANSFER'] || 0, color: '#3B82F6', sublabel: 'Direct EFT/RTGS' },
+          { label: 'Cash at Bursary', value: pmBreakdown['CASH'] || 0, color: '#8B5CF6', sublabel: 'Direct Cash' },
+          { label: 'Cheque Deposit', value: pmBreakdown['CHEQUE'] || 0, color: '#F59E0B', sublabel: 'Bank Cheque' },
+          { label: 'Credit/Debit Card', value: pmBreakdown['CARD'] || 0, color: '#EC4899', sublabel: 'POS Card' }
+        ].filter(s => s.value > 0);
+
+        // Pie Chart 3: Student Settlement Status Distribution
+        const settlementSlices = [
+          { label: 'Fully Cleared', value: fullyPaid, color: '#10B981', sublabel: 'Zero Balance' },
+          { label: 'Partial Installment', value: partialPaid, color: '#3B82F6', sublabel: 'Paying in tranches' },
+          { label: 'In Severe Arrears', value: zeroPaid, color: '#EF4444', sublabel: 'Zero payment received' }
+        ];
+
+        // All student fee records with search & status filters
+        const allStudentsList = (reportSummary?.allStudentReports || students.map(s => {
+          const bal = Number(s.feeBalance) || 0;
+          const sPayments = payments.filter(p => p.studentId === s.id);
+          const sInvoices = invoices.filter(i => i.studentId === s.id);
+          const sPaidSum = sPayments.reduce((sum, p) => sum + p.amount, 0);
+          const sInvoicedSum = sInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0) || (sPaidSum + bal);
+          const status: 'SETTLED' | 'PARTIAL' | 'ARREARS' = bal <= 0 ? 'SETTLED' : (sPaidSum > 0 ? 'PARTIAL' : 'ARREARS');
+          const lastP = sPayments.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+          return {
+            studentId: s.id,
+            studentName: s.fullName,
+            admissionNo: s.admissionNo,
+            gradeId: s.gradeId,
+            gradeName: s.gradeName || s.className || s.programName || 'General',
+            streamName: s.streamName || '',
+            className: s.className || '',
+            programName: s.programName || '',
+            guardianName: s.guardianName || '',
+            guardianPhone: s.guardianPhone || '',
+            totalInvoiced: sInvoicedSum,
+            totalPaid: sPaidSum,
+            feeBalance: bal,
+            status,
+            lastPaymentDate: lastP?.paidAt || null,
+            lastPaymentAmount: lastP?.amount || null,
+            lastPaymentMethod: lastP?.paymentMethod || null,
+            lastReceiptNo: lastP?.receiptNo || null
+          };
+        })).filter((st: any) => {
+          if (reportSearch) {
+            const q = reportSearch.toLowerCase();
+            const matches = (
+              st.studentName?.toLowerCase().includes(q) ||
+              st.admissionNo?.toLowerCase().includes(q) ||
+              st.gradeName?.toLowerCase().includes(q) ||
+              st.guardianName?.toLowerCase().includes(q) ||
+              st.guardianPhone?.toLowerCase().includes(q)
+            );
+            if (!matches) return false;
+          }
+          if (reportStatusFilter !== 'ALL' && st.status !== reportStatusFilter) return false;
+          if (reportGradeFilter !== 'ALL' && st.gradeId !== reportGradeFilter) return false;
+          return true;
+        });
+
+        // Cohort breakdown
+        const cohorts = reportSummary?.cohortBreakdown || [];
+
+        return (
+          <div className="space-y-6">
+            
+            {/* Top Control Bar with Filters & Action Buttons */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+                      <PieChart className="w-5 h-5" />
+                    </span>
+                    <h3 className="font-bold text-slate-900 text-base">
+                      School Fees & Financial Performance Report
+                    </h3>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Real-time visual revenue analytics, payment distribution pie charts, and complete student fee balances register.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs transition-colors whitespace-nowrap"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print Official Report</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const csvRows = [
+                        ['Admission No', 'Student Name', 'Grade/Stream', 'Class', 'Total Invoiced', 'Fees Paid', 'Fee Balance', 'Status', 'Last Payment Date', 'Guardian Name', 'Guardian Phone'],
+                        ...allStudentsList.map((st: any) => [
+                          `"${st.admissionNo || ''}"`,
+                          `"${st.studentName || ''}"`,
+                          `"${st.gradeName || ''}"`,
+                          `"${st.className || ''}"`,
+                          st.totalInvoiced || 0,
+                          st.totalPaid || 0,
+                          st.feeBalance || 0,
+                          `"${st.status || ''}"`,
+                          `"${st.lastPaymentDate ? new Date(st.lastPaymentDate).toLocaleDateString() : 'None'}"`,
+                          `"${st.guardianName || ''}"`,
+                          `"${st.guardianPhone || ''}"`
+                        ])
+                      ];
+                      const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
+                      const encodedUri = encodeURI(csvContent);
+                      const link = document.createElement('a');
+                      link.setAttribute('href', encodedUri);
+                      link.setAttribute('download', `School_Fees_Report_${new Date().toISOString().split('T')[0]}.csv`);
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-2xs transition-colors whitespace-nowrap"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Export CSV</span>
+                  </button>
+
+                  <button
+                    onClick={fetchReports}
+                    disabled={reportLoading}
+                    title="Refresh Report Data"
+                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs cursor-pointer transition-colors"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${reportLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-slate-400">Zero outstanding balance</p>
+
+              {/* Filter controls row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100 text-xs">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Academic Year</label>
+                  <select
+                    value={reportYearFilter}
+                    onChange={e => setReportYearFilter(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ALL">All Academic Years</option>
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2024/2025">2024/2025</option>
+                    <option value="2023/2024">2023/2024</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Term / Semester</label>
+                  <select
+                    value={reportTermFilter}
+                    onChange={e => setReportTermFilter(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ALL">All Terms</option>
+                    <option value="Term 1">Term 1</option>
+                    <option value="Term 2">Term 2</option>
+                    <option value="Term 3">Term 3</option>
+                    <option value="Semester 1">Semester 1</option>
+                    <option value="Semester 2">Semester 2</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Grade / Stream / Level</label>
+                  <select
+                    value={reportGradeFilter}
+                    onChange={e => setReportGradeFilter(e.target.value)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ALL">All Grades & Cohorts</option>
+                    {grades.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                    {programs.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Fee Settlement Status</label>
+                  <select
+                    value={reportStatusFilter}
+                    onChange={e => setReportStatusFilter(e.target.value as any)}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="ALL">All Statuses ({allStudentsList.length})</option>
+                    <option value="SETTLED">Cleared / Fully Paid</option>
+                    <option value="PARTIAL">Partial Payment (Installments)</option>
+                    <option value="ARREARS">Zero Paid / Severe Arrears</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-2">
-              <span className="text-xs font-semibold text-slate-500">Partial Paying Students</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-blue-700 font-mono">
-                  {students.filter(s => (s.feeBalance || 0) > 0 && payments.some(p => p.studentId === s.id)).length}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded">
-                  Active Installments
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">Paying in installments</p>
-            </div>
-
-            <div className="bg-white border border-slate-200 p-5 rounded-xl space-y-2">
-              <span className="text-xs font-semibold text-slate-500">Zero Paid / Severe Arrears</span>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-red-600 font-mono">
-                  {students.filter(s => (s.feeBalance || 0) > 0 && !payments.some(p => p.studentId === s.id)).length}
-                </span>
-                <span className="text-xs px-2 py-0.5 bg-red-50 text-red-700 font-bold rounded">
-                  Requires Follow-up
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400">No payment received yet</p>
-            </div>
-          </div>
-
-          {/* Debtors List */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Outstanding Fee Debtors & Aging Arrears</h3>
-                <p className="text-xs text-slate-500">Students with unpaid balances requiring bursar collection or fee reminders.</p>
+            {/* Financial Summary Metric KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                  <span>Total Fees Invoiced</span>
+                  <FileText className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="text-xl font-bold font-mono text-slate-900">
+                  {currencySymbol} {totalInv.toLocaleString()}
+                </div>
+                <span className="text-[11px] text-slate-400 block">Total gross billed amount</span>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => {
-                    const csvRows = [
-                      ['Admission No', 'Student Name', 'Grade/Program', 'Guardian Name', 'Guardian Phone', 'Fee Balance'],
-                      ...students.filter(s => (s.feeBalance || 0) > 0).map(s => [
-                        s.admissionNo,
-                        `"${s.fullName}"`,
-                        `"${s.gradeName || s.className || s.programName || ''}"`,
-                        `"${s.guardianName || ''}"`,
-                        `"${s.guardianPhone || ''}"`,
-                        s.feeBalance || 0
-                      ])
-                    ];
-                    const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
-                    const encodedUri = encodeURI(csvContent);
-                    const link = document.createElement('a');
-                    link.setAttribute('href', encodedUri);
-                    link.setAttribute('download', `fee_debtors_report_${new Date().toISOString().split('T')[0]}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                  }}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center space-x-1.5 cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Export CSV</span>
-                </button>
+              <div className="bg-white border border-emerald-200 bg-emerald-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-emerald-700 text-xs font-semibold">
+                  <span>Fees Collected</span>
+                  <DollarSign className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div className="text-xl font-bold font-mono text-emerald-800">
+                  {currencySymbol} {totalCol.toLocaleString()}
+                </div>
+                <span className="text-[11px] text-emerald-600 font-medium block">
+                  {payments.length} verified receipts
+                </span>
+              </div>
+
+              <div className="bg-white border border-rose-200 bg-rose-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-rose-700 text-xs font-semibold">
+                  <span>Outstanding Arrears</span>
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                </div>
+                <div className="text-xl font-bold font-mono text-rose-800">
+                  {currencySymbol} {totalOut.toLocaleString()}
+                </div>
+                <span className="text-[11px] text-rose-600 font-medium block">
+                  {students.filter(s => (s.feeBalance || 0) > 0).length} student accounts
+                </span>
+              </div>
+
+              <div className="bg-white border border-indigo-200 bg-indigo-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                <div className="flex items-center justify-between text-indigo-700 text-xs font-semibold">
+                  <span>Collection Efficiency</span>
+                  <CheckCircle2 className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div className="text-xl font-bold font-mono text-indigo-900">
+                  {colRate}%
+                </div>
+                <div className="w-full bg-indigo-100 rounded-full h-1.5 overflow-hidden mt-1">
+                  <div
+                    className="bg-indigo-600 h-full rounded-full"
+                    style={{ width: `${Math.min(100, colRate)}%` }}
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
-                  <tr>
-                    <th className="p-3">Adm No</th>
-                    <th className="p-3">Student Name</th>
-                    <th className="p-3">Grade / Program</th>
-                    <th className="p-3">Parent / Guardian</th>
-                    <th className="p-3">Phone Contact</th>
-                    <th className="p-3">Outstanding Fee Balance</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {students.filter(s => (s.feeBalance || 0) > 0).length === 0 ? (
+            {/* VISUAL PIE CHARTS SECTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              
+              {/* Pie Chart Card 1: Revenue Allocation & Clearance */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <h4 className="font-bold text-slate-900 text-sm">
+                        Revenue Realization & Collection Pie Chart
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                      {colRate}% Collected
+                    </span>
+                  </div>
+
+                  <FeesPieChart
+                    data={revenueSlices}
+                    currencySymbol={currencySymbol}
+                    centerLabel={`${colRate}%`}
+                    centerSublabel="Collected"
+                    size={190}
+                    donutWidth={38}
+                  />
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
+                    <span className="text-[10px] uppercase font-bold text-emerald-600 block">Total Realized</span>
+                    <span className="font-bold font-mono text-sm">{currencySymbol} {totalCol.toLocaleString()}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-50 text-rose-800">
+                    <span className="text-[10px] uppercase font-bold text-rose-600 block">Total Unpaid</span>
+                    <span className="font-bold font-mono text-sm">{currencySymbol} {totalOut.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pie Chart Card 2: Student Settlement Distribution */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                      <h4 className="font-bold text-slate-900 text-sm">
+                        Student Fee Clearance Distribution
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                      {students.length} Total Cohort
+                    </span>
+                  </div>
+
+                  <FeesPieChart
+                    data={settlementSlices}
+                    currencySymbol=""
+                    centerLabel={`${fullyPaid}`}
+                    centerSublabel="Cleared"
+                    size={190}
+                    donutWidth={38}
+                  />
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-800">
+                    <span className="text-[10px] uppercase font-bold text-emerald-600 block">Cleared</span>
+                    <span className="font-bold font-mono text-sm">{fullyPaid}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-blue-50 text-blue-800">
+                    <span className="text-[10px] uppercase font-bold text-blue-600 block">Partial</span>
+                    <span className="font-bold font-mono text-sm">{partialPaid}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-rose-50 text-rose-800">
+                    <span className="text-[10px] uppercase font-bold text-rose-600 block">Severe Arrears</span>
+                    <span className="font-bold font-mono text-sm">{zeroPaid}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pie Chart Card 3: Payment Methods Allocation */}
+              {paymentMethodSlices.length > 0 && (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-violet-500" />
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          Payment Channels & Gateways Pie Chart
+                        </h4>
+                      </div>
+                      <span className="text-[11px] font-bold text-slate-500 font-mono">
+                        {paymentMethodSlices.length} Methods
+                      </span>
+                    </div>
+
+                    <FeesPieChart
+                      data={paymentMethodSlices}
+                      currencySymbol={currencySymbol}
+                      centerLabel={`${paymentMethodSlices.length}`}
+                      centerSublabel="Channels"
+                      size={180}
+                      donutWidth={36}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Fee Categories / Allocation Breakdown */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <h4 className="font-bold text-slate-900 text-sm">
+                        Fee Component Tariff Breakdown
+                      </h4>
+                    </div>
+                    <span className="text-[11px] font-bold text-slate-500 font-mono">
+                      Line Items
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    {reportSummary?.feeCategoryBreakdown ? (
+                      Object.entries(reportSummary.feeCategoryBreakdown as Record<string, { invoiced: number; count: number }>)
+                        .filter(([_, val]) => val.invoiced > 0)
+                        .map(([category, val]) => {
+                          const pct = totalInv > 0 ? Math.round((val.invoiced / totalInv) * 100) : 0;
+                          return (
+                            <div key={category} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                              <div>
+                                <span className="font-bold text-slate-800 block">{category}</span>
+                                <span className="text-[10px] text-slate-400">{val.count} invoice components</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-bold font-mono text-slate-900 block">
+                                  {currencySymbol} {val.invoiced.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] font-bold font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                  {pct}% share
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })
+                    ) : (
+                      <div className="p-4 text-center text-slate-400 text-xs">
+                        Category breakdown will appear as invoices are billed.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Cohort / Grade Level Performance Table */}
+            {cohorts.length > 0 && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm">
+                      Fee Collection Efficiency by Grade & Cohort
+                    </h4>
+                    <p className="text-xs text-slate-500">Comparative revenue breakdown per class / stream level.</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 font-mono text-[11px] uppercase">
+                      <tr>
+                        <th className="p-3">Grade / Cohort</th>
+                        <th className="p-3 text-center">Headcount</th>
+                        <th className="p-3 text-right">Total Invoiced</th>
+                        <th className="p-3 text-right">Total Collected</th>
+                        <th className="p-3 text-right">Outstanding Arrears</th>
+                        <th className="p-3 text-center">Efficiency</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {cohorts.map((c: any) => (
+                        <tr key={c.name} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-slate-900">{c.name}</td>
+                          <td className="p-3 text-center font-mono">{c.studentCount}</td>
+                          <td className="p-3 text-right font-mono">{currencySymbol} {c.totalInvoiced.toLocaleString()}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-700">{currencySymbol} {c.totalCollected.toLocaleString()}</td>
+                          <td className="p-3 text-right font-mono font-bold text-rose-700">{currencySymbol} {c.totalBalance.toLocaleString()}</td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                              c.collectionRate >= 80 ? 'bg-emerald-100 text-emerald-800' : (c.collectionRate >= 50 ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')
+                            }`}>
+                              {c.collectionRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Full Student School Fees & Balances Register */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="font-bold text-slate-900 text-base">
+                    Master Student School Fees & Balances Register ({allStudentsList.length} Students)
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Comprehensive student-by-student ledger showing invoiced debits, total fees paid, live balances, and quick actions.
+                  </p>
+                </div>
+
+                <div className="relative w-full sm:w-72">
+                  <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search name, adm no, grade..."
+                    value={reportSearch}
+                    onChange={e => setReportSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {reportSearch && (
+                    <button onClick={() => setReportSearch('')} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-slate-50 text-slate-500 font-mono text-[10px] uppercase border-b border-slate-200">
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-emerald-600 font-semibold">
-                        All student fee accounts are fully settled! No debtors found.
-                      </td>
+                      <th className="p-3">Adm No</th>
+                      <th className="p-3">Student Name</th>
+                      <th className="p-3">Grade / Stream</th>
+                      <th className="p-3 text-right">Invoiced</th>
+                      <th className="p-3 text-right">Fees Paid</th>
+                      <th className="p-3 text-right">Live Balance</th>
+                      <th className="p-3 text-center">Settlement</th>
+                      <th className="p-3">Last Payment</th>
+                      <th className="p-3 text-right">Actions</th>
                     </tr>
-                  ) : (
-                    students
-                      .filter(s => (s.feeBalance || 0) > 0)
-                      .sort((a, b) => (b.feeBalance || 0) - (a.feeBalance || 0))
-                      .map(s => (
-                        <tr key={s.id} className="hover:bg-slate-50">
-                          <td className="p-3 font-mono font-bold text-blue-700">{s.admissionNo}</td>
-                          <td className="p-3 font-semibold text-slate-900">{s.fullName}</td>
-                          <td className="p-3 text-slate-600">{s.gradeName || s.className || s.programName || 'Active'}</td>
-                          <td className="p-3 text-slate-700">{s.guardianName || 'Parent / Sponsor'}</td>
-                          <td className="p-3 font-mono text-slate-600">{s.guardianPhone || '-'}</td>
-                          <td className="p-3 font-mono font-bold text-amber-700 text-sm">
-                            {currencySymbol} {(s.feeBalance || 0).toLocaleString()}
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {allStudentsList.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="text-center py-10 text-slate-400">
+                          No student fee records found matching the active filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      allStudentsList.map((st: any) => (
+                        <tr key={st.studentId} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-3 font-mono font-bold text-blue-700">{st.admissionNo}</td>
+                          <td className="p-3 font-bold text-slate-900">{st.studentName}</td>
+                          <td className="p-3 text-slate-600">{st.gradeName}</td>
+                          <td className="p-3 text-right font-mono">{currencySymbol} {(st.totalInvoiced || 0).toLocaleString()}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-700">
+                            {currencySymbol} {(st.totalPaid || 0).toLocaleString()}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold">
+                            <span className={st.feeBalance > 0 ? 'text-rose-700' : 'text-slate-400'}>
+                              {currencySymbol} {(st.feeBalance || 0).toLocaleString()}
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              st.status === 'SETTLED'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : (st.status === 'PARTIAL' ? 'bg-blue-100 text-blue-800' : 'bg-rose-100 text-rose-800')
+                            }`}>
+                              {st.status === 'SETTLED' ? 'Cleared' : (st.status === 'PARTIAL' ? 'Partial' : 'Arrears')}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-500 font-mono text-[11px]">
+                            {st.lastPaymentDate ? (
+                              <div>
+                                <span className="font-bold text-slate-700">{new Date(st.lastPaymentDate).toLocaleDateString()}</span>
+                                <span className="text-[10px] text-slate-400 block">{currencySymbol} {(st.lastPaymentAmount || 0).toLocaleString()} ({st.lastPaymentMethod || 'Paid'})</span>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
                           <td className="p-3 text-right">
                             <div className="inline-flex items-center space-x-1.5">
                               <button
                                 onClick={() => {
-                                  const text = `Dear Parent, please note that ${s.fullName} (${s.admissionNo}) has an outstanding school fee balance of ${currencySymbol} ${(s.feeBalance || 0).toLocaleString()}. Kindly settle promptly via our official accounts. Thank you.`;
-                                  navigator.clipboard.writeText(text);
-                                  setSuccessMsg(`Reminder SMS template copied to clipboard for ${s.fullName}!`);
-                                  setTimeout(() => setSuccessMsg(''), 4000);
+                                  setStatementStudentId(st.studentId);
+                                  setSubTab('statements');
                                 }}
-                                title="Copy Reminder SMS"
-                                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[11px] font-semibold flex items-center space-x-1 cursor-pointer"
+                                title="View Complete Fee Statement Ledger"
+                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded text-[11px] font-semibold flex items-center space-x-1 cursor-pointer transition-colors"
                               >
-                                <Send className="w-3 h-3" />
-                                <span>Copy SMS</span>
+                                <FileCheck className="w-3 h-3 text-slate-500" />
+                                <span>Statement</span>
                               </button>
-                              <button
-                                onClick={() => {
-                                  setPayStudentId(s.id);
-                                  setPayInvoiceId('');
-                                  setPayAmount(Math.min(s.feeBalance, 10000).toString());
-                                  setPayRef(`TXN${Math.floor(100000 + Math.random() * 900000)}`);
-                                  setIsPaymentModalOpen(true);
-                                }}
-                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold cursor-pointer"
-                              >
-                                Record Fee
-                              </button>
+
+                              {st.feeBalance > 0 && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      const text = `Dear Parent, please note that ${st.studentName} (${st.admissionNo}) has an outstanding school fee balance of ${currencySymbol} ${(st.feeBalance || 0).toLocaleString()}. Kindly settle promptly via our official accounts. Thank you.`;
+                                      navigator.clipboard.writeText(text);
+                                      setSuccessMsg(`Reminder notice copied to clipboard for ${st.studentName}!`);
+                                      setTimeout(() => setSuccessMsg(''), 4000);
+                                    }}
+                                    title="Copy Reminder Notice / SMS"
+                                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded text-[11px] font-semibold flex items-center space-x-1 cursor-pointer transition-colors"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    <span>SMS</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setPayStudentId(st.studentId);
+                                      setPayInvoiceId('');
+                                      setPayAmount(Math.min(st.feeBalance, 10000).toString());
+                                      setPayRef(`TXN${Math.floor(100000 + Math.random() * 900000)}`);
+                                      setIsPaymentModalOpen(true);
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-bold cursor-pointer transition-colors"
+                                  >
+                                    Pay
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
                       ))
-                  )}
-                </tbody>
-              </table>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* MODAL: RECORD / EDIT PAYMENT                                             */}
@@ -2661,6 +3169,54 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
           </div>
         </div>
       )}
+
+      {/* Official Printable School Fees & Financial Report Modal */}
+      <SchoolFeesReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        reportData={reportSummary || {
+          totalInvoiced: totalBilled,
+          totalCollected: totalCollected,
+          totalOutstanding: totalOutstanding,
+          collectionRate: collectionPercentage,
+          invoicesCount: invoices.length,
+          paymentsCount: payments.length,
+          debtorsCount: students.filter(s => (s.feeBalance || 0) > 0).length,
+          statusBreakdown: {
+            fullyPaidStudents: students.filter(s => (s.feeBalance || 0) <= 0).length,
+            partialPaidStudents: students.filter(s => (s.feeBalance || 0) > 0 && payments.some(p => p.studentId === s.id)).length,
+            zeroPaidStudents: students.filter(s => (s.feeBalance || 0) > 0 && !payments.some(p => p.studentId === s.id)).length
+          },
+          allStudentReports: students.map(s => {
+            const bal = Number(s.feeBalance) || 0;
+            const sPayments = payments.filter(p => p.studentId === s.id);
+            const sInvoices = invoices.filter(i => i.studentId === s.id);
+            const sPaidSum = sPayments.reduce((sum, p) => sum + p.amount, 0);
+            const sInvoicedSum = sInvoices.reduce((sum, i) => sum + (Number(i.totalAmount) || 0), 0) || (sPaidSum + bal);
+            const status: 'SETTLED' | 'PARTIAL' | 'ARREARS' = bal <= 0 ? 'SETTLED' : (sPaidSum > 0 ? 'PARTIAL' : 'ARREARS');
+            const lastP = sPayments.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())[0];
+            return {
+              studentId: s.id,
+              studentName: s.fullName,
+              admissionNo: s.admissionNo,
+              gradeName: s.gradeName || s.className || s.programName || 'General',
+              className: s.className || '',
+              totalInvoiced: sInvoicedSum,
+              totalPaid: sPaidSum,
+              feeBalance: bal,
+              status,
+              lastPaymentDate: lastP?.paidAt || null,
+              guardianName: s.guardianName || '',
+              guardianPhone: s.guardianPhone || ''
+            };
+          })
+        }}
+        tenantName="Academic Institution & Bursary"
+        currencySymbol={currencySymbol}
+        selectedYear={reportYearFilter === 'ALL' ? 'All Years' : reportYearFilter}
+        selectedTerm={reportTermFilter === 'ALL' ? 'All Terms' : reportTermFilter}
+        selectedGradeName={reportGradeFilter === 'ALL' ? 'All Grades & Streams' : (grades.find(g => g.id === reportGradeFilter)?.name || 'Selected Cohort')}
+      />
 
       {/* Physical Thermal Printer Modal */}
       <UniversalReceiptModal

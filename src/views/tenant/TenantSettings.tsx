@@ -104,30 +104,43 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
       })
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
+          if (Array.isArray(data) && data.length > 0) {
             setAllTenants(data);
+            setSelectedTenantId(prev => {
+              if (prev && data.some(t => t.id === prev)) return prev;
+              return data[0].id;
+            });
           }
         })
         .catch(console.error);
     } else {
       setAllTenants([]);
-    }
-  }, [user]);
-
-  // Load selected tenant data
-  useEffect(() => {
-    if (user?.role !== 'SUPER_ADMIN') {
       if (tenant) {
         setSelectedTenantId(tenant.id);
         populateFromTenant(tenant);
       }
-      return;
+    }
+  }, [user, tenant]);
+
+  // Load selected tenant data
+  useEffect(() => {
+    const targetId = user?.role === 'SUPER_ADMIN' 
+      ? (selectedTenantId || (allTenants[0]?.id) || tenant?.id || '')
+      : (tenant?.id || '');
+
+    if (!targetId) return;
+
+    if (user?.role === 'SUPER_ADMIN' && allTenants.length > 0) {
+      const match = allTenants.find(t => t.id === targetId);
+      if (match) {
+        populateFromTenant(match);
+      }
+    } else if (tenant && tenant.id === targetId) {
+      populateFromTenant(tenant);
     }
 
     const fetchInfo = async () => {
       try {
-        const targetId = selectedTenantId || tenant?.id || '';
-        if (!targetId) return;
         const res = await fetch(`/api/tenant/info?tenantId=${targetId}`, {
           headers: {
             'Content-Type': 'application/json',
@@ -140,19 +153,14 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
           if (t && (t.name || t.branding)) {
             populateFromTenant(t);
           }
-        } else if (tenant) {
-          populateFromTenant(tenant);
         }
       } catch (e) {
         console.error('Failed to load tenant info:', e);
-        if (tenant) populateFromTenant(tenant);
       }
     };
 
     const fetchDomains = async () => {
       try {
-        const targetId = (user?.role === 'SUPER_ADMIN' ? selectedTenantId : tenant?.id) || tenant?.id || '';
-        if (!targetId) return;
         const res = await fetch(`/api/tenant/domains`, {
           headers: {
             'Content-Type': 'application/json',
@@ -171,7 +179,7 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
 
     fetchInfo();
     fetchDomains();
-  }, [selectedTenantId, tenant, user]);
+  }, [selectedTenantId, tenant, user, allTenants]);
 
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -201,7 +209,7 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
     if (e) e.preventDefault();
     try {
       setSaving(true);
-      const targetTenantId = selectedTenantId || tenant?.id || '';
+      const targetTenantId = (user?.role === 'SUPER_ADMIN' ? (selectedTenantId || allTenants[0]?.id) : tenant?.id) || tenant?.id || '';
       if (!targetTenantId) {
         alert('Please select or specify a valid tenant');
         return;
@@ -230,6 +238,9 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
         const updated = await res.json();
         if (updated) {
           populateFromTenant(updated);
+          if (user?.role === 'SUPER_ADMIN') {
+            setAllTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
+          }
         }
         await refreshAuth();
         setSavedMessage('Organization & Branding settings saved successfully!');
@@ -376,6 +387,12 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
     );
   });
 
+  const activeTenant: Tenant | null = (
+    user?.role === 'SUPER_ADMIN'
+      ? (allTenants.find(t => t.id === selectedTenantId) || allTenants[0] || tenant)
+      : tenant
+  ) || null;
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header with Navigation and Live Website Preview Link */}
@@ -520,10 +537,13 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
       </div>
 
       {/* TAB: PUBLIC WEBSITE & CMS */}
-      {activeTab === 'website' && tenant && (
+      {activeTab === 'website' && activeTenant && (
         <TenantPublicWebsiteEditor
-          tenant={tenant}
-          onSaved={async () => {
+          tenant={activeTenant}
+          onSaved={async (updated) => {
+            if (user?.role === 'SUPER_ADMIN' && updated) {
+              setAllTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
+            }
             await refreshAuth();
             setSavedMessage('Public website settings and hero slides saved and published successfully!');
             setSaved(true);

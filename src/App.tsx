@@ -389,20 +389,21 @@ function MainAppContent() {
         )}
 
         {/* Settings Guard: TENANT_USER cannot access Organization Settings */}
-        {currentRoute === '/app/settings' && (
+        {(currentRoute === '/app/settings' || currentRoute.startsWith('/app/settings') || currentRoute === '/app/domains' || currentRoute.startsWith('/app/domains')) && (
           user.role === 'TENANT_USER' ? (
             <AccessDeniedGuard
               reason="Organization settings are restricted to Tenant Administrators."
               onNavigateDashboard={() => navigateTo('/app/dashboard')}
             />
           ) : (
-            <TenantSettings initialTab="branding" />
+            <TenantSettings 
+              initialTab={
+                currentRoute.includes('tab=website') || currentRoute.includes('tab=cms') ? 'website' :
+                currentRoute.includes('tab=users') || currentRoute.includes('tab=team') ? 'users' :
+                'branding'
+              } 
+            />
           )
-        )}
-
-        {/* Direct Domains & Routing Path Redirected to Branding Info */}
-        {currentRoute === '/app/domains' && (
-          <TenantSettings initialTab="branding" />
         )}
 
         {/* Production-Ready Industry-Specific & Enterprise ERP Module Views */}

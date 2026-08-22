@@ -7,9 +7,11 @@ import {
 import {
   GraduationCap, BookOpen, Calendar, Clock, CheckCircle2,
   AlertCircle, DollarSign, Award, FileText, QrCode, User as UserIcon,
-  Phone, Mail, MapPin, Building, ChevronRight, ShieldCheck, Printer, Download, Eye, Sparkles
+  Phone, Mail, MapPin, Building, ChevronRight, ShieldCheck, Printer, Download, Eye, Sparkles,
+  CreditCard, PieChart, Receipt, Layers, Send, HelpCircle, Check, Copy, AlertTriangle
 } from 'lucide-react';
 import { QrAttendanceScannerModal } from '../components/QrAttendanceScannerModal';
+import { FeesPieChart } from '../components/FeesPieChart';
 import QRCode from 'qrcode';
 
 interface StudentPortalProps {
@@ -697,102 +699,356 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({
           )}
 
           {/* TAB 6: FEES & INVOICES */}
-          {activeTab === 'fees' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
-                  <span className="text-xs text-slate-500 font-medium">Total Billed Fees</span>
-                  <div className="text-xl font-bold font-mono text-slate-900 mt-1">
-                    {currency} {(portalData.fees?.totalInvoiced || 0).toLocaleString()}
+          {activeTab === 'fees' && (() => {
+            const totalInvoiced = portalData.fees?.totalInvoiced || 0;
+            const totalPaid = portalData.fees?.totalPaid || 0;
+            const balance = portalData.fees?.balance || 0;
+            const clearedPct = totalInvoiced > 0 ? Math.min(100, Math.round((totalPaid / totalInvoiced) * 100)) : (balance <= 0 ? 100 : 0);
+            const isCleared = balance <= 0;
+            const isPartial = balance > 0 && totalPaid > 0;
+
+            const feeSlices = [
+              {
+                label: 'Fees Paid',
+                value: totalPaid,
+                color: '#10B981',
+                sublabel: `${portalData.fees?.payments?.length || 0} payments made`
+              },
+              {
+                label: 'Outstanding Balance',
+                value: Math.max(0, balance),
+                color: '#EF4444',
+                sublabel: balance > 0 ? 'Due for settlement' : 'Fully settled'
+              }
+            ];
+
+            const feeStructure = portalData.fees?.feeStructure;
+            const invoiceItems = portalData.fees?.allInvoiceItems || [];
+            const payInstructions = portalData.fees?.paymentInstructions;
+
+            return (
+              <div className="space-y-6">
+                
+                {/* Clearance Status Banner */}
+                <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs ${
+                  isCleared
+                    ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
+                    : (isPartial ? 'bg-blue-50/80 border-blue-200 text-blue-950' : 'bg-rose-50/80 border-rose-200 text-rose-950')
+                }`}>
+                  <div className="flex items-start sm:items-center space-x-3.5">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${
+                      isCleared ? 'bg-emerald-600 text-white' : (isPartial ? 'bg-blue-600 text-white' : 'bg-rose-600 text-white')
+                    }`}>
+                      {isCleared ? <ShieldCheck className="w-6 h-6" /> : (isPartial ? <Clock className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />)}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <h4 className="font-bold text-sm">
+                          {isCleared ? 'Fee Clearance Status: FULLY CLEARED (100%)' : (isPartial ? 'Fee Clearance Status: PARTIAL INSTALLMENT PLAN' : 'Fee Clearance Status: UNPAID ARREARS')}
+                        </h4>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          isCleared ? 'bg-emerald-200/60 text-emerald-900' : (isPartial ? 'bg-blue-200/60 text-blue-900' : 'bg-rose-200/60 text-rose-900')
+                        }`}>
+                          {isCleared ? 'Eligible for Exams' : (isPartial ? 'Installment Active' : 'Action Required')}
+                        </span>
+                      </div>
+                      <p className="text-xs opacity-80 mt-0.5">
+                        {isCleared
+                          ? 'All institutional fee obligations have been completely cleared. Examination permit and clearance card are valid.'
+                          : `Outstanding balance of ${currency} ${balance.toLocaleString()} remaining. Settle to ensure uninterrupted classes and exam access.`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="text-xl sm:text-2xl font-extrabold font-mono">
+                      {currency} {balance.toLocaleString()}
+                    </div>
+                    <span className="text-[11px] opacity-75 font-semibold block uppercase tracking-wider">
+                      {isCleared ? 'Zero Balance' : 'Current Due Balance'}
+                    </span>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
-                  <span className="text-xs text-slate-500 font-medium">Total Amount Paid</span>
-                  <div className="text-xl font-bold font-mono text-emerald-700 mt-1">
-                    {currency} {(portalData.fees?.totalPaid || 0).toLocaleString()}
+                {/* KPI Cards Row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                  <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Total Billed Fees</span>
+                    <div className="text-lg sm:text-xl font-bold font-mono text-slate-900">
+                      {currency} {totalInvoiced.toLocaleString()}
+                    </div>
+                    <span className="text-[10px] text-slate-400 block">{portalData.fees?.invoices?.length || 0} fee invoices</span>
+                  </div>
+
+                  <div className="bg-white border border-emerald-200 bg-emerald-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">Total Fees Paid</span>
+                    <div className="text-lg sm:text-xl font-bold font-mono text-emerald-700">
+                      {currency} {totalPaid.toLocaleString()}
+                    </div>
+                    <span className="text-[10px] text-emerald-600 block">{portalData.fees?.payments?.length || 0} verified receipts</span>
+                  </div>
+
+                  <div className="bg-white border border-rose-200 bg-rose-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-rose-700 block">Outstanding Balance</span>
+                    <div className="text-lg sm:text-xl font-bold font-mono text-rose-700">
+                      {currency} {balance.toLocaleString()}
+                    </div>
+                    <span className="text-[10px] text-rose-600 block">{isCleared ? 'Fully settled' : 'Unpaid balance'}</span>
+                  </div>
+
+                  <div className="bg-white border border-indigo-200 bg-indigo-50/20 p-4 rounded-2xl shadow-xs space-y-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 block">Settlement Rate</span>
+                    <div className="text-lg sm:text-xl font-bold font-mono text-indigo-900">
+                      {clearedPct}%
+                    </div>
+                    <div className="w-full bg-indigo-100 rounded-full h-1.5 overflow-hidden mt-1">
+                      <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${clearedPct}%` }} />
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 p-5 rounded-2xl shadow-xs">
-                  <span className="text-xs text-slate-500 font-medium">Outstanding Balance</span>
-                  <div className="text-xl font-bold font-mono text-amber-600 mt-1">
-                    {currency} {(portalData.fees?.balance || 0).toLocaleString()}
-                  </div>
-                </div>
-              </div>
+                {/* Visual Fee Allocation & Tariff Breakdown */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  {/* Visual Pie Chart */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <PieChart className="w-4 h-4 text-indigo-600" />
+                          <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                            My Fee Payment & Balance Chart
+                          </h4>
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-slate-600">
+                          {clearedPct}% Paid
+                        </span>
+                      </div>
 
-              {/* Invoices Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-                <div className="p-4 border-b border-slate-100">
-                  <h4 className="font-bold text-xs text-slate-800">Fee Invoices & Statements</h4>
-                </div>
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                      <th className="py-3 px-4">Invoice No</th>
-                      <th className="py-3 px-4">Term</th>
-                      <th className="py-3 px-4">Total Amount</th>
-                      <th className="py-3 px-4">Amount Paid</th>
-                      <th className="py-3 px-4">Balance</th>
-                      <th className="py-3 px-4">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {portalData.fees?.invoices?.map((inv: StudentInvoice) => (
-                      <tr key={inv.id}>
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{inv.invoiceNo}</td>
-                        <td className="py-3 px-4 text-slate-600">{inv.academicTerm} ({inv.academicYear})</td>
-                        <td className="py-3 px-4 font-mono">{currency} {inv.totalAmount.toLocaleString()}</td>
-                        <td className="py-3 px-4 font-mono text-emerald-700">{currency} {inv.amountPaid.toLocaleString()}</td>
-                        <td className="py-3 px-4 font-mono font-bold text-amber-600">{currency} {inv.balance.toLocaleString()}</td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                          }`}>
-                            {inv.status}
+                      <FeesPieChart
+                        data={feeSlices}
+                        currencySymbol={currency}
+                        centerLabel={`${clearedPct}%`}
+                        centerSublabel="Paid"
+                        size={180}
+                        donutWidth={36}
+                      />
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono">
+                      <span className="text-slate-500">Student Adm: <strong>{portalData.profile?.admissionNo}</strong></span>
+                      <span className={isCleared ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold'}>
+                        {isCleared ? 'CLEARED' : `DUE: ${currency} ${balance.toLocaleString()}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Program Fee Structure Tariff or Items */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <div className="flex items-center space-x-2">
+                          <Layers className="w-4 h-4 text-blue-600" />
+                          <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                            Official Program Fee Structure Tariff
+                          </h4>
+                        </div>
+                        {feeStructure && (
+                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                            {feeStructure.academicTerm} ({feeStructure.academicYear})
                           </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        )}
+                      </div>
 
-              {/* Payment Receipts Table */}
-              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-                <div className="p-4 border-b border-slate-100">
-                  <h4 className="font-bold text-xs text-slate-800">Payment History & Receipts</h4>
+                      <div className="space-y-2 text-xs">
+                        {feeStructure?.items && feeStructure.items.length > 0 ? (
+                          feeStructure.items.map((item: any, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                              <span className="font-semibold text-slate-700">{item.name || item.description}</span>
+                              <span className="font-bold font-mono text-slate-900">{currency} {Number(item.amount).toLocaleString()}</span>
+                            </div>
+                          ))
+                        ) : invoiceItems.length > 0 ? (
+                          invoiceItems.slice(0, 5).map((item: any, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-between">
+                              <span className="font-semibold text-slate-700">{item.description}</span>
+                              <span className="font-bold font-mono text-slate-900">{currency} {Number(item.amount).toLocaleString()}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-4 text-center text-slate-400 text-xs">
+                            Standard program fee tariff is active.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <span className="text-slate-500 font-medium">Standard Program Term Fee:</span>
+                      <span className="font-bold font-mono text-slate-900">
+                        {currency} {Number(feeStructure?.totalFee || totalInvoiced).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
                 </div>
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
-                      <th className="py-3 px-4">Receipt No</th>
-                      <th className="py-3 px-4">Date</th>
-                      <th className="py-3 px-4">Payment Method</th>
-                      <th className="py-3 px-4">Transaction Ref</th>
-                      <th className="py-3 px-4 text-right">Amount Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {portalData.fees?.payments?.map((p: FeePayment) => (
-                      <tr key={p.id}>
-                        <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.receiptNo}</td>
-                        <td className="py-3 px-4 text-slate-600">{p.paidAt?.split('T')[0]}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-700 font-semibold">{p.paymentMethod}</span>
-                        </td>
-                        <td className="py-3 px-4 font-mono text-slate-500">{p.referenceNo}</td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
-                          {currency} {p.amount.toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+                {/* Invoices Table */}
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-slate-500" />
+                      <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Fee Invoices & Statements</h4>
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono">{portalData.fees?.invoices?.length || 0} Invoices</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold font-mono text-[11px] uppercase">
+                          <th className="py-3 px-4">Invoice No</th>
+                          <th className="py-3 px-4">Academic Term</th>
+                          <th className="py-3 px-4">Due Date</th>
+                          <th className="py-3 px-4 text-right">Total Amount</th>
+                          <th className="py-3 px-4 text-right">Amount Paid</th>
+                          <th className="py-3 px-4 text-right">Balance</th>
+                          <th className="py-3 px-4 text-center">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {portalData.fees?.invoices?.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-6 text-center text-slate-400">
+                              No fee invoices issued yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          portalData.fees?.invoices?.map((inv: StudentInvoice) => (
+                            <tr key={inv.id} className="hover:bg-slate-50/60">
+                              <td className="py-3 px-4 font-mono font-bold text-blue-700">{inv.invoiceNo}</td>
+                              <td className="py-3 px-4 text-slate-700">{inv.academicTerm} ({inv.academicYear})</td>
+                              <td className="py-3 px-4 text-slate-500 font-mono">{inv.dueDate || 'End of Term'}</td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-slate-900">{currency} {inv.totalAmount.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">{currency} {inv.amountPaid.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-rose-700">
+                                {currency} {inv.balance.toLocaleString()}
+                              </td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                                  inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : ((inv.status === 'PARTIAL' || (inv.status as string) === 'PARTIALLY_PAID') ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800')
+                                }`}>
+                                  {inv.status === 'PAID' ? 'Settled' : ((inv.status === 'PARTIAL' || (inv.status as string) === 'PARTIALLY_PAID') ? 'Partial' : 'Unpaid')}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Payment Receipts Table */}
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Receipt className="w-4 h-4 text-emerald-600" />
+                      <h4 className="font-bold text-xs text-slate-800 uppercase tracking-wider">Payment History & Official Receipts</h4>
+                    </div>
+                    <span className="text-xs text-slate-500 font-mono">{portalData.fees?.payments?.length || 0} Receipts</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold font-mono text-[11px] uppercase">
+                          <th className="py-3 px-4">Receipt No</th>
+                          <th className="py-3 px-4">Payment Date</th>
+                          <th className="py-3 px-4">Gateway / Method</th>
+                          <th className="py-3 px-4">Txn Reference</th>
+                          <th className="py-3 px-4">Received By</th>
+                          <th className="py-3 px-4 text-right">Amount Paid</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {portalData.fees?.payments?.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-slate-400">
+                              No payment receipts recorded yet.
+                            </td>
+                          </tr>
+                        ) : (
+                          portalData.fees?.payments?.map((p: FeePayment) => (
+                            <tr key={p.id} className="hover:bg-slate-50/60">
+                              <td className="py-3 px-4 font-mono font-bold text-slate-900">{p.receiptNo}</td>
+                              <td className="py-3 px-4 text-slate-600 font-mono">{p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '-'}</td>
+                              <td className="py-3 px-4">
+                                <span className="px-2 py-0.5 bg-slate-100 rounded text-slate-800 font-bold text-[11px]">{p.paymentMethod}</span>
+                              </td>
+                              <td className="py-3 px-4 font-mono text-slate-500">{p.referenceNo}</td>
+                              <td className="py-3 px-4 text-slate-600">{p.receivedBy || 'Bursary'}</td>
+                              <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
+                                {currency} {p.amount.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Official Bank & Mobile Money Payment Instructions */}
+                <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xs space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="w-5 h-5 text-emerald-400" />
+                    <h4 className="font-bold text-sm">Official School Fees Payment Channels & Instructions</h4>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Use any of the official verified payment channels below. Ensure you provide your Admission Number <strong>({portalData.profile?.admissionNo})</strong> as the payment account/reference.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                    <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex justify-between items-center">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-emerald-400 block">M-PESA Paybill</span>
+                        <span className="font-bold font-mono text-sm">{payInstructions?.mpesaPaybill || '247247'}</span>
+                        <span className="text-[10px] text-slate-400 block">Account: {portalData.profile?.admissionNo}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${payInstructions?.mpesaPaybill || '247247'}`);
+                          alert('Paybill copied to clipboard');
+                        }}
+                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200"
+                        title="Copy Paybill"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-slate-800/80 rounded-xl border border-slate-700 flex justify-between items-center">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-blue-400 block">Bank Account Transfer</span>
+                        <span className="font-bold font-mono text-sm">{payInstructions?.bankName || 'Standard Chartered / KCB'}</span>
+                        <span className="text-[10px] text-slate-400 block">A/C: {payInstructions?.bankAccountNo || '0100293848190'} (Ref: {portalData.profile?.admissionNo})</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${payInstructions?.bankAccountNo || '0100293848190'}`);
+                          alert('Bank Account Number copied');
+                        }}
+                        className="p-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-slate-200"
+                        title="Copy Bank A/C"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* TAB 7: OFFICIAL DOCUMENTS */}
           {activeTab === 'documents' && (

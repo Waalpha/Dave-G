@@ -204,6 +204,98 @@ export const TenantPublicWebsiteEditor: React.FC<TenantPublicWebsiteEditorProps>
     }
   }, [config.heroSlides]);
 
+  // Synchronize config when tenant changes (e.g. switching tenants in Super Admin)
+  useEffect(() => {
+    if (tenant) {
+      const existing = tenant.publicWebsite || {};
+      const defaultSlides: TenantHeroSlide[] = [
+        {
+          id: `slide_${Date.now()}_1`,
+          title: existing.heroTitle || defaultHeroTitle,
+          subtitle: existing.heroDescription || defaultHeroDesc,
+          tagline: tenant.branding?.companyName || tenant.name,
+          badgeText: tenant.type === 'EDUCATION' ? '🎓 ADMISSIONS OPEN • APPLY ONLINE'
+            : tenant.type === 'WHOLESALE' ? '📦 B2B WHOLESALE & BULK SUPPLY'
+            : tenant.type === 'HOSPITAL' ? '🏥 24/7 EMERGENCY & CLINICAL CARE'
+            : tenant.type === 'SACCO' ? '💰 FINANCIAL EMPOWERMENT'
+            : tenant.type === 'CHURCH' ? '🙏 JOIN US FOR WORSHIP'
+            : '✨ WELCOME TO OUR PLATFORM',
+          imageUrl: existing.heroImage || (tenant.type === 'WHOLESALE'
+            ? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1920&q=80'
+            : tenant.type === 'EDUCATION'
+            ? 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=80'
+            : tenant.type === 'HOSPITAL'
+            ? 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1920&q=80'
+            : tenant.type === 'SACCO'
+            ? 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1920&q=80'
+            : tenant.type === 'CHURCH'
+            ? 'https://images.unsplash.com/photo-1438232992991-995b7058bbb3?auto=format&fit=crop&w=1920&q=80'
+            : 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1920&q=80'),
+          primaryBtnText: tenant.type === 'EDUCATION' ? 'Apply for Admission'
+            : tenant.type === 'WHOLESALE' ? 'Request Wholesale Quote'
+            : tenant.type === 'HOSPITAL' ? 'Book Appointment'
+            : tenant.type === 'SACCO' ? 'Join SACCO / Chama'
+            : tenant.type === 'CHURCH' ? 'Join Us This Sunday'
+            : 'Explore Services',
+          primaryBtnAction: 'apply',
+          secondaryBtnText: tenant.type === 'EDUCATION' ? 'Academic Programs'
+            : tenant.type === 'WHOLESALE' ? 'Browse Catalog'
+            : tenant.type === 'HOSPITAL' ? 'Clinical Specialties'
+            : 'Learn More',
+          secondaryBtnAction: 'programs',
+          alignment: 'center',
+          overlayOpacity: 75,
+          fontFamily: 'sans',
+          titleFontSize: 'lg',
+          titleFontWeight: 'black',
+          titleItalic: false,
+          subtitleFontSize: 'base',
+          subtitleItalic: false
+        }
+      ];
+
+      setConfig({
+        enabled: existing.enabled ?? true,
+        heroTitle: existing.heroTitle || defaultHeroTitle,
+        heroDescription: existing.heroDescription || defaultHeroDesc,
+        heroImage: existing.heroImage || defaultSlides[0].imageUrl,
+        heroSlides: (existing.heroSlides && existing.heroSlides.length > 0) ? existing.heroSlides : defaultSlides,
+        autoSlideInterval: existing.autoSlideInterval || 6,
+        announcementBarEnabled: existing.announcementBarEnabled ?? true,
+        announcementBarText: existing.announcementBarText || `Welcome to ${tenant.branding?.companyName || tenant.name}! Explore our verified services and offerings.`,
+        announcementBarLink: existing.announcementBarLink || '#',
+        aboutHeadline: existing.aboutHeadline || `About ${tenant.branding?.companyName || tenant.name}`,
+        aboutText: existing.aboutText || `We are committed to delivering top-tier operational excellence, transparent services, and customer satisfaction across all our departments.`,
+        aboutImage: existing.aboutImage || '',
+        mission: existing.mission || 'To provide dependable, accessible, and high-standard services that empower our community.',
+        vision: existing.vision || 'To be the recognized leader in our industry through continuous innovation and integrity.',
+        coreValues: existing.coreValues || ['Excellence', 'Integrity', 'Community', 'Innovation', 'Transparency'],
+        tagline: existing.tagline || tenant.branding?.companyName || tenant.name,
+        contactEmail: existing.contactEmail || tenant.branding?.contactEmail || '',
+        contactPhone: existing.contactPhone || tenant.branding?.contactPhone || '',
+        contactAddress: existing.contactAddress || tenant.branding?.address || '',
+        operatingHours: existing.operatingHours || 'Monday – Friday: 8:00 AM – 5:00 PM | Saturday: 9:00 AM – 1:00 PM',
+        facebookUrl: existing.facebookUrl || '',
+        twitterUrl: existing.twitterUrl || '',
+        linkedinUrl: existing.linkedinUrl || '',
+        instagramUrl: existing.instagramUrl || '',
+        whatsappPhone: existing.whatsappPhone || '',
+        customMetaTitle: existing.customMetaTitle || `${tenant.name} | Official Website`,
+        customMetaDescription: existing.customMetaDescription || `${tenant.name} official web portal and enterprise services.`,
+        typography: existing.typography || {
+          fontFamily: 'sans',
+          headingSize: 'lg',
+          headingWeight: 'black',
+          headingAlign: 'center',
+          headingItalic: false,
+          bodySize: 'base',
+          bodyWeight: 'normal',
+          bodyItalic: false
+        }
+      });
+    }
+  }, [tenant.id, tenant.updatedAt]);
+
   const activeSlide = config.heroSlides?.find(s => s.id === editingSlideId) || config.heroSlides?.[0];
 
   const publicWebsiteUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/public/${tenant.slug}`;

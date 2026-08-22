@@ -3640,7 +3640,118 @@ async function startServer() {
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
     try {
       const emp = dbStore.addEmployee(tenantId, req.body, user);
-      return res.status(201).json({ message: 'Employee enrolled', employee: emp });
+      return res.status(201).json({ message: 'Employee enrolled successfully', employee: emp });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hr/employees/:id', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const updated = dbStore.updateEmployee(tenantId, req.params.id, req.body, user);
+      return res.json({ message: 'Employee updated successfully', employee: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hr/employees/:id', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteEmployee(tenantId, req.params.id, user);
+      return res.json({ message: 'Employee record deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/hr/employees/bulk-delete', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const { ids } = req.body;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: 'No employee IDs provided for deletion' });
+      }
+      const result = dbStore.bulkDeleteEmployees(tenantId, ids, user);
+      return res.json({ message: `Successfully deleted ${result.successCount} staff member(s)`, result });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // HR Warning Letters API
+  app.get('/api/app/hr/warning-letters', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const employeeId = req.query.employeeId as string | undefined;
+    const letters = dbStore.getWarningLetters(tenantId, employeeId);
+    return res.json({ letters });
+  });
+
+  app.post('/api/app/hr/warning-letters', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const letter = dbStore.createWarningLetter(tenantId, req.body, user);
+      return res.status(201).json({ message: 'Warning letter issued successfully', letter });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.put('/api/app/hr/warning-letters/:id', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const updated = dbStore.updateWarningLetter(tenantId, req.params.id, req.body, user);
+      return res.json({ message: 'Warning letter updated', letter: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hr/warning-letters/:id', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteWarningLetter(tenantId, req.params.id, user);
+      return res.json({ message: 'Warning letter record deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // HR Termination Letters API
+  app.get('/api/app/hr/termination-letters', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    const employeeId = req.query.employeeId as string | undefined;
+    const letters = dbStore.getTerminationLetters(tenantId, employeeId);
+    return res.json({ letters });
+  });
+
+  app.post('/api/app/hr/termination-letters', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const { updateEmployeeStatus = true, ...letterData } = req.body;
+      const letter = dbStore.createTerminationLetter(tenantId, letterData, user, updateEmployeeStatus);
+      return res.status(201).json({ message: 'Termination letter issued successfully', letter });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/app/hr/termination-letters/:id', requireAuth, requireModule('hr'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteTerminationLetter(tenantId, req.params.id, user);
+      return res.json({ message: 'Termination letter record deleted successfully' });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }
