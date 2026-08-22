@@ -105,9 +105,11 @@ export interface TenantHeroSlide {
   badgeText?: string;
   imageUrl: string;
   primaryBtnText?: string;
-  primaryBtnAction?: 'apply' | 'programs' | 'departments' | 'admissions' | 'campuses' | 'news' | 'about' | 'login';
+  primaryBtnAction?: 'apply' | 'programs' | 'departments' | 'admissions' | 'campuses' | 'news' | 'about' | 'login' | 'quote' | 'catalog' | 'appointment' | 'contact' | 'custom';
+  primaryBtnUrl?: string;
   secondaryBtnText?: string;
-  secondaryBtnAction?: 'apply' | 'programs' | 'departments' | 'admissions' | 'campuses' | 'news' | 'about' | 'login';
+  secondaryBtnAction?: 'apply' | 'programs' | 'departments' | 'admissions' | 'campuses' | 'news' | 'about' | 'login' | 'quote' | 'catalog' | 'appointment' | 'contact' | 'custom';
+  secondaryBtnUrl?: string;
   alignment?: 'left' | 'center' | 'right';
   overlayOpacity?: number; // 0-100
   fontFamily?: 'sans' | 'poppins' | 'outfit' | 'serif' | 'display' | 'mono';
@@ -143,7 +145,12 @@ export interface TenantPublicWebsiteConfig {
   heroImage?: string;
   heroSlides?: TenantHeroSlide[];
   autoSlideInterval?: number; // seconds
+  announcementBarEnabled?: boolean;
+  announcementBarText?: string;
+  announcementBarLink?: string;
+  aboutHeadline?: string;
   aboutText?: string;
+  aboutImage?: string;
   mission?: string;
   vision?: string;
   coreValues?: string[];
@@ -151,10 +158,19 @@ export interface TenantPublicWebsiteConfig {
   secondaryColor?: string;
   accentColor?: string;
   tagline?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactAddress?: string;
+  operatingHours?: string;
   facebookUrl?: string;
   twitterUrl?: string;
   linkedinUrl?: string;
   instagramUrl?: string;
+  whatsappPhone?: string;
+  ctaHeadline?: string;
+  ctaDescription?: string;
+  ctaButtonText?: string;
+  ctaButtonLink?: string;
   admissionNotice?: string;
   admissionRequirements?: string[];
   news?: TenantPublicNews[];

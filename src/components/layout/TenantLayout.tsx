@@ -10,7 +10,7 @@ import {
   Coins, Wine, Briefcase, Calculator, Users, Package, UserCheck,
   LayoutDashboard, FileBarChart, Settings, LogOut, ChevronRight,
   Building2, Search, ShieldCheck, ChevronDown, User as UserIcon,
-  Menu, X, Globe, Tv, Award, FileCheck, Scale
+  Menu, X, Globe, Tv, Award, FileCheck, Scale, ExternalLink, Sparkles
 } from 'lucide-react';
 import { ModuleId } from '../../types';
 
@@ -126,8 +126,23 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
           </div>
         </div>
 
-        {/* Right: Notifications, Offline Status & User Profile */}
-        <div className="flex items-center space-x-2.5 sm:space-x-3.5">
+        {/* Right: Notifications, Public Website Link, Offline Status & User Profile */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Public Website Preview Link */}
+          {tenant?.slug && (
+            <a
+              href={`/public/${tenant.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 rounded-lg text-xs font-bold transition-all border border-slate-200/80 shadow-2xs cursor-pointer"
+              title="Open your public website in a new tab"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-600" />
+              <span>Public Website</span>
+              <ExternalLink className="w-3 h-3 text-slate-400" />
+            </a>
+          )}
+
           <OfflineStatusIndicator />
           <NotificationBell tenantId={tenant?.id} theme="tenant" />
 
@@ -188,11 +203,23 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                       onClick={() => {
                         setProfileOpen(false);
                         onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=website';
+                      }}
+                      className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer font-medium text-blue-700"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Public Website &amp; CMS</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setProfileOpen(false);
+                        onNavigate('/app/settings');
                         window.location.hash = '/app/settings?tab=users';
                       }}
                       className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
                     >
-                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                      <Users className="w-3.5 h-3.5 text-slate-500" />
                       <span>Team &amp; User Accounts</span>
                     </button>
 
@@ -200,6 +227,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                       onClick={() => {
                         setProfileOpen(false);
                         onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=branding';
                       }}
                       className="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-50 flex items-center space-x-2 cursor-pointer"
                     >
@@ -336,6 +364,24 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                     <button
                       onClick={() => {
                         onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=website';
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <Globe className="w-4 h-4 text-blue-600 group-hover:scale-110 transition-transform" />
+                        <span className="font-bold">Public Website &amp; CMS</span>
+                      </div>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-blue-100 text-blue-800">
+                        LIVE
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        onNavigate('/app/settings');
+                        window.location.hash = '/app/settings?tab=branding';
                         setIsMobileMenuOpen(false);
                       }}
                       className={`w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
@@ -345,7 +391,7 @@ export const TenantLayout: React.FC<TenantLayoutProps> = ({
                       }`}
                     >
                       <Settings className="w-4 h-4 text-slate-500" />
-                      <span>Organization Settings</span>
+                      <span>ERP Branding &amp; Settings</span>
                     </button>
 
                     <button

@@ -2,9 +2,15 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   GraduationCap, BookOpen, Building2, MapPin, Users, Award,
   CheckCircle2, ArrowRight, ChevronRight, ChevronLeft, Phone, Mail,
-  Calendar, Search, Filter, Sparkles, Send, X, Lock, FileText, Check
+  Calendar, Search, Filter, Sparkles, Send, X, Lock, FileText, Check, Megaphone
 } from 'lucide-react';
 import { PublicTenantResponse, Program, Department, Campus, TenantHeroSlide } from '../../../types';
+import {
+  getFontFamilyClass,
+  getHeadingSizeClass,
+  getSubtitleSizeClass,
+  getFontWeightClass
+} from '../../../lib/typography';
 
 interface EducationWebsiteTemplateProps {
   data: PublicTenantResponse;
@@ -133,9 +139,26 @@ export const EducationWebsiteTemplate: React.FC<EducationWebsiteTemplateProps> =
   };
 
   const activeSlide = heroSlides[activeSlideIndex] || heroSlides[0];
+  const slideAlignment = activeSlide.alignment || 'center';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col">
+    <div className={`min-h-screen bg-slate-50 text-slate-900 flex flex-col ${getFontFamilyClass(website?.typography?.fontFamily)}`}>
+      {/* 0. Top Announcement Ribbon */}
+      {website?.announcementBarEnabled && (
+        <div
+          className="py-2 px-4 text-xs font-semibold text-center text-slate-950 flex items-center justify-center space-x-2"
+          style={{ backgroundColor: secondaryColor }}
+        >
+          <Megaphone className="w-3.5 h-3.5 shrink-0" />
+          <span>{website?.announcementBarText || 'Admissions are open for the upcoming academic session! Apply online today.'}</span>
+          {website?.announcementBarLink && (
+            <a href={website.announcementBarLink} className="underline font-bold hover:text-slate-800 ml-1">
+              Learn More &rarr;
+            </a>
+          )}
+        </div>
+      )}
+
       {/* 1. Header */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -189,37 +212,62 @@ export const EducationWebsiteTemplate: React.FC<EducationWebsiteTemplateProps> =
       </header>
 
       {/* 2. Hero Section */}
-      <section className="relative bg-slate-900 text-white py-16 sm:py-24 overflow-hidden">
+      <section className="relative bg-slate-900 text-white py-20 sm:py-28 overflow-hidden min-h-[460px] flex items-center">
         <div
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105"
           style={{
             backgroundImage: `url(${activeSlide.imageUrl || 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1920&q=80'})`
           }}
         >
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-slate-950/60" />
+          <div
+            className="absolute inset-0 bg-slate-950"
+            style={{ opacity: (activeSlide.overlayOpacity ?? 75) / 100 }}
+          />
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl space-y-4">
-            <span
-              className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-slate-900"
-              style={{ backgroundColor: secondaryColor }}
-            >
-              <span>{activeSlide.badgeText || '🎓 Admissions Open'}</span>
-            </span>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full z-10">
+          <div
+            className={`w-full max-w-3xl space-y-4 ${
+              slideAlignment === 'center'
+                ? 'mx-auto text-center items-center flex flex-col'
+                : slideAlignment === 'right'
+                ? 'ml-auto text-right items-end flex flex-col'
+                : 'text-left items-start flex flex-col'
+            }`}
+          >
+            {activeSlide.badgeText && (
+              <span
+                className="inline-flex items-center space-x-1.5 px-3.5 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider text-slate-900 shadow-sm"
+                style={{ backgroundColor: secondaryColor }}
+              >
+                <span>{activeSlide.badgeText}</span>
+              </span>
+            )}
 
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
+            <h1
+              className={`text-white leading-tight ${getFontFamilyClass(activeSlide.fontFamily || website?.typography?.fontFamily)} ${getHeadingSizeClass(activeSlide.titleFontSize || website?.typography?.headingSize)} ${getFontWeightClass(activeSlide.titleFontWeight || website?.typography?.headingWeight)} ${activeSlide.titleItalic ? 'italic' : ''}`}
+            >
               {activeSlide.title}
             </h1>
 
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            <p
+              className={`text-slate-200 max-w-2xl leading-relaxed ${getSubtitleSizeClass(activeSlide.subtitleFontSize || website?.typography?.bodySize)} ${activeSlide.subtitleItalic ? 'italic' : ''}`}
+            >
               {activeSlide.subtitle || website?.heroDescription || 'Providing excellence in education, professional diplomas, and research.'}
             </p>
 
-            <div className="pt-2 flex items-center space-x-3">
+            <div
+              className={`pt-3 flex flex-wrap items-center gap-3 ${
+                slideAlignment === 'center'
+                  ? 'justify-center'
+                  : slideAlignment === 'right'
+                  ? 'justify-end'
+                  : 'justify-start'
+              }`}
+            >
               <button
                 onClick={() => handleOpenApplyModal()}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-slate-900 transition-transform active:scale-95 shadow-md flex items-center space-x-2 cursor-pointer"
+                className="px-6 py-3 rounded-xl font-bold text-xs sm:text-sm text-slate-900 transition-transform active:scale-95 shadow-md flex items-center space-x-2 cursor-pointer"
                 style={{ backgroundColor: secondaryColor }}
               >
                 <span>{activeSlide.primaryBtnText || 'Apply for Admission'}</span>
@@ -228,13 +276,29 @@ export const EducationWebsiteTemplate: React.FC<EducationWebsiteTemplateProps> =
 
               <a
                 href="#programs"
-                className="px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors"
+                className="px-6 py-3 rounded-xl font-bold text-xs sm:text-sm text-white bg-slate-800/90 hover:bg-slate-800 border border-slate-700/80 transition-colors"
               >
-                Explore Programs
+                {activeSlide.secondaryBtnText || 'Explore Programs'}
               </a>
             </div>
           </div>
         </div>
+
+        {/* Carousel Slide Indicators */}
+        {heroSlides.length > 1 && (
+          <div className="absolute bottom-4 inset-x-0 flex items-center justify-center space-x-2 z-20">
+            {heroSlides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setActiveSlideIndex(idx)}
+                className={`h-2 rounded-full transition-all cursor-pointer ${
+                  activeSlideIndex === idx ? 'w-8 bg-blue-500' : 'w-2 bg-white/50 hover:bg-white'
+                }`}
+                title={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 3. Academic Programs */}

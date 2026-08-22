@@ -5,31 +5,34 @@ import {
   Image as ImageIcon, Trash2, Globe, ExternalLink, Sparkles, BookOpen, 
   Calendar, RefreshCw, Layers, Users, KeyRound, Edit2, Plus, Search,
   Shield, AlertTriangle, AlertCircle, Mail, UserPlus, Sliders,
-  MoveUp, MoveDown, Eye, Copy, ArrowRight
+  MoveUp, MoveDown, Eye, Copy, ArrowRight, Layout
 } from 'lucide-react';
 import { Tenant, User, TenantDomain } from '../../types';
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
 import { compressImageFile } from '../../lib/imageUtils';
+import { TenantPublicWebsiteEditor } from './components/TenantPublicWebsiteEditor';
 
 interface TenantSettingsProps {
-  initialTab?: 'branding' | 'users';
+  initialTab?: 'website' | 'branding' | 'users';
 }
 
-export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'branding' }) => {
+export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'website' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'branding' | 'users'>(() => {
+  const [activeTab, setActiveTab] = useState<'website' | 'branding' | 'users'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
       if (hash.includes('users')) return 'users';
+      if (hash.includes('branding')) return 'branding';
+      if (hash.includes('website') || hash.includes('cms')) return 'website';
     }
-    return initialTab === ('public_website' as any) || initialTab === ('domains' as any) ? 'branding' : initialTab;
+    return initialTab || 'website';
   });
 
   useEffect(() => {
     if (initialTab) {
-      if ((initialTab as string) === 'domains' || (initialTab as string) === 'public_website') {
-        setActiveTab('branding');
+      if ((initialTab as string) === 'public_website' || (initialTab as string) === 'website') {
+        setActiveTab('website');
       } else {
         setActiveTab(initialTab);
       }
@@ -480,6 +483,18 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
       {/* Tabs */}
       <div className="flex border-b border-slate-200 space-x-4">
         <button
+          onClick={() => setActiveTab('website')}
+          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'website'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>Public Website &amp; CMS</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('branding')}
           className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
             activeTab === 'branding'
@@ -503,6 +518,19 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'br
           <span>Team &amp; User Accounts</span>
         </button>
       </div>
+
+      {/* TAB: PUBLIC WEBSITE & CMS */}
+      {activeTab === 'website' && tenant && (
+        <TenantPublicWebsiteEditor
+          tenant={tenant}
+          onSaved={async () => {
+            await refreshAuth();
+            setSavedMessage('Public website settings and hero slides saved and published successfully!');
+            setSaved(true);
+            setTimeout(() => setSaved(false), 4000);
+          }}
+        />
+      )}
 
       {/* TAB 1: BRANDING */}
       {activeTab === 'branding' && (
