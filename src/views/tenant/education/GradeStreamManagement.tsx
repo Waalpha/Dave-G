@@ -374,6 +374,8 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
     const availableStreams = streams.filter(s => s.gradeId === chosenGradeId);
     const chosenStreamId = streamId || availableStreams[0]?.id || '';
 
+    const matched = getMatchedFeeStructureForGrade(chosenGradeId);
+
     setPreselectedGradeId(chosenGradeId);
     setPreselectedStreamId(chosenStreamId);
     setStudFullName('');
@@ -388,7 +390,8 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
     setStudGuardianPhone('');
     setStudGuardianEmail('');
     setStudGuardianRelation('Parent');
-    setStudFeeBalance('0');
+    setStudAutoGenerateInvoice(true);
+    setStudFeeBalance(String(matched?.totalFee || 0));
     setStudStatus('ACTIVE');
     setIsStudentModalOpen(true);
   };
@@ -406,6 +409,7 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
     setStudGuardianPhone(student.guardianPhone || '');
     setStudGuardianEmail(student.guardianEmail || '');
     setStudGuardianRelation(student.guardianRelation || 'Parent');
+    setStudAutoGenerateInvoice(false);
     setStudFeeBalance(String(student.feeBalance || 0));
     setStudStatus(student.status || 'ACTIVE');
     setIsStudentModalOpen(true);
@@ -424,6 +428,7 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
 
       const grd = grades.find(g => g.id === studGradeId);
       const strm = streams.find(s => s.id === studStreamId);
+      const matchedFee = getMatchedFeeStructureForGrade(studGradeId);
 
       const payload = {
         fullName: studFullName.trim(),
@@ -441,6 +446,8 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
         guardianEmail: studGuardianEmail.trim() || undefined,
         guardianRelation: studGuardianRelation || 'Parent',
         feeBalance: Number(studFeeBalance) || 0,
+        autoGenerateInvoice: editingStudent ? false : studAutoGenerateInvoice,
+        feeStructureId: matchedFee?.id || undefined,
         status: studStatus
       };
 
@@ -453,14 +460,18 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save student record');
 
-      setSuccessMsg(`Learner "${payload.fullName}" ${editingStudent ? 'updated' : 'admitted'} successfully.`);
-      setTimeout(() => setSuccessMsg(''), 4000);
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save student.');
+      }
+
+      const invDetail = data.initialInvoice ? ` with auto-generated fee invoice ${data.initialInvoice.invoiceNo} (KES ${data.initialInvoice.totalAmount?.toLocaleString()})` : '';
+      setSuccessMsg(`Learner "${payload.fullName}" ${editingStudent ? 'updated' : 'admitted'}${invDetail} successfully.`);
+      setTimeout(() => setSuccessMsg(''), 4500);
       setIsStudentModalOpen(false);
       await fetchData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Error saving student');
+      setErrorMsg(err.message || 'Error saving learner.');
     } finally {
       setIsSavingStudent(false);
     }

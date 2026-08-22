@@ -54,7 +54,7 @@ export type EducationType =
   | 'TRAINING_INSTITUTE';
 
 export type AcademicStructureMode = 
-  | 'GRADE_STREAM' 
+  | 'GRADE' 
   | 'COURSE_CLASS_UNIT' 
   | 'HYBRID';
 
@@ -111,7 +111,7 @@ export interface TenantHeroSlide {
   secondaryBtnAction?: 'apply' | 'programs' | 'departments' | 'admissions' | 'campuses' | 'news' | 'about' | 'login' | 'quote' | 'catalog' | 'appointment' | 'contact' | 'custom';
   secondaryBtnUrl?: string;
   alignment?: 'left' | 'center' | 'right';
-  overlayOpacity?: number; // 0-100
+  overlayOpacity?: number; // 0-200
   fontFamily?: 'sans' | 'poppins' | 'outfit' | 'serif' | 'display' | 'mono';
   titleFontSize?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   titleFontWeight?: 'normal' | 'medium' | 'semibold' | 'bold' | 'black';
