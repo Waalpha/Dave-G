@@ -7,12 +7,13 @@ import {
   DollarSign, FileText, Plus, Search, Filter, CheckCircle2, AlertCircle,
   Receipt, Download, Printer, Layers, Clock, Check, X, Eye, Edit, Trash2,
   Send, Users, ChevronRight, ArrowUpDown, Calendar, HelpCircle, FileCheck, Copy,
-  PieChart, RefreshCw, AlertTriangle
+  PieChart, RefreshCw, AlertTriangle, Zap
 } from 'lucide-react';
 import { UniversalReceiptModal } from '../../../components/receipts/UniversalReceiptModal';
 import { printService } from '../../../lib/printService';
 import { FeesPieChart } from './components/FeesPieChart';
 import { SchoolFeesReportModal } from './components/SchoolFeesReportModal';
+import { MonthlyFeesAutomation } from './components/MonthlyFeesAutomation';
 
 interface FeesFinanceManagementProps {
   currencySymbol?: string;
@@ -40,7 +41,7 @@ function numberToWords(num: number): string {
 export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
   currencySymbol = 'KSh'
 }) => {
-  const [subTab, setSubTab] = useState<'payments' | 'invoices' | 'structures' | 'statements' | 'reports'>('payments');
+  const [subTab, setSubTab] = useState<'payments' | 'invoices' | 'structures' | 'statements' | 'reports' | 'monthly_automation'>('payments');
 
   // Core Data
   const [payments, setPayments] = useState<FeePayment[]>([]);
@@ -154,6 +155,9 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
   const [fsTargetId, setFsTargetId] = useState('');
   const [fsAcademicYear, setFsAcademicYear] = useState('2025/2026');
   const [fsTerm, setFsTerm] = useState('Term 1');
+  const [fsBillingFrequency, setFsBillingFrequency] = useState<'MONTHLY' | 'TERM' | 'ANNUAL' | 'ONE_OFF'>('TERM');
+  const [fsBillingDayOfMonth, setFsBillingDayOfMonth] = useState('1');
+  const [fsIsMonthlyRecurring, setFsIsMonthlyRecurring] = useState(false);
   const [fsItems, setFsItems] = useState<Array<{ name: string; amount: number; isMandatory: boolean }>>([
     { name: 'Tuition Fee', amount: 20000, isMandatory: true },
     { name: 'Exam & Assessment', amount: 2500, isMandatory: true },
@@ -509,6 +513,9 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
         academicYear: fsAcademicYear,
         academicTerm: fsTerm,
         term: fsTerm,
+        billingFrequency: fsBillingFrequency,
+        billingDayOfMonth: Number(fsBillingDayOfMonth) || 1,
+        isMonthlyRecurring: fsIsMonthlyRecurring || fsBillingFrequency === 'MONTHLY',
         items: validItems.map(i => ({ feeType: i.name, name: i.name, amount: Number(i.amount) || 0, isMandatory: i.isMandatory })),
         description: fsDescription
       };
@@ -723,6 +730,7 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
       {/* Navigation Sub-Tabs */}
       <div className="flex border-b border-slate-200 bg-white px-3 rounded-xl shadow-2xs gap-1 py-1 text-xs font-medium text-slate-600 overflow-x-auto">
         {[
+          { id: 'monthly_automation', label: 'Monthly Auto-Fees & Billing', icon: Zap, highlight: true },
           { id: 'payments', label: `Payment Receipts (${payments.length})`, icon: Receipt },
           { id: 'invoices', label: `Student Invoices (${invoices.length})`, icon: FileText },
           { id: 'structures', label: `Fee Structures (${feeStructures.length})`, icon: Layers },
@@ -741,8 +749,13 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                   : 'border-transparent hover:text-slate-900 hover:border-slate-300'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className={`w-3.5 h-3.5 ${t.highlight && !isActive ? 'text-amber-600' : ''}`} />
               <span>{t.label}</span>
+              {t.highlight && !isActive && (
+                <span className="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded-full text-[9px] font-bold">
+                  AUTO
+                </span>
+              )}
             </button>
           );
         })}
@@ -947,6 +960,13 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
             </div>
 
             <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setSubTab('monthly_automation')}
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center space-x-1.5 cursor-pointer shadow-xs"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Monthly Auto-Billing</span>
+              </button>
               <button
                 onClick={() => {
                   setBatchTargetType('GRADE');
@@ -1266,9 +1286,17 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                           {fs.gradeName || fs.programName || fs.className || 'General All-Institution'} • {fs.academicYear}
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-bold text-[10px]">
-                        {fs.academicTerm || fs.term}
-                      </span>
+                      <div className="flex flex-col items-end space-y-1">
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-bold text-[10px]">
+                          {fs.academicTerm || fs.term}
+                        </span>
+                        {(fs.isMonthlyRecurring || fs.billingFrequency === 'MONTHLY') && (
+                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[9px] flex items-center space-x-1">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                            <span>Monthly (Day {fs.billingDayOfMonth || 1})</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-1.5 py-3 my-2 border-y border-slate-200 text-xs">
@@ -1335,6 +1363,9 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                           setFsTargetId(fs.gradeId || fs.programId || fs.classId || '');
                           setFsAcademicYear(fs.academicYear || '2025/2026');
                           setFsTerm(fs.academicTerm || fs.term || 'Term 1');
+                          setFsBillingFrequency(fs.billingFrequency || (fs.isMonthlyRecurring ? 'MONTHLY' : 'TERM'));
+                          setFsBillingDayOfMonth(String(fs.billingDayOfMonth || 1));
+                          setFsIsMonthlyRecurring(fs.isMonthlyRecurring || fs.billingFrequency === 'MONTHLY');
                           setFsItems(fs.items?.map(i => ({ name: i.feeType || i.name || 'Fee', amount: i.amount, isMandatory: i.isMandatory !== false })) || [
                             { name: 'Tuition Fee', amount: fs.tuitionFee || 0, isMandatory: true }
                           ]);
@@ -1356,6 +1387,9 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                           setFsTargetId(fs.gradeId || fs.programId || fs.classId || '');
                           setFsAcademicYear(fs.academicYear || '2025/2026');
                           setFsTerm(fs.academicTerm || fs.term || 'Term 1');
+                          setFsBillingFrequency(fs.billingFrequency || (fs.isMonthlyRecurring ? 'MONTHLY' : 'TERM'));
+                          setFsBillingDayOfMonth(String(fs.billingDayOfMonth || 1));
+                          setFsIsMonthlyRecurring(fs.isMonthlyRecurring || fs.billingFrequency === 'MONTHLY');
                           setFsItems(fs.items?.map(i => ({ name: i.feeType || i.name || 'Fee', amount: i.amount, isMandatory: i.isMandatory !== false })) || [
                             { name: 'Tuition Fee', amount: fs.tuitionFee || 0, isMandatory: true }
                           ]);
@@ -2175,6 +2209,29 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
       })()}
 
       {/* ========================================================================= */}
+      {/* TAB 6: MONTHLY AUTOMATION & RECURRING BILLING ENGINE                       */}
+      {/* ========================================================================= */}
+      {subTab === 'monthly_automation' && (
+        <MonthlyFeesAutomation
+          currencySymbol={currencySymbol}
+          grades={grades}
+          classes={classes}
+          programs={programs}
+          feeStructures={feeStructures}
+          students={students}
+          onInvoicesGenerated={() => {
+            fetchData();
+          }}
+          onNavigateToInvoices={(monthFilter) => {
+            if (monthFilter) {
+              setInvSearch(monthFilter);
+            }
+            setSubTab('invoices');
+          }}
+        />
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: RECORD / EDIT PAYMENT                                             */}
       {/* ========================================================================= */}
       {isPaymentModalOpen && (
@@ -2861,6 +2918,60 @@ export const FeesFinanceManagement: React.FC<FeesFinanceManagementProps> = ({
                     <option value="Semester 1">Semester 1</option>
                     <option value="Semester 2">Semester 2</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Billing Frequency & Recurring Automation Settings */}
+              <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div>
+                  <label className="font-bold text-slate-800 text-[11px] uppercase tracking-wider block">
+                    Billing Cycle / Frequency
+                  </label>
+                  <select
+                    value={fsBillingFrequency}
+                    onChange={e => {
+                      const val = e.target.value as any;
+                      setFsBillingFrequency(val);
+                      if (val === 'MONTHLY') setFsIsMonthlyRecurring(true);
+                    }}
+                    className="w-full mt-1 p-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-semibold"
+                  >
+                    <option value="TERM">Termly / Per Semester</option>
+                    <option value="MONTHLY">Monthly Recurring (Automated)</option>
+                    <option value="ANNUAL">Annual / Per School Year</option>
+                    <option value="ONE_OFF">One-Off / Ad-hoc Fee</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-800 text-[11px] uppercase tracking-wider block">
+                    Billing Day of Month (1 - 28)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={fsBillingDayOfMonth}
+                    onChange={e => setFsBillingDayOfMonth(e.target.value)}
+                    disabled={fsBillingFrequency !== 'MONTHLY'}
+                    className="w-full mt-1 p-2 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono font-bold disabled:bg-slate-100 disabled:text-slate-400"
+                  />
+                </div>
+
+                <div className="col-span-2 flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="fsIsMonthly"
+                    checked={fsIsMonthlyRecurring || fsBillingFrequency === 'MONTHLY'}
+                    onChange={e => {
+                      setFsIsMonthlyRecurring(e.target.checked);
+                      if (e.target.checked) setFsBillingFrequency('MONTHLY');
+                    }}
+                    className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                  />
+                  <label htmlFor="fsIsMonthly" className="text-xs text-slate-700 font-medium cursor-pointer">
+                    Enable for Monthly Automated Invoicing Engine
+                  </label>
                 </div>
               </div>
 

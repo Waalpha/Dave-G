@@ -200,8 +200,60 @@ export type TenantPermission =
   | 'organization.website.manage'
   | 'organization.users.view'
   | 'organization.users.manage'
+  | 'organization.roles.manage'
   | 'organization.reports.view'
-  | 'organization.modules.access';
+  | 'organization.modules.access'
+  | 'academic.programs.manage'
+  | 'academic.units.manage'
+  | 'academic.classes.manage'
+  | 'academic.timetable.manage'
+  | 'students.view'
+  | 'students.admit'
+  | 'students.edit'
+  | 'students.delete'
+  | 'students.transcripts.issue'
+  | 'finance.fees.view'
+  | 'finance.invoices.create'
+  | 'finance.payments.record'
+  | 'finance.discounts.manage'
+  | 'finance.reports.export'
+  | 'exams.view'
+  | 'exams.grade.enter'
+  | 'exams.results.publish'
+  | 'exams.rpl.assess'
+  | 'hr.staff.view'
+  | 'hr.staff.manage'
+  | 'hr.letters.issue'
+  | 'hr.payroll.process'
+  | 'hr.leave.approve'
+  | 'inventory.view'
+  | 'inventory.manage'
+  | 'pos.sales.create'
+  | 'audit.logs.view';
+
+export interface PermissionDefinition {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  category: 'Settings & Branding' | 'Users & Access' | 'Academics & Classes' | 'Students & Admissions' | 'Fees & Finance' | 'Exams & Grading' | 'HR & Payroll' | 'Inventory & POS' | 'Security & Audit';
+  module: ModuleId | 'system';
+}
+
+export interface RoleDefinition {
+  id: string;
+  tenantId?: string; // empty/null for system built-in roles, or tenant-specific
+  name: string;
+  code: string;
+  description: string;
+  isSystemRole?: boolean;
+  category: 'System' | 'Academic' | 'Financial' | 'Administrative' | 'Operations' | 'Custom';
+  color: string;
+  permissions: string[];
+  userCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 export type DomainType = 'SUBDOMAIN' | 'CUSTOM';
 export type DomainVerificationStatus = 'PENDING' | 'VERIFIED' | 'FAILED';
@@ -802,6 +854,9 @@ export interface FeeStructure {
   academicYear?: string;
   academicTerm?: string;
   term?: string; // alias
+  billingFrequency?: 'MONTHLY' | 'TERM' | 'ANNUAL' | 'ONE_OFF';
+  billingDayOfMonth?: number;
+  isMonthlyRecurring?: boolean;
   tuitionFee: number;
   examFee: number;
   libraryFee: number;
@@ -837,6 +892,9 @@ export interface StudentInvoice {
   academicTerm: string;
   term?: string; // alias
   academicYear: string;
+  billingMonth?: string; // e.g. "2026-08" or "August 2026"
+  billingCycle?: 'MONTHLY' | 'TERM' | 'ANNUAL' | 'ONE_OFF';
+  isMonthlyAutomated?: boolean;
   feeStructureId?: string;
   feeStructureName?: string;
   items: Array<{ description: string; name?: string; amount: number; category?: string }>;
@@ -853,6 +911,47 @@ export interface StudentInvoice {
   paymentInstructions?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface MonthlyFeeAutomationConfig {
+  tenantId: string;
+  enabled: boolean;
+  billingDayOfMonth: number; // e.g. 1 (1st of month)
+  dueDaysOffset: number; // e.g. 15 (due on 15th)
+  targetScope: 'ALL_STUDENTS' | 'BY_GRADE' | 'BY_CLASS' | 'BY_PROGRAM';
+  selectedGradeIds?: string[];
+  selectedClassIds?: string[];
+  selectedProgramIds?: string[];
+  defaultFeeStructureId?: string;
+  customMonthlyAmount?: number;
+  invoicePrefix?: string; // e.g. "MINV" or "SCH-INV"
+  autoSendNotification?: boolean;
+  autoApplyLateFee?: boolean;
+  lateFeeAmount?: number;
+  lateFeeDaysAfterDue?: number;
+  lastRunDate?: string;
+  lastRunCount?: number;
+  lastRunAmount?: number;
+  lastRunMonth?: string; // e.g. "2026-08"
+  nextScheduledRun?: string;
+  notes?: string;
+  updatedAt?: string;
+}
+
+export interface MonthlyFeeAutomationLog {
+  id: string;
+  tenantId: string;
+  monthYear: string; // e.g. "August 2026" or "2026-08"
+  triggeredAt: string;
+  triggeredBy: string;
+  status: 'SUCCESS' | 'PARTIAL' | 'FAILED';
+  studentsProcessed: number;
+  invoicesCreated: number;
+  totalAmountBilled: number;
+  duplicatesSkipped: number;
+  targetFilter: string;
+  details?: string;
+  invoiceIds?: string[];
 }
 
 export interface FeePayment {

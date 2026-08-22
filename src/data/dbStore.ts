@@ -7,7 +7,7 @@ import {
   Program, UnitSubject, SchoolClass, SchoolGrade, GradeStream, StudentPromotionRecord, AcademicStructureMode,
   Student, LecturerStaff, TimetableEntry,
   StudentAttendance, FeeStructure, StudentInvoice, FeePayment, StudentGradeRecord,
-  FeeStatementEntry, StudentFeeStatement,
+  FeeStatementEntry, StudentFeeStatement, MonthlyFeeAutomationConfig, MonthlyFeeAutomationLog,
   LibraryBook, LibraryLoan, HostelRoom, ModuleId, PlatformSettings,
   PlatformPublicWebsiteConfig, PlatformNotification,
   TenantDomain, TenantDnsRecord, DomainType, DomainVerificationStatus, DomainSslStatus,
@@ -45,8 +45,10 @@ import {
   AdmissionsDocumentStatus, AdmissionsInterview, AdmissionsReviewNote, AdmissionsAuditEntry,
   PrinterDevice, UniversalReceipt, PrintJobRecord, PrinterAuditLog, ReceiptItem,
   PlatformOfflineConfig, TenantOfflineConfig, OfflineLicenseLease, OfflineQueueItem,
-  OfflineSyncBatchPayload, OfflineSyncBatchResult, OfflineGracePeriodHours, AuthorizedOfflineDevice
+  OfflineSyncBatchPayload, OfflineSyncBatchResult, OfflineGracePeriodHours, AuthorizedOfflineDevice,
+  RoleDefinition, PermissionDefinition
 } from '../types';
+import { DEFAULT_SYSTEM_ROLES, SYSTEM_PERMISSIONS, getPermissionsForRole } from './rolesPermissions';
 
 import {
   BROOKS_OF_LIFE_TENANT, BROOKS_OF_LIFE_TENANT_ID, BROOKS_OF_LIFE_SLUG,
@@ -742,6 +744,8 @@ class DatabaseStore {
   private feeStructures: FeeStructure[] = [];
   private studentInvoices: StudentInvoice[] = [];
   private feePayments: FeePayment[] = [];
+  private monthlyFeeConfigs: MonthlyFeeAutomationConfig[] = [];
+  private monthlyFeeLogs: MonthlyFeeAutomationLog[] = [];
   private studentGrades: StudentGradeRecord[] = [];
   private libraryBooks: LibraryBook[] = [];
   private libraryLoans: LibraryLoan[] = [];
@@ -856,6 +860,7 @@ class DatabaseStore {
   private universalReceipts: UniversalReceipt[] = [];
   private printJobs: PrintJobRecord[] = [];
   private printerAuditLogs: PrinterAuditLog[] = [];
+  private customRoles: RoleDefinition[] = [];
 
   private platformSettings: PlatformSettings = {
     platformName: 'DAVETECH',
@@ -938,6 +943,7 @@ class DatabaseStore {
         libraryLoans: this.libraryLoans,
         hostelRooms: this.hostelRooms,
         tenantDomains: this.tenantDomains,
+        customRoles: this.customRoles,
         auditLogs: this.auditLogs,
         notifications: this.notifications,
         platformSettings: this.platformSettings,
@@ -1090,6 +1096,7 @@ class DatabaseStore {
         if (Array.isArray(data.libraryLoans)) this.libraryLoans = data.libraryLoans;
         if (Array.isArray(data.hostelRooms)) this.hostelRooms = data.hostelRooms;
         if (Array.isArray(data.tenantDomains)) this.tenantDomains = data.tenantDomains;
+        if (Array.isArray(data.customRoles)) this.customRoles = data.customRoles;
         if (Array.isArray(data.auditLogs)) this.auditLogs = data.auditLogs;
         if (Array.isArray(data.notifications)) this.notifications = data.notifications;
         if (data.platformSettings) this.platformSettings = { ...this.platformSettings, ...data.platformSettings };
@@ -1311,6 +1318,12 @@ class DatabaseStore {
       const dbInvoices = await loadCollectionFromFirestore<StudentInvoice>('studentInvoices');
       this.studentInvoices = Array.isArray(dbInvoices) ? dbInvoices : [];
 
+      const dbFeeConfigs = await loadCollectionFromFirestore<MonthlyFeeAutomationConfig>('monthlyFeeConfigs');
+      this.monthlyFeeConfigs = Array.isArray(dbFeeConfigs) ? dbFeeConfigs : [];
+
+      const dbFeeLogs = await loadCollectionFromFirestore<MonthlyFeeAutomationLog>('monthlyFeeLogs');
+      this.monthlyFeeLogs = Array.isArray(dbFeeLogs) ? dbFeeLogs : [];
+
       const dbGrades = await loadCollectionFromFirestore<StudentGradeRecord>('studentGrades');
       this.studentGrades = Array.isArray(dbGrades) ? dbGrades : [];
 
@@ -1518,6 +1531,11 @@ class DatabaseStore {
         this.tenantDomains = dbDomains;
       }
       this.bootstrapTenantDomains();
+
+      const dbRoles = await loadCollectionFromFirestore<RoleDefinition>('roles');
+      if (Array.isArray(dbRoles) && dbRoles.length > 0) {
+        this.customRoles = dbRoles;
+      }
 
       const dbSettings = await loadCollectionFromFirestore<PlatformSettings>('platformSettings');
       if (dbSettings.length > 0 && dbSettings[0]) {
@@ -3106,6 +3124,185 @@ class DatabaseStore {
     );
 
     return newUser;
+  }
+
+  public getTenantRoles(tenantId: string): RoleDefinition[] {
+    const tenantUsers = this.getTenantUsers(tenantId);
+    
+    // System standard roles with dynamic user counts and tenant overrides if any
+    const standardRoles: RoleDefinition[] = DEFAULT_SYSTEM_ROLES.map(r => {
+      const userCount = tenantUsers.filter(u => u.role === r.code).length;
+      const override = this.customRoles.find(cr => cr.tenantId === tenantId && (cr.code === r.code || cr.id === `role_override_${tenantId}_${r.code}`));
+      if (override) {
+        return {
+          ...r,
+          ...override,
+          userCount
+        };
+      }
+      return {
+        ...r,
+        userCount
+      };
+    });
+
+    // Tenant-specific custom roles
+    const custom = this.customRoles
+      .filter(r => r.tenantId === tenantId && !r.id.startsWith('role_override_'))
+      .map(r => {
+        const userCount = tenantUsers.filter(u => u.role === r.code || u.customRoleName === r.name).length;
+        return {
+          ...r,
+          userCount
+        };
+      });
+
+    return [...standardRoles, ...custom];
+  }
+
+  public createTenantRole(tenantId: string, data: Partial<RoleDefinition>, createdBy: User): RoleDefinition {
+    if (!data.name || !data.name.trim()) throw new Error('Role name is required');
+    const cleanCode = (data.code || data.name).trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+    
+    const existing = this.customRoles.find(r => r.tenantId === tenantId && (r.code === cleanCode || r.name.toLowerCase() === data.name!.trim().toLowerCase()));
+    if (existing || DEFAULT_SYSTEM_ROLES.some(r => r.code === cleanCode)) {
+      throw new Error(`A role with code or name "${data.name}" already exists.`);
+    }
+
+    const newRole: RoleDefinition = {
+      id: `role_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      name: data.name.trim(),
+      code: cleanCode,
+      description: data.description?.trim() || `Custom role for ${data.name.trim()}`,
+      isSystemRole: false,
+      category: data.category || 'Custom',
+      color: data.color || '#4F46E5',
+      permissions: Array.isArray(data.permissions) ? data.permissions : ['organization.profile.view'],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userCount: 0
+    };
+
+    this.customRoles.push(newRole);
+    this.persistDoc('roles', newRole.id, newRole);
+
+    this.logAction(
+      tenantId,
+      createdBy.id,
+      createdBy.name,
+      createdBy.role,
+      'ROLE_CREATED',
+      'RoleDefinition',
+      `Created custom role "${newRole.name}" (${newRole.code}) with ${newRole.permissions.length} permissions`,
+      newRole.id
+    );
+
+    return newRole;
+  }
+
+  public updateTenantRole(tenantId: string, roleId: string, data: Partial<RoleDefinition>, updatedBy: User): RoleDefinition {
+    // Check if it is a built-in system role
+    const systemRole = DEFAULT_SYSTEM_ROLES.find(r => r.id === roleId || r.code === roleId);
+    if (systemRole) {
+      // Create or update a tenant-override custom role
+      let customOverride = this.customRoles.find(r => r.tenantId === tenantId && (r.code === systemRole.code || r.id === `role_override_${tenantId}_${systemRole.code}`));
+      if (!customOverride) {
+        customOverride = {
+          ...systemRole,
+          id: `role_override_${tenantId}_${systemRole.code}`,
+          tenantId,
+          isSystemRole: true,
+          permissions: Array.isArray(data.permissions) ? data.permissions : systemRole.permissions,
+          description: data.description || systemRole.description,
+          color: data.color || systemRole.color,
+          updatedAt: new Date().toISOString()
+        };
+        this.customRoles.push(customOverride);
+      } else {
+        if (data.permissions) customOverride.permissions = data.permissions;
+        if (data.description) customOverride.description = data.description;
+        if (data.color) customOverride.color = data.color;
+        customOverride.updatedAt = new Date().toISOString();
+      }
+      this.persistDoc('roles', customOverride.id, customOverride);
+      this.logAction(
+        tenantId,
+        updatedBy.id,
+        updatedBy.name,
+        updatedBy.role,
+        'ROLE_PERMISSIONS_UPDATED',
+        'RoleDefinition',
+        `Updated permissions configuration for role "${systemRole.name}"`,
+        customOverride.id
+      );
+      return customOverride;
+    }
+
+    const role = this.customRoles.find(r => r.id === roleId && (r.tenantId === tenantId || updatedBy.role === 'SUPER_ADMIN'));
+    if (!role) throw new Error('Role not found or access denied');
+
+    if (data.name && data.name.trim()) role.name = data.name.trim();
+    if (data.description !== undefined) role.description = data.description.trim();
+    if (data.color) role.color = data.color;
+    if (data.category) role.category = data.category;
+    if (data.permissions && Array.isArray(data.permissions)) role.permissions = data.permissions;
+    role.updatedAt = new Date().toISOString();
+
+    this.persistDoc('roles', role.id, role);
+
+    this.logAction(
+      tenantId,
+      updatedBy.id,
+      updatedBy.name,
+      updatedBy.role,
+      'ROLE_UPDATED',
+      'RoleDefinition',
+      `Updated custom role "${role.name}" permissions and settings`,
+      role.id
+    );
+
+    return role;
+  }
+
+  public deleteTenantRole(tenantId: string, roleId: string, deletedBy: User): boolean {
+    const isSystemRole = DEFAULT_SYSTEM_ROLES.some(r => r.id === roleId || r.code === roleId);
+    if (isSystemRole) {
+      // Revert tenant override if exists
+      const idx = this.customRoles.findIndex(r => (r.id === roleId || r.code === roleId || r.id === `role_override_${tenantId}_${roleId}`) && r.tenantId === tenantId);
+      if (idx !== -1) {
+        const removed = this.customRoles.splice(idx, 1)[0];
+        this.removeDoc('roles', removed.id);
+        return true;
+      }
+      throw new Error('Cannot delete core built-in system role.');
+    }
+
+    const idx = this.customRoles.findIndex(r => r.id === roleId && (r.tenantId === tenantId || deletedBy.role === 'SUPER_ADMIN'));
+    if (idx === -1) throw new Error('Custom role not found.');
+
+    const role = this.customRoles[idx];
+    // Check if any user is currently assigned this role
+    const assignedUsers = this.users.filter(u => u.tenantId === tenantId && (u.role === role.code || u.customRoleName === role.name));
+    if (assignedUsers.length > 0) {
+      throw new Error(`Cannot delete role "${role.name}" because it is currently assigned to ${assignedUsers.length} user(s). Reassign them first.`);
+    }
+
+    this.customRoles.splice(idx, 1);
+    this.removeDoc('roles', role.id);
+
+    this.logAction(
+      tenantId,
+      deletedBy.id,
+      deletedBy.name,
+      deletedBy.role,
+      'ROLE_DELETED',
+      'RoleDefinition',
+      `Deleted custom role "${role.name}"`,
+      role.id
+    );
+
+    return true;
   }
 
   // EDUCATION MODULE TENANT ISOLATED QUERIES
@@ -5231,6 +5428,425 @@ class DatabaseStore {
 
     this.logAction(tenantId, user.id, user.name, user.role, 'BATCH_INVOICE_GENERATED', 'StudentInvoice', `batch_${Date.now()}`, `Batch generated ${generated.length} invoices for term ${params.academicTerm} (${params.academicYear})`);
     return { count: generated.length, invoices: generated };
+  }
+
+  // ==================== MONTHLY SCHOOL FEES AUTOMATION ENGINE ====================
+
+  public getMonthlyFeeConfig(tenantId: string): MonthlyFeeAutomationConfig {
+    let cfg = this.monthlyFeeConfigs.find(c => c.tenantId === tenantId);
+    if (!cfg) {
+      cfg = {
+        tenantId,
+        enabled: true,
+        billingDayOfMonth: 1,
+        dueDaysOffset: 15,
+        targetScope: 'ALL_STUDENTS',
+        selectedGradeIds: [],
+        selectedClassIds: [],
+        selectedProgramIds: [],
+        invoicePrefix: 'MINV',
+        autoSendNotification: true,
+        autoApplyLateFee: false,
+        lateFeeAmount: 500,
+        lateFeeDaysAfterDue: 5,
+        updatedAt: new Date().toISOString()
+      };
+      this.monthlyFeeConfigs.push(cfg);
+      saveDocToFirestore('monthlyFeeConfigs', tenantId, cfg).catch(() => {});
+    }
+    return cfg;
+  }
+
+  public saveMonthlyFeeConfig(tenantId: string, data: Partial<MonthlyFeeAutomationConfig>, user: User): MonthlyFeeAutomationConfig {
+    let cfg = this.monthlyFeeConfigs.find(c => c.tenantId === tenantId);
+    if (!cfg) {
+      cfg = {
+        tenantId,
+        enabled: data.enabled !== undefined ? !!data.enabled : true,
+        billingDayOfMonth: Number(data.billingDayOfMonth) || 1,
+        dueDaysOffset: Number(data.dueDaysOffset) || 15,
+        targetScope: data.targetScope || 'ALL_STUDENTS',
+        selectedGradeIds: data.selectedGradeIds || [],
+        selectedClassIds: data.selectedClassIds || [],
+        selectedProgramIds: data.selectedProgramIds || [],
+        defaultFeeStructureId: data.defaultFeeStructureId || '',
+        customMonthlyAmount: data.customMonthlyAmount ? Number(data.customMonthlyAmount) : undefined,
+        invoicePrefix: data.invoicePrefix?.trim() || 'MINV',
+        autoSendNotification: data.autoSendNotification !== undefined ? !!data.autoSendNotification : true,
+        autoApplyLateFee: data.autoApplyLateFee !== undefined ? !!data.autoApplyLateFee : false,
+        lateFeeAmount: data.lateFeeAmount !== undefined ? Number(data.lateFeeAmount) : 500,
+        lateFeeDaysAfterDue: data.lateFeeDaysAfterDue !== undefined ? Number(data.lateFeeDaysAfterDue) : 5,
+        notes: data.notes?.trim() || '',
+        updatedAt: new Date().toISOString()
+      };
+      this.monthlyFeeConfigs.push(cfg);
+    } else {
+      if (data.enabled !== undefined) cfg.enabled = !!data.enabled;
+      if (data.billingDayOfMonth !== undefined) cfg.billingDayOfMonth = Number(data.billingDayOfMonth);
+      if (data.dueDaysOffset !== undefined) cfg.dueDaysOffset = Number(data.dueDaysOffset);
+      if (data.targetScope) cfg.targetScope = data.targetScope;
+      if (data.selectedGradeIds !== undefined) cfg.selectedGradeIds = data.selectedGradeIds;
+      if (data.selectedClassIds !== undefined) cfg.selectedClassIds = data.selectedClassIds;
+      if (data.selectedProgramIds !== undefined) cfg.selectedProgramIds = data.selectedProgramIds;
+      if (data.defaultFeeStructureId !== undefined) cfg.defaultFeeStructureId = data.defaultFeeStructureId;
+      if (data.customMonthlyAmount !== undefined) cfg.customMonthlyAmount = Number(data.customMonthlyAmount);
+      if (data.invoicePrefix !== undefined) cfg.invoicePrefix = data.invoicePrefix.trim();
+      if (data.autoSendNotification !== undefined) cfg.autoSendNotification = !!data.autoSendNotification;
+      if (data.autoApplyLateFee !== undefined) cfg.autoApplyLateFee = !!data.autoApplyLateFee;
+      if (data.lateFeeAmount !== undefined) cfg.lateFeeAmount = Number(data.lateFeeAmount);
+      if (data.lateFeeDaysAfterDue !== undefined) cfg.lateFeeDaysAfterDue = Number(data.lateFeeDaysAfterDue);
+      if (data.notes !== undefined) cfg.notes = data.notes.trim();
+      cfg.updatedAt = new Date().toISOString();
+    }
+
+    saveDocToFirestore('monthlyFeeConfigs', tenantId, cfg).catch(() => {});
+    this.logAction(tenantId, user.id, user.name, user.role, 'UPDATE_MONTHLY_FEE_CONFIG', 'MonthlyFeeAutomationConfig', tenantId, `Updated monthly fee automation settings (Enabled: ${cfg.enabled}, Billing Day: ${cfg.billingDayOfMonth})`);
+    return cfg;
+  }
+
+  public getMonthlyFeeLogs(tenantId: string): MonthlyFeeAutomationLog[] {
+    return this.monthlyFeeLogs
+      .filter(l => l.tenantId === tenantId)
+      .sort((a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime());
+  }
+
+  public previewMonthlyInvoices(tenantId: string, params: {
+    monthYear?: string; // e.g. "2026-08" or "August 2026"
+    academicYear?: string;
+    academicTerm?: string;
+    gradeId?: string;
+    classId?: string;
+    programId?: string;
+    feeStructureId?: string;
+    customAmount?: number;
+  }): {
+    monthYear: string;
+    eligibleStudentsCount: number;
+    alreadyInvoicedCount: number;
+    willGenerateCount: number;
+    estimatedTotalAmount: number;
+    students: Array<{
+      studentId: string;
+      fullName: string;
+      admissionNo: string;
+      gradeName?: string;
+      className?: string;
+      programName?: string;
+      alreadyInvoiced: boolean;
+      existingInvoiceNo?: string;
+      projectedFee: number;
+      feeStructureName: string;
+    }>;
+  } {
+    const config = this.getMonthlyFeeConfig(tenantId);
+    const now = new Date();
+    const targetMonth = params.monthYear || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Format human readable month name
+    const [tYear, tMonth] = targetMonth.split('-');
+    const dateObj = new Date(Number(tYear), Number(tMonth) - 1, 1);
+    const monthName = isNaN(dateObj.getTime()) 
+      ? targetMonth 
+      : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    let activeStudents = this.students.filter(s => s.tenantId === tenantId && s.status === 'ACTIVE');
+
+    // Filter by scope
+    if (params.gradeId && params.gradeId !== 'ALL') {
+      activeStudents = activeStudents.filter(s => s.gradeId === params.gradeId);
+    } else if (params.classId && params.classId !== 'ALL') {
+      activeStudents = activeStudents.filter(s => s.classId === params.classId);
+    } else if (params.programId && params.programId !== 'ALL') {
+      activeStudents = activeStudents.filter(s => s.programId === params.programId);
+    } else if (config.targetScope === 'BY_GRADE' && config.selectedGradeIds?.length) {
+      activeStudents = activeStudents.filter(s => s.gradeId && config.selectedGradeIds!.includes(s.gradeId));
+    } else if (config.targetScope === 'BY_CLASS' && config.selectedClassIds?.length) {
+      activeStudents = activeStudents.filter(s => s.classId && config.selectedClassIds!.includes(s.classId));
+    } else if (config.targetScope === 'BY_PROGRAM' && config.selectedProgramIds?.length) {
+      activeStudents = activeStudents.filter(s => s.programId && config.selectedProgramIds!.includes(s.programId));
+    }
+
+    const tenantInvoices = this.studentInvoices.filter(i => i.tenantId === tenantId);
+    const tenantFeeStructures = this.feeStructures.filter(f => f.tenantId === tenantId && f.status !== 'INACTIVE');
+
+    let willGenerateCount = 0;
+    let alreadyInvoicedCount = 0;
+    let estimatedTotal = 0;
+
+    const previewList = activeStudents.map(st => {
+      // Check existing invoice for this month
+      const existing = tenantInvoices.find(inv => 
+        inv.studentId === st.id && 
+        (
+          inv.billingMonth === targetMonth ||
+          inv.billingMonth === monthName ||
+          (inv.academicTerm && inv.academicTerm.includes(monthName)) ||
+          (inv.notes && inv.notes.includes(targetMonth))
+        )
+      );
+
+      const alreadyInvoiced = !!existing;
+      if (alreadyInvoiced) {
+        alreadyInvoicedCount++;
+      } else {
+        willGenerateCount++;
+      }
+
+      // Determine projected fee structure
+      let feeAmount = 0;
+      let structName = 'Monthly Standard Tuition';
+
+      if (params.customAmount && Number(params.customAmount) > 0) {
+        feeAmount = Number(params.customAmount);
+        structName = `Custom Monthly Rate (${monthName})`;
+      } else if (params.feeStructureId) {
+        const fs = tenantFeeStructures.find(f => f.id === params.feeStructureId);
+        if (fs) {
+          feeAmount = fs.totalFee;
+          structName = fs.name || 'Selected Fee Structure';
+        }
+      } else if (config.defaultFeeStructureId) {
+        const fs = tenantFeeStructures.find(f => f.id === config.defaultFeeStructureId);
+        if (fs) {
+          feeAmount = fs.totalFee;
+          structName = fs.name || 'Default Fee Structure';
+        }
+      } else {
+        // Find matching structure for student's grade or program with monthly billing or general
+        const matched = tenantFeeStructures.find(f => 
+          (f.gradeId && f.gradeId === st.gradeId) || 
+          (f.programId && f.programId === st.programId) || 
+          (f.classId && f.classId === st.classId) ||
+          f.targetType === 'ALL'
+        );
+
+        if (matched) {
+          // If structure is monthly, use total. If term structure and monthly billing, prorate 1/3 or use total
+          feeAmount = matched.isMonthlyRecurring || matched.billingFrequency === 'MONTHLY' 
+            ? matched.totalFee 
+            : Math.round(matched.totalFee / 3);
+          structName = matched.name || 'Grade Fee Structure';
+        } else {
+          feeAmount = config.customMonthlyAmount || 15000;
+          structName = `Standard Monthly Fee (${monthName})`;
+        }
+      }
+
+      if (!alreadyInvoiced) {
+        estimatedTotal += feeAmount;
+      }
+
+      return {
+        studentId: st.id,
+        fullName: st.fullName,
+        admissionNo: st.admissionNo,
+        gradeName: st.gradeName,
+        className: st.className,
+        programName: st.programName,
+        alreadyInvoiced,
+        existingInvoiceNo: existing?.invoiceNo,
+        projectedFee: feeAmount,
+        feeStructureName: structName
+      };
+    });
+
+    return {
+      monthYear: targetMonth,
+      eligibleStudentsCount: activeStudents.length,
+      alreadyInvoicedCount,
+      willGenerateCount,
+      estimatedTotalAmount: estimatedTotal,
+      students: previewList
+    };
+  }
+
+  public runMonthlyFeeAutomation(tenantId: string, params: {
+    monthYear?: string;
+    academicYear?: string;
+    academicTerm?: string;
+    gradeId?: string;
+    classId?: string;
+    programId?: string;
+    feeStructureId?: string;
+    dueDate?: string;
+    issueDate?: string;
+    customAmount?: number;
+    forceRegenerate?: boolean;
+  }, user: User): { log: MonthlyFeeAutomationLog; invoices: StudentInvoice[]; generatedCount: number; skippedCount: number; totalAmount: number } {
+    const config = this.getMonthlyFeeConfig(tenantId);
+    const now = new Date();
+    const targetMonth = params.monthYear || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Human readable month name
+    const [tYear, tMonth] = targetMonth.split('-');
+    const dateObj = new Date(Number(tYear), Number(tMonth) - 1, 1);
+    const monthName = isNaN(dateObj.getTime()) 
+      ? targetMonth 
+      : dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    const preview = this.previewMonthlyInvoices(tenantId, {
+      ...params,
+      monthYear: targetMonth
+    });
+
+    const issueDateStr = params.issueDate || now.toISOString().split('T')[0];
+    let dueDateStr = params.dueDate;
+    if (!dueDateStr) {
+      const offsetDays = config.dueDaysOffset || 15;
+      const d = new Date(issueDateStr);
+      d.setDate(d.getDate() + offsetDays);
+      dueDateStr = d.toISOString().split('T')[0];
+    }
+
+    const academicYearStr = params.academicYear || `${now.getFullYear()}/${now.getFullYear() + 1}`;
+    const academicTermStr = params.academicTerm || `Month of ${monthName}`;
+    const prefix = config.invoicePrefix || 'MINV';
+
+    const generatedInvoices: StudentInvoice[] = [];
+    let duplicatesSkipped = 0;
+    let totalBilled = 0;
+
+    const tenantFeeStructures = this.feeStructures.filter(f => f.tenantId === tenantId);
+
+    preview.students.forEach(stPreview => {
+      if (stPreview.alreadyInvoiced && !params.forceRegenerate) {
+        duplicatesSkipped++;
+        return;
+      }
+
+      const student = this.students.find(s => s.tenantId === tenantId && s.id === stPreview.studentId);
+      if (!student) return;
+
+      const randNum = Math.floor(1000 + Math.random() * 9000);
+      const cleanMonth = targetMonth.replace(/[^0-9]/g, '');
+      const invoiceNo = `${prefix}-${cleanMonth}-${randNum}`;
+
+      // Build invoice line items
+      let items: Array<{ description: string; amount: number; category?: string }> = [];
+      let feeStructId = params.feeStructureId || config.defaultFeeStructureId || '';
+      let feeStructName = stPreview.feeStructureName;
+
+      if (params.customAmount && Number(params.customAmount) > 0) {
+        items = [{ description: `Monthly Tuition & Operational Fee (${monthName})`, amount: Number(params.customAmount), category: 'Tuition' }];
+      } else if (feeStructId) {
+        const fs = tenantFeeStructures.find(f => f.id === feeStructId);
+        if (fs && Array.isArray(fs.items) && fs.items.length > 0) {
+          items = fs.items.map(it => ({
+            description: `${it.feeType || it.name || 'Fee'} (${monthName})`,
+            amount: Number(it.amount) || 0,
+            category: it.category || 'Tuition'
+          }));
+        }
+      }
+
+      if (items.length === 0) {
+        items = [
+          { description: `Monthly Tuition & Academic Services (${monthName})`, amount: Math.round(stPreview.projectedFee * 0.8), category: 'Tuition' },
+          { description: `Monthly Activity & Learning Resources (${monthName})`, amount: Math.round(stPreview.projectedFee * 0.2), category: 'Activities' }
+        ];
+      }
+
+      const subtotal = items.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+      const total = subtotal;
+
+      const inv: StudentInvoice = {
+        id: `inv_m_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
+        tenantId,
+        invoiceNo,
+        studentId: student.id,
+        studentName: student.fullName,
+        admissionNo: student.admissionNo,
+        gradeId: student.gradeId || '',
+        gradeName: student.gradeName || '',
+        streamId: student.streamId || '',
+        streamName: student.streamName || '',
+        programId: student.programId || '',
+        programName: student.programName || '',
+        classId: student.classId || '',
+        className: student.className || '',
+        academicTerm: academicTermStr,
+        term: academicTermStr,
+        academicYear: academicYearStr,
+        billingMonth: targetMonth,
+        billingCycle: 'MONTHLY',
+        isMonthlyAutomated: true,
+        feeStructureId: feeStructId,
+        feeStructureName: feeStructName,
+        items,
+        subtotal,
+        discountAmount: 0,
+        totalAmount: total,
+        amountPaid: 0,
+        balance: total,
+        issueDate: issueDateStr,
+        dueDate: dueDateStr,
+        status: 'UNPAID',
+        notes: `Automated Monthly School Fee for ${monthName}. Billing cycle: MONTHLY.`,
+        paymentInstructions: 'Pay via School M-Pesa Paybill / Bank Account before the due date.',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Increase student outstanding balance
+      student.feeBalance = (Number(student.feeBalance) || 0) + total;
+
+      this.studentInvoices.unshift(inv);
+      saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+      saveDocToFirestore('students', student.id, student).catch(() => {});
+
+      generatedInvoices.push(inv);
+      totalBilled += total;
+    });
+
+    // Create execution log
+    const log: MonthlyFeeAutomationLog = {
+      id: `log_mfee_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      tenantId,
+      monthYear: monthName,
+      triggeredAt: new Date().toISOString(),
+      triggeredBy: user.name ? `${user.name} (${user.role})` : 'System Automation',
+      status: generatedInvoices.length > 0 ? 'SUCCESS' : duplicatesSkipped > 0 ? 'SUCCESS' : 'FAILED',
+      studentsProcessed: preview.eligibleStudentsCount,
+      invoicesCreated: generatedInvoices.length,
+      totalAmountBilled: totalBilled,
+      duplicatesSkipped,
+      targetFilter: params.gradeId ? `Grade: ${params.gradeId}` : params.classId ? `Class: ${params.classId}` : 'All Active Students',
+      details: `Generated ${generatedInvoices.length} monthly invoices totaling KSh ${totalBilled.toLocaleString()} for ${monthName}. Skipped ${duplicatesSkipped} already invoiced.`,
+      invoiceIds: generatedInvoices.map(i => i.id)
+    };
+
+    this.monthlyFeeLogs.unshift(log);
+    saveDocToFirestore('monthlyFeeLogs', log.id, log).catch(() => {});
+
+    // Update config stats
+    config.lastRunDate = new Date().toISOString();
+    config.lastRunMonth = targetMonth;
+    config.lastRunCount = generatedInvoices.length;
+    config.lastRunAmount = totalBilled;
+    
+    // Compute next scheduled run (1st of next month)
+    const nextDate = new Date(Number(tYear), Number(tMonth), config.billingDayOfMonth || 1);
+    config.nextScheduledRun = nextDate.toISOString().split('T')[0];
+    saveDocToFirestore('monthlyFeeConfigs', tenantId, config).catch(() => {});
+
+    this.logAction(
+      tenantId,
+      user.id,
+      user.name,
+      user.role,
+      'RUN_MONTHLY_FEE_AUTOMATION',
+      'MonthlyFeeAutomation',
+      log.id,
+      `Executed monthly school fee automation for ${monthName}: ${generatedInvoices.length} invoices generated (KSh ${totalBilled})`
+    );
+
+    return {
+      log,
+      invoices: generatedInvoices,
+      generatedCount: generatedInvoices.length,
+      skippedCount: duplicatesSkipped,
+      totalAmount: totalBilled
+    };
   }
 
   public getFeePayments(tenantId: string, filters?: { studentId?: string; gradeId?: string; classId?: string; invoiceId?: string; paymentMethod?: string; fromDate?: string; toDate?: string; search?: string }): FeePayment[] {

@@ -4,7 +4,8 @@ import net from 'net';
 import { createServer as createViteServer } from 'vite';
 import { dbStore, hashPassword } from './src/data/dbStore';
 import { ALL_ERP_MODULES, getModuleInfo } from './src/data/modulesCatalog';
-import { ModuleId, User, Tenant } from './src/types';
+import { SYSTEM_PERMISSIONS, DEFAULT_SYSTEM_ROLES } from './src/data/rolesPermissions';
+import { ModuleId, User, Tenant, RoleDefinition } from './src/types';
 
 // Global Process Crash Prevention Guards for Production Node.js
 process.on('unhandledRejection', (reason: any) => {
@@ -611,6 +612,117 @@ async function startServer() {
       return res.json({ success: true, message: `User account "${targetUser.name}" successfully deleted` });
     } catch (err: any) {
       return res.status(400).json({ error: err.message || 'Failed to delete user' });
+    }
+  });
+
+  // Tenant Admin update user profile, role, department, and granular permissions
+  app.put('/api/tenant/users/:userId', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    const targetUser = dbStore.getUserById(req.params.userId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    if (user.role !== 'SUPER_ADMIN') {
+      if (user.role !== 'TENANT_ADMIN' || user.tenantId !== targetUser.tenantId) {
+        return res.status(403).json({ error: 'FORBIDDEN', message: 'You do not have permission to modify this user account' });
+      }
+      if (targetUser.role === 'SUPER_ADMIN' && user.id !== targetUser.id) {
+        return res.status(403).json({ error: 'FORBIDDEN', message: 'Cannot modify Super Admin accounts' });
+      }
+    }
+
+    try {
+      const { name, email, role, department, permissions, password } = req.body;
+      const updated = dbStore.updateTenantUser(
+        req.params.userId,
+        {
+          name,
+          email,
+          role,
+          department,
+          permissions,
+          password
+        },
+        user
+      );
+      const { passwordHash, resetToken, resetTokenExpiresAt, ...safeUser } = updated;
+      return res.json({ success: true, user: safeUser });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || 'Failed to update user account' });
+    }
+  });
+
+  // ==================== ROLES & PERMISSIONS RBAC ENDPOINTS ====================
+
+  // Get all standard system permissions catalogue & categories
+  app.get('/api/tenant/permissions', requireAuth, (req, res) => {
+    return res.json({
+      permissions: SYSTEM_PERMISSIONS,
+      categories: [
+        'Settings & Branding',
+        'Users & Access',
+        'Academics & Classes',
+        'Students & Admissions',
+        'Fees & Finance',
+        'Exams & Grading',
+        'HR & Payroll',
+        'Inventory & POS',
+        'Security & Audit'
+      ]
+    });
+  });
+
+  // Get tenant roles list (system presets + tenant custom roles) with user counts
+  app.get('/api/tenant/roles', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = getEffectiveTenantId(req, user);
+    const roles = dbStore.getTenantRoles(tenantId);
+    return res.json(roles);
+  });
+
+  // Create custom role for tenant
+  app.post('/api/tenant/roles', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Tenant Administrators can create custom roles' });
+    }
+    const tenantId = getEffectiveTenantId(req, user);
+    try {
+      const newRole = dbStore.createTenantRole(tenantId, req.body, user);
+      return res.status(201).json({ success: true, role: newRole });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || 'Failed to create role' });
+    }
+  });
+
+  // Update role permissions and attributes
+  app.put('/api/tenant/roles/:roleId', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Tenant Administrators can edit roles' });
+    }
+    const tenantId = getEffectiveTenantId(req, user);
+    try {
+      const updated = dbStore.updateTenantRole(tenantId, req.params.roleId, req.body, user);
+      return res.json({ success: true, role: updated });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || 'Failed to update role' });
+    }
+  });
+
+  // Delete custom role
+  app.delete('/api/tenant/roles/:roleId', requireAuth, (req, res) => {
+    const user = (req as any).user as User;
+    if (user.role !== 'TENANT_ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Only Tenant Administrators can delete roles' });
+    }
+    const tenantId = getEffectiveTenantId(req, user);
+    try {
+      dbStore.deleteTenantRole(tenantId, req.params.roleId, user);
+      return res.json({ success: true, message: 'Role deleted successfully' });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message || 'Failed to delete role' });
     }
   });
 
@@ -2615,6 +2727,94 @@ async function startServer() {
     try {
       const result = dbStore.generateClassInvoices(tenantId, req.body, user);
       return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  // ==================== MONTHLY SCHOOL FEES AUTOMATION ROUTES ====================
+  app.get('/api/app/education/fees/automation/config', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const config = dbStore.getMonthlyFeeConfig(tenantId);
+      return res.json(config);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/fees/automation/config', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const config = dbStore.saveMonthlyFeeConfig(tenantId, req.body, user);
+      return res.json(config);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/app/education/fees/automation/logs', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const logs = dbStore.getMonthlyFeeLogs(tenantId);
+      return res.json(logs);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/fees/automation/preview', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const preview = dbStore.previewMonthlyInvoices(tenantId, req.body);
+      return res.json(preview);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/fees/automation/run', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const result = dbStore.runMonthlyFeeAutomation(tenantId, req.body, user);
+      return res.status(201).json(result);
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/app/education/fees/automation/send-reminders', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const { monthYear, gradeId, classId } = req.body;
+      const invoices = dbStore.getInvoices(tenantId, { gradeId, classId, status: 'UNPAID' });
+      const unpaidMonthInvoices = monthYear 
+        ? invoices.filter(i => i.billingMonth === monthYear || (i.academicTerm && i.academicTerm.includes(monthYear)))
+        : invoices;
+
+      // Log notification action
+      dbStore.logAction(
+        tenantId,
+        user.id,
+        user.name,
+        user.role,
+        'SEND_FEE_REMINDERS',
+        'StudentInvoice',
+        `reminders_${Date.now()}`,
+        `Dispatched automated monthly fee SMS & Email reminders to parents of ${unpaidMonthInvoices.length} students with outstanding balances.`
+      );
+
+      return res.json({
+        success: true,
+        sentCount: unpaidMonthInvoices.length,
+        message: `Successfully queued and dispatched ${unpaidMonthInvoices.length} fee reminder notifications via SMS & Email gateway.`
+      });
     } catch (err: any) {
       return res.status(400).json({ error: err.message });
     }

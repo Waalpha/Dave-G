@@ -7,34 +7,40 @@ import {
   Shield, AlertTriangle, AlertCircle, Mail, UserPlus, Sliders,
   MoveUp, MoveDown, Eye, Copy, ArrowRight, Layout
 } from 'lucide-react';
-import { Tenant, User, TenantDomain } from '../../types';
+import { Tenant, User, TenantDomain, RoleDefinition } from '../../types';
 import { ResetPasswordModal } from '../platform/components/ResetPasswordModal';
 import { EditUserModal } from '../platform/components/EditUserModal';
 import { compressImageFile } from '../../lib/imageUtils';
 import { TenantPublicWebsiteEditor } from './components/TenantPublicWebsiteEditor';
+import { TenantRolesPermissions } from './components/TenantRolesPermissions';
+import { DEFAULT_SYSTEM_ROLES } from '../../data/rolesPermissions';
 
 interface TenantSettingsProps {
-  initialTab?: 'website' | 'branding' | 'users';
+  initialTab?: 'website' | 'branding' | 'users' | 'roles' | 'permissions';
 }
 
 export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'website' }) => {
   const { tenant, user, refreshAuth } = useAuth();
-  const [activeTab, setActiveTab] = useState<'website' | 'branding' | 'users'>(() => {
+  const [activeTab, setActiveTab] = useState<'website' | 'branding' | 'users' | 'roles'>(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.toLowerCase();
+      if (hash.includes('role') || hash.includes('permission') || hash.includes('rbac')) return 'roles';
       if (hash.includes('users')) return 'users';
       if (hash.includes('branding')) return 'branding';
       if (hash.includes('website') || hash.includes('cms')) return 'website';
     }
-    return initialTab || 'website';
+    if (initialTab === 'roles' || (initialTab as string) === 'permissions') return 'roles';
+    return (initialTab as any) || 'website';
   });
 
   useEffect(() => {
     if (initialTab) {
       if ((initialTab as string) === 'public_website' || (initialTab as string) === 'website') {
         setActiveTab('website');
+      } else if (initialTab === 'roles' || (initialTab as string) === 'permissions') {
+        setActiveTab('roles');
       } else {
-        setActiveTab(initialTab);
+        setActiveTab(initialTab as any);
       }
     }
   }, [initialTab]);
@@ -44,6 +50,9 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
   // Read-only domain info state
   const [tenantDomains, setTenantDomains] = useState<TenantDomain[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  // Available roles for user creation / assignment
+  const [availableRoles, setAvailableRoles] = useState<RoleDefinition[]>(DEFAULT_SYSTEM_ROLES);
 
   // Users state for Tenant User Management
   const [tenantUsers, setTenantUsers] = useState<User[]>([]);
@@ -280,6 +289,21 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
       if (res.ok) {
         const data = await res.json();
         setTenantUsers(Array.isArray(data) ? data : []);
+      }
+
+      // Also fetch roles
+      const rolesRes = await fetch(`/api/tenant/roles?tenantId=${targetId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': localStorage.getItem('erp_user_id') || '',
+          'x-tenant-id': targetId
+        }
+      });
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json();
+        if (Array.isArray(rolesData) && rolesData.length > 0) {
+          setAvailableRoles(rolesData);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch tenant users:', err);
@@ -534,7 +558,28 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
           <Users className="w-4 h-4" />
           <span>Team &amp; User Accounts</span>
         </button>
+
+        <button
+          onClick={() => setActiveTab('roles')}
+          className={`pb-3 text-xs font-bold flex items-center space-x-2 border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'roles'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-900'
+          }`}
+        >
+          <Shield className="w-4 h-4" />
+          <span>Roles &amp; Permissions (RBAC)</span>
+        </button>
       </div>
+
+      {/* TAB: ROLES & PERMISSIONS */}
+      {activeTab === 'roles' && (
+        <TenantRolesPermissions
+          tenantId={user?.role === 'SUPER_ADMIN' ? (selectedTenantId || tenant?.id || '') : (tenant?.id || '')}
+          tenantName={activeTenant?.branding?.companyName || activeTenant?.name || 'Organization'}
+          currentUser={user}
+        />
+      )}
 
       {/* TAB: PUBLIC WEBSITE & CMS */}
       {activeTab === 'website' && activeTenant && (
@@ -855,15 +900,25 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
                         </td>
                         <td className="p-3 font-mono text-slate-600">{u.email}</td>
                         <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-                            u.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' :
-                            u.role === 'TENANT_ADMIN' ? 'bg-blue-100 text-blue-700' :
-                            u.role === 'LECTURER' ? 'bg-emerald-100 text-emerald-700' :
-                            u.role === 'STUDENT' ? 'bg-indigo-100 text-indigo-700' :
-                            'bg-slate-100 text-slate-700'
-                          }`}>
-                            {u.role}
-                          </span>
+                          <div className="flex flex-col space-y-1">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold w-max ${
+                              u.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' :
+                              u.role === 'TENANT_ADMIN' ? 'bg-blue-100 text-blue-700' :
+                              u.role === 'LECTURER' ? 'bg-emerald-100 text-emerald-700' :
+                              u.role === 'STUDENT' ? 'bg-indigo-100 text-indigo-700' :
+                              'bg-slate-100 text-slate-700'
+                            }`}>
+                              {u.role}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium flex items-center space-x-1">
+                              <Shield className="w-2.5 h-2.5 text-blue-500" />
+                              <span>
+                                {u.permissions?.includes('*') 
+                                  ? 'Full Access (*)' 
+                                  : (u.permissions?.length ? `${u.permissions.length} perms` : 'Role Default')}
+                              </span>
+                            </span>
+                          </div>
                         </td>
                         <td className="p-3 text-slate-500">{u.department || 'General'}</td>
                         <td className="p-3 text-right">
@@ -879,10 +934,10 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
                             <button
                               onClick={() => setSelectedUserForEdit(u)}
                               className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[11px] font-semibold transition-colors inline-flex items-center space-x-1 cursor-pointer"
-                              title="Edit User Details"
+                              title="Edit User & Permissions"
                             >
                               <Edit2 className="w-3 h-3" />
-                              <span className="hidden sm:inline">Edit</span>
+                              <span className="hidden sm:inline">Edit / Perms</span>
                             </button>
                             {u.id !== 'user_super_admin' && (
                               <button
@@ -964,13 +1019,13 @@ export const TenantSettings: React.FC<TenantSettingsProps> = ({ initialTab = 'we
                   <select
                     value={newUserRole}
                     onChange={e => setNewUserRole(e.target.value)}
-                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium"
+                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium cursor-pointer"
                   >
-                    <option value="STAFF">Staff / General</option>
-                    <option value="LECTURER">Lecturer / Faculty</option>
-                    <option value="ACCOUNTANT">Accountant / Bursar</option>
-                    <option value="TENANT_ADMIN">Tenant Admin</option>
-                    <option value="STUDENT">Student</option>
+                    {availableRoles.map(r => (
+                      <option key={r.code} value={r.code}>
+                        {r.name} ({r.code})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
