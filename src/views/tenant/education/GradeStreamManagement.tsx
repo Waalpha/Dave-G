@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { SchoolGrade, GradeStream, Student, StudentPromotionRecord, LecturerStaff } from '../../../types';
+import { SchoolGrade, GradeStream, Student, StudentPromotionRecord, LecturerStaff, FeeStructure } from '../../../types';
 import {
   Layers, Plus, Search, Edit, Trash2, CheckCircle2, AlertCircle,
   Users, User, Building, Clock, X, Check, Eye, ArrowRight,
   TrendingUp, RefreshCw, ShieldCheck, Award, BookOpen, ChevronRight,
   Sparkles, CheckSquare, Square, ArrowRightLeft, UserPlus, Phone, Mail,
-  GraduationCap, Calendar, ChevronDown, Filter, FileText
+  GraduationCap, Calendar, ChevronDown, Filter, FileText, Zap, Receipt
 } from 'lucide-react';
 
 interface GradeStreamManagementProps {
@@ -38,6 +38,7 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
   const [students, setStudents] = useState<Student[]>([]);
   const [faculty, setFaculty] = useState<LecturerStaff[]>([]);
   const [promotionHistory, setPromotionHistory] = useState<StudentPromotionRecord[]>([]);
+  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -112,6 +113,7 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
   const [studGuardianEmail, setStudGuardianEmail] = useState('');
   const [studGuardianRelation, setStudGuardianRelation] = useState('Parent');
   const [studFeeBalance, setStudFeeBalance] = useState('0');
+  const [studAutoGenerateInvoice, setStudAutoGenerateInvoice] = useState(true);
   const [studStatus, setStudStatus] = useState<Student['status']>('ACTIVE');
   const [isSavingStudent, setIsSavingStudent] = useState(false);
 
@@ -130,16 +132,31 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
     'Content-Type': 'application/json'
   });
 
+  const getMatchedFeeStructureForGrade = (gradeId?: string): FeeStructure | null => {
+    if (feeStructures.length === 0) return null;
+    const grd = grades.find(g => g.id === gradeId);
+    if (gradeId || grd) {
+      const match = feeStructures.find(f =>
+        (f.targetType === 'GRADE' || f.gradeId) &&
+        (f.gradeId === gradeId || f.gradeName?.toLowerCase() === grd?.name.toLowerCase())
+      );
+      if (match) return match;
+    }
+    const gen = feeStructures.find(f => f.targetType === 'ALL' || (!f.gradeId && !f.classId && !f.programId));
+    return gen || feeStructures[0] || null;
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setErrorMsg('');
-      const [resGrades, resStreams, resStudents, resPromos, resFac] = await Promise.all([
+      const [resGrades, resStreams, resStudents, resPromos, resFac, resFees] = await Promise.all([
         fetch('/api/app/education/grades', { headers: getHeaders() }),
         fetch('/api/app/education/streams', { headers: getHeaders() }),
         fetch('/api/app/education/students', { headers: getHeaders() }),
         fetch('/api/app/education/promotions/history', { headers: getHeaders() }),
-        fetch('/api/app/education/faculty', { headers: getHeaders() })
+        fetch('/api/app/education/faculty', { headers: getHeaders() }),
+        fetch('/api/app/education/fee-structures', { headers: getHeaders() })
       ]);
 
       if (resGrades.ok) {
@@ -161,6 +178,10 @@ export const GradeStreamManagement: React.FC<GradeStreamManagementProps> = ({
       if (resFac.ok) {
         const f = await resFac.json();
         setFaculty(Array.isArray(f) ? f : []);
+      }
+      if (resFees.ok) {
+        const fees = await resFees.json();
+        setFeeStructures(Array.isArray(fees) ? fees : []);
       }
     } catch (err: any) {
       console.error('Error fetching grades/streams data:', err);

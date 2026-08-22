@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Student, Program, Campus, Department, SchoolClass, SchoolGrade, GradeStream } from '../../../types';
+import { Student, Program, Campus, Department, SchoolClass, SchoolGrade, GradeStream, FeeStructure } from '../../../types';
 import {
   Users, Plus, Search, Filter, Edit, Trash2, CheckCircle2, XCircle,
   Phone, Mail, User, Layers, Download, Upload, FileSpreadsheet,
   Calendar, DollarSign, X, Check, AlertCircle, FileText, ChevronRight,
-  TrendingUp, Award, Printer, UserPlus, Eye, ShieldCheck, BookOpen, Clock
+  TrendingUp, Award, Printer, UserPlus, Eye, ShieldCheck, BookOpen, Clock,
+  Zap, Receipt, Calculator, Sparkles
 } from 'lucide-react';
 import { StudentAdmissionLetterModal } from './components/StudentAdmissionLetterModal';
 
@@ -27,6 +28,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [grades, setGrades] = useState<SchoolGrade[]>([]);
   const [streams, setStreams] = useState<GradeStream[]>([]);
+  const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -78,6 +80,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [formAcademicYear, setFormAcademicYear] = useState('2025/2026');
   const [formAcademicTerm, setFormAcademicTerm] = useState('Term 1');
   const [formFeeBalance, setFormFeeBalance] = useState('0');
+  const [formAutoGenerateInvoice, setFormAutoGenerateInvoice] = useState(true);
+  const [formFeeStructureId, setFormFeeStructureId] = useState('');
   const [formStatus, setFormStatus] = useState<Student['status']>('ACTIVE');
   const [formGuardianName, setFormGuardianName] = useState('');
   const [formGuardianPhone, setFormGuardianPhone] = useState('');
@@ -94,13 +98,14 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     try {
       setLoading(true);
       setErrorMsg('');
-      const [resStud, resAcad, resDept, resCls, resGrades, resStreams] = await Promise.all([
+      const [resStud, resAcad, resDept, resCls, resGrades, resStreams, resFees] = await Promise.all([
         fetch('/api/app/education/students', { headers: getHeaders() }),
         fetch('/api/app/education/academics', { headers: getHeaders() }),
         fetch('/api/app/education/departments', { headers: getHeaders() }),
         fetch('/api/app/education/classes', { headers: getHeaders() }),
         fetch('/api/app/education/grades', { headers: getHeaders() }),
-        fetch('/api/app/education/streams', { headers: getHeaders() })
+        fetch('/api/app/education/streams', { headers: getHeaders() }),
+        fetch('/api/app/education/fee-structures', { headers: getHeaders() })
       ]);
 
       if (resStud.ok) {
@@ -128,6 +133,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         const strData = await resStreams.json();
         setStreams(Array.isArray(strData) ? strData : []);
       }
+      if (resFees.ok) {
+        const fData = await resFees.json();
+        setFeeStructures(Array.isArray(fData) ? fData : []);
+      }
     } catch (err: any) {
       console.error('Error fetching student data:', err);
       setErrorMsg('Failed to load students list.');
@@ -139,6 +148,98 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Helper to match fee structure for admitted student
+  const getMatchedFeeStructure = (
+    gradeId?: string,
+    classId?: string,
+    programId?: string,
+    year?: string,
+    term?: string,
+    explicitStructId?: string
+  ): FeeStructure | null => {
+    if (explicitStructId) {
+      const explicit = feeStructures.find(f => f.id === explicitStructId);
+      if (explicit) return explicit;
+    }
+    if (feeStructures.length === 0) return null;
+
+    const grd = grades.find(g => g.id === gradeId);
+    const cls = classes.find(c => c.id === classId);
+    const prog = programs.find(p => p.id === programId);
+
+    // 1. Exact match by Class & term/year
+    if (classId || cls) {
+      const m = feeStructures.find(f =>
+        (f.targetType === 'CLASS' || f.classId) &&
+        (f.classId === classId || f.className?.toLowerCase() === cls?.name.toLowerCase()) &&
+        (!year || !f.academicYear || f.academicYear === year) &&
+        (!term || !f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (m) return m;
+    }
+
+    // 2. Exact match by Grade & term/year
+    if (gradeId || grd) {
+      const m = feeStructures.find(f =>
+        (f.targetType === 'GRADE' || f.gradeId) &&
+        (f.gradeId === gradeId || f.gradeName?.toLowerCase() === grd?.name.toLowerCase()) &&
+        (!year || !f.academicYear || f.academicYear === year) &&
+        (!term || !f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (m) return m;
+    }
+
+    // 3. Exact match by Program & term/year
+    if (programId || prog) {
+      const m = feeStructures.find(f =>
+        (f.targetType === 'PROGRAM' || f.programId) &&
+        (f.programId === programId || f.programName?.toLowerCase() === prog?.name.toLowerCase()) &&
+        (!year || !f.academicYear || f.academicYear === year) &&
+        (!term || !f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (m) return m;
+    }
+
+    // 4. Any class match
+    if (classId || cls) {
+      const m = feeStructures.find(f => f.classId === classId || f.className?.toLowerCase() === cls?.name.toLowerCase());
+      if (m) return m;
+    }
+
+    // 5. Any grade match
+    if (gradeId || grd) {
+      const m = feeStructures.find(f => f.gradeId === gradeId || f.gradeName?.toLowerCase() === grd?.name.toLowerCase());
+      if (m) return m;
+    }
+
+    // 6. Any program match
+    if (programId || prog) {
+      const m = feeStructures.find(f => f.programId === programId || f.programName?.toLowerCase() === prog?.name.toLowerCase());
+      if (m) return m;
+    }
+
+    // 7. General institution-wide fee structure
+    const gen = feeStructures.find(f => f.targetType === 'ALL' || (!f.gradeId && !f.classId && !f.programId));
+    return gen || feeStructures[0] || null;
+  };
+
+  const matchedFeeStructure = getMatchedFeeStructure(
+    formGradeId,
+    formClassId,
+    formProgramId,
+    formAcademicYear,
+    formAcademicTerm,
+    formFeeStructureId
+  );
+
+  // Automatically update fee balance when grade/class/program/fee structure changes (unless editing an existing student)
+  useEffect(() => {
+    if (!editingStudent && formAutoGenerateInvoice && matchedFeeStructure) {
+      const total = Number(matchedFeeStructure.totalFee) || 0;
+      setFormFeeBalance(String(total));
+    }
+  }, [formGradeId, formClassId, formProgramId, formAcademicYear, formAcademicTerm, formFeeStructureId, formAutoGenerateInvoice, feeStructures, editingStudent]);
 
   const generateNextAdmNo = () => {
     const year = new Date().getFullYear();
@@ -165,7 +266,10 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setFormIntake('January 2026');
     setFormAcademicYear('2025/2026');
     setFormAcademicTerm('Term 1');
-    setFormFeeBalance('0');
+    setFormAutoGenerateInvoice(true);
+    setFormFeeStructureId('');
+    const matched = getMatchedFeeStructure(grades[0]?.id, classes[0]?.id, programs[0]?.id, '2025/2026', 'Term 1');
+    setFormFeeBalance(String(matched?.totalFee || 0));
     setFormStatus('ACTIVE');
     setFormGuardianName('');
     setFormGuardianPhone('');
@@ -199,6 +303,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setFormIntake(s.intake || 'January 2026');
     setFormAcademicYear(s.academicYear || '2025/2026');
     setFormAcademicTerm(s.academicTerm || 'Term 1');
+    setFormAutoGenerateInvoice(false);
+    setFormFeeStructureId('');
     setFormFeeBalance(String(s.feeBalance || 0));
     setFormStatus(s.status || 'ACTIVE');
     setFormGuardianName(s.guardianName || '');
@@ -252,6 +358,9 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
         academicYear: formAcademicYear,
         academicTerm: formAcademicTerm,
         feeBalance: Number(formFeeBalance) || 0,
+        autoGenerateInvoice: editingStudent ? false : formAutoGenerateInvoice,
+        feeStructureId: formFeeStructureId || matchedFeeStructure?.id || undefined,
+        customFeeAmount: formAutoGenerateInvoice ? undefined : (Number(formFeeBalance) || 0),
         status: formStatus,
         guardianName: formGuardianName.trim(),
         guardianPhone: formGuardianPhone.trim(),
@@ -280,8 +389,11 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
       }
 
       const savedStudent = await res.json();
-      setSuccessMsg(editingStudent ? 'Student details successfully updated.' : 'New student admitted successfully.');
-      setTimeout(() => setSuccessMsg(''), 4000);
+      const invMsg = savedStudent.initialInvoice
+        ? ` with auto-generated fee invoice ${savedStudent.initialInvoice.invoiceNo} (${currencySymbol} ${savedStudent.initialInvoice.totalAmount?.toLocaleString()}) for ${savedStudent.gradeName || savedStudent.className || 'admitted class'}!`
+        : '!';
+      setSuccessMsg(editingStudent ? 'Student details successfully updated.' : `New learner "${savedStudent.fullName}" admitted successfully${invMsg}`);
+      setTimeout(() => setSuccessMsg(''), 5000);
       setIsModalOpen(false);
       resetForm();
       fetchData();
@@ -1067,23 +1179,163 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label className="font-semibold text-slate-700">Initial Fee Balance ({currencySymbol})</label>
-                  <input
-                    type="number"
-                    value={formFeeBalance}
-                    onChange={e => setFormFeeBalance(e.target.value)}
-                    className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold"
-                  />
-                </div>
               </div>
             </div>
 
-            {/* 3. Guardian & Emergency Contacts */}
+            {/* 3. Automated Class Fee Billing & Invoicing on Admission */}
+            <div className="space-y-4 pt-4 border-t border-slate-100 bg-linear-to-br from-indigo-50/40 via-blue-50/20 to-slate-50 p-5 rounded-2xl border border-indigo-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-100/60 pb-3">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center space-x-2">
+                      <span>3. Automated Class Fee Invoicing & Ledger Entry</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                        Class Automated
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-600">
+                      Fees enter automatically for the admitted class/grade and generate the official student admission invoice upon registration.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="inline-flex items-center space-x-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-xs">
+                  <input
+                    type="checkbox"
+                    checked={formAutoGenerateInvoice}
+                    onChange={e => setFormAutoGenerateInvoice(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-indigo-900 select-none">Auto-Bill Admitted Class</span>
+                </label>
+              </div>
+
+              {formAutoGenerateInvoice ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="md:col-span-2 space-y-2">
+                      <label className="font-semibold text-slate-700 block">Matched Class Fee Structure</label>
+                      <select
+                        value={formFeeStructureId || (matchedFeeStructure?.id || '')}
+                        onChange={e => {
+                          setFormFeeStructureId(e.target.value);
+                          const chosen = feeStructures.find(f => f.id === e.target.value);
+                          if (chosen) {
+                            setFormFeeBalance(String(chosen.totalFee || 0));
+                          }
+                        }}
+                        className="w-full p-2.5 bg-white border border-indigo-200 rounded-xl text-slate-900 font-semibold text-xs shadow-2xs"
+                      >
+                        {matchedFeeStructure && (
+                          <option value={matchedFeeStructure.id}>
+                            ★ [Auto-Matched] {matchedFeeStructure.name || `${matchedFeeStructure.gradeName || matchedFeeStructure.className || 'Class'} Structure`} ({currencySymbol} {matchedFeeStructure.totalFee?.toLocaleString()})
+                          </option>
+                        )}
+                        {feeStructures
+                          .filter(f => !matchedFeeStructure || f.id !== matchedFeeStructure.id)
+                          .map(f => (
+                            <option key={f.id} value={f.id}>
+                              {f.name || `${f.gradeName || f.className || f.programName || 'Structure'}`} ({currencySymbol} {f.totalFee?.toLocaleString()}) - {f.academicTerm || 'All Terms'}
+                            </option>
+                          ))}
+                        {feeStructures.length === 0 && (
+                          <option value="">No predefined fee structures found (using standard default)</option>
+                        )}
+                      </select>
+
+                      {/* Fee Items Pill breakdown */}
+                      {matchedFeeStructure && (
+                        <div className="bg-white/90 border border-slate-200 rounded-xl p-3 space-y-2">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-slate-700 flex items-center space-x-1">
+                              <Receipt className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Applicable Breakdown for {grades.find(g => g.id === formGradeId)?.name || classes.find(c => c.id === formClassId)?.name || 'Class'}:</span>
+                            </span>
+                            <span className="font-semibold text-indigo-700">Cycle: {matchedFeeStructure.billingFrequency || 'TERM'}</span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {matchedFeeStructure.items && matchedFeeStructure.items.length > 0 ? (
+                              matchedFeeStructure.items.map((item, idx) => (
+                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-medium">
+                                  <span className="text-slate-500 mr-1">{item.feeType || item.name || item.description}:</span>
+                                  <strong className="font-mono text-slate-900">{currencySymbol} {Number(item.amount)?.toLocaleString()}</strong>
+                                </span>
+                              ))
+                            ) : (
+                              <>
+                                {matchedFeeStructure.tuitionFee > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-[11px]">
+                                    Tuition: <strong className="ml-1 font-mono">{currencySymbol} {matchedFeeStructure.tuitionFee?.toLocaleString()}</strong>
+                                  </span>
+                                )}
+                                {matchedFeeStructure.examFee > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-800 text-[11px]">
+                                    Exam: <strong className="ml-1 font-mono">{currencySymbol} {matchedFeeStructure.examFee?.toLocaleString()}</strong>
+                                  </span>
+                                )}
+                                {matchedFeeStructure.activityFee > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px]">
+                                    Activity: <strong className="ml-1 font-mono">{currencySymbol} {matchedFeeStructure.activityFee?.toLocaleString()}</strong>
+                                  </span>
+                                )}
+                                {matchedFeeStructure.libraryFee > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px]">
+                                    Library: <strong className="ml-1 font-mono">{currencySymbol} {matchedFeeStructure.libraryFee?.toLocaleString()}</strong>
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-indigo-600 text-white rounded-xl p-4 flex flex-col justify-between shadow-xs">
+                      <div>
+                        <div className="flex items-center justify-between text-indigo-200 text-[11px] font-semibold">
+                          <span>Total Admission Invoice</span>
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        </div>
+                        <div className="text-2xl font-black font-mono mt-1 text-white tracking-tight">
+                          {currencySymbol} {Number(formFeeBalance || 0).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-indigo-500/60 text-[10px] text-indigo-100 flex items-center space-x-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-300 shrink-0" />
+                        <span>Creates INV-ADM invoice & sets student opening ledger balance.</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-3 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="font-semibold text-slate-700">Manual Initial Balance ({currencySymbol})</label>
+                    <input
+                      type="number"
+                      value={formFeeBalance}
+                      onChange={e => setFormFeeBalance(e.target.value)}
+                      placeholder="0"
+                      className="w-full mt-1 p-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">Set to 0 if learner is admitted on full scholarship or with zero opening balance.</p>
+                  </div>
+                  <div className="flex items-center text-xs text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                    <span>Note: Automatic fee invoice generation is disabled. You can still generate invoices later from School Fees Management.</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Guardian & Emergency Contacts */}
             <div className="space-y-3 pt-4 border-t border-slate-100">
               <h4 className="font-bold text-slate-900 uppercase tracking-wider text-[11px] text-blue-800 flex items-center space-x-1.5">
-                <span>3. Parent / Guardian Contact Details</span>
+                <span>4. Parent / Guardian Contact Details</span>
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
@@ -1526,6 +1778,60 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Class Fee Auto-Entry Section for Modal */}
+            {!editingStudent && (
+              <div className="pt-3 border-t border-slate-100 bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <Zap className="w-4 h-4 text-indigo-600" />
+                    <div>
+                      <span className="text-xs font-bold text-slate-900">Auto-Assigned Class Fee Invoice</span>
+                      <p className="text-[10px] text-slate-500">Auto-bills student for the selected class/grade upon admission</p>
+                    </div>
+                  </div>
+                  <label className="inline-flex items-center space-x-1.5 cursor-pointer text-xs font-bold text-indigo-900 bg-white px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={formAutoGenerateInvoice}
+                      onChange={e => setFormAutoGenerateInvoice(e.target.checked)}
+                      className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                    />
+                    <span>Auto-Bill</span>
+                  </label>
+                </div>
+
+                {formAutoGenerateInvoice ? (
+                  <div className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-indigo-100 text-xs">
+                    <div>
+                      <span className="font-semibold text-slate-800 block truncate max-w-xs">
+                        {matchedFeeStructure?.name || `${grades.find(g => g.id === formGradeId)?.name || 'Class'} Fee Structure`}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        {matchedFeeStructure?.academicTerm || formAcademicTerm} • {matchedFeeStructure?.academicYear || formAcademicYear}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold font-mono text-indigo-700">
+                        {currencySymbol} {Number(formFeeBalance || 0).toLocaleString()}
+                      </div>
+                      <span className="text-[9px] font-semibold text-emerald-600">Auto-Invoice Ready</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                    <label className="text-[11px] font-semibold text-slate-700 block mb-1">Manual Opening Balance ({currencySymbol})</label>
+                    <input
+                      type="number"
+                      value={formFeeBalance}
+                      onChange={e => setFormFeeBalance(e.target.value)}
+                      placeholder="0"
+                      className="w-full p-1.5 text-xs bg-slate-50 border border-slate-300 rounded font-mono font-bold"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
               <button

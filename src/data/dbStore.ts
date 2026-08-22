@@ -4586,6 +4586,116 @@ class DatabaseStore {
       enrolledAt: new Date().toISOString()
     };
 
+    // Check if initial fee billing is requested (defaults to true)
+    const autoInvoice = (studentData as any).autoGenerateInvoice !== false;
+    let initialInvoice: StudentInvoice | undefined;
+
+    let feeStruct: FeeStructure | undefined;
+    if ((studentData as any).feeStructureId) {
+      feeStruct = this.getFeeStructureById(tenantId, (studentData as any).feeStructureId);
+    }
+    if (!feeStruct) {
+      feeStruct = this.findMatchingFeeStructure(tenantId, {
+        gradeId: newStudent.gradeId,
+        gradeName: newStudent.gradeName,
+        classId: newStudent.classId,
+        className: newStudent.className,
+        programId: newStudent.programId,
+        programName: newStudent.programName,
+        academicYear: newStudent.academicYear,
+        academicTerm: newStudent.academicTerm
+      });
+    }
+
+    if (autoInvoice && (feeStruct || Number(studentData.feeBalance) > 0 || (studentData as any).customFeeAmount > 0)) {
+      let items: Array<{ description: string; name?: string; amount: number; category?: string }> = [];
+      let totalAmount = 0;
+
+      if (feeStruct) {
+        if (Array.isArray(feeStruct.items) && feeStruct.items.length > 0) {
+          items = feeStruct.items
+            .filter(i => (Number(i.amount) || 0) > 0)
+            .map(i => ({
+              description: i.feeType || i.name || i.description || 'School Fee',
+              name: i.feeType || i.name || i.description || 'School Fee',
+              amount: Number(i.amount) || 0,
+              category: i.category || 'Tuition'
+            }));
+        }
+
+        if (items.length === 0) {
+          if (feeStruct.tuitionFee) items.push({ description: 'Tuition Fee', amount: Number(feeStruct.tuitionFee), category: 'Tuition' });
+          if (feeStruct.examFee) items.push({ description: 'Examination Fee', amount: Number(feeStruct.examFee), category: 'Exam' });
+          if (feeStruct.activityFee) items.push({ description: 'Activity & Sports Fee', amount: Number(feeStruct.activityFee), category: 'Activity' });
+          if (feeStruct.libraryFee) items.push({ description: 'Library & Learning Resources', amount: Number(feeStruct.libraryFee), category: 'Library' });
+          if (feeStruct.boardingFee) items.push({ description: 'Boarding / Accommodation Fee', amount: Number(feeStruct.boardingFee), category: 'Boarding' });
+          if (feeStruct.transportFee) items.push({ description: 'Transport / Bus Fee', amount: Number(feeStruct.transportFee), category: 'Transport' });
+          if (feeStruct.labFee) items.push({ description: 'Science & Computer Lab Fee', amount: Number(feeStruct.labFee), category: 'Lab' });
+          if (feeStruct.developmentFee) items.push({ description: 'Institutional Development Levy', amount: Number(feeStruct.developmentFee), category: 'Development' });
+          if (feeStruct.otherFees) items.push({ description: 'Other Ancillary Fees', amount: Number(feeStruct.otherFees), category: 'Other' });
+        }
+
+        totalAmount = items.reduce((sum, item) => sum + item.amount, 0) || Number(feeStruct.totalFee) || 0;
+      }
+
+      const customAmt = Number((studentData as any).customFeeAmount);
+      if (customAmt > 0) {
+        totalAmount = customAmt;
+        if (items.length === 0) {
+          items = [{ description: 'Admission & Tuition Fee', amount: customAmt, category: 'Tuition' }];
+        }
+      } else if (items.length === 0 && Number(studentData.feeBalance) > 0) {
+        totalAmount = Number(studentData.feeBalance);
+        items = [{ description: 'Admission Opening Fee Balance', amount: totalAmount, category: 'Tuition' }];
+      }
+
+      if (totalAmount > 0) {
+        const randNum = Math.floor(1000 + Math.random() * 9000);
+        const year = new Date().getFullYear();
+        const invoiceNo = `INV-${year}-ADM-${randNum}`;
+
+        const inv: StudentInvoice = {
+          id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+          tenantId,
+          invoiceNo,
+          studentId: newStudent.id,
+          studentName: newStudent.fullName,
+          admissionNo: newStudent.admissionNo,
+          gradeId: newStudent.gradeId || '',
+          gradeName: newStudent.gradeName || '',
+          streamId: newStudent.streamId || '',
+          streamName: newStudent.streamName || '',
+          programId: newStudent.programId || '',
+          programName: newStudent.programName || '',
+          classId: newStudent.classId || '',
+          className: newStudent.className || '',
+          academicTerm: newStudent.academicTerm || feeStruct?.academicTerm || feeStruct?.term || 'Term 1',
+          term: newStudent.academicTerm || feeStruct?.academicTerm || feeStruct?.term || 'Term 1',
+          academicYear: newStudent.academicYear || feeStruct?.academicYear || `${year}/${year + 1}`,
+          feeStructureId: feeStruct?.id || '',
+          feeStructureName: feeStruct?.name || `${newStudent.gradeName || newStudent.className || 'Class'} Fee Structure`,
+          items: items.length > 0 ? items : [{ description: 'Tuition & Admission Fee', amount: totalAmount }],
+          subtotal: totalAmount,
+          discountAmount: 0,
+          totalAmount: totalAmount,
+          amountPaid: 0,
+          balance: totalAmount,
+          issueDate: new Date().toISOString().split('T')[0],
+          dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+          status: 'UNPAID',
+          notes: `Automatic admission fee invoice generated for ${newStudent.gradeName || newStudent.className || newStudent.programName || 'Admitted Class'}.`,
+          paymentInstructions: 'Deposit via official bank account or M-PESA Paybill with Student Admission No as Account.',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        newStudent.feeBalance = totalAmount;
+        initialInvoice = inv;
+        this.studentInvoices.unshift(inv);
+        saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+      }
+    }
+
     this.students.unshift(newStudent);
     saveDocToFirestore('students', newStudent.id, newStudent).catch(() => {});
 
@@ -4597,9 +4707,10 @@ class DatabaseStore {
       'STUDENT_ADMITTED',
       'Student',
       newStudent.id,
-      `Admitted student "${newStudent.fullName}" (${newStudent.admissionNo})${newStudent.gradeName ? ` to ${newStudent.gradeName} (${newStudent.streamName || ''})` : ''}`
+      `Admitted student "${newStudent.fullName}" (${newStudent.admissionNo})${newStudent.gradeName ? ` to ${newStudent.gradeName} (${newStudent.streamName || ''})` : ''}${initialInvoice ? ` with auto-generated fee invoice ${initialInvoice.invoiceNo} (${initialInvoice.totalAmount})` : ''}`
     );
 
+    (newStudent as any).initialInvoice = initialInvoice;
     return newStudent;
   }
 
@@ -4744,6 +4855,98 @@ class DatabaseStore {
         guardianRelation: sData.guardianRelation?.trim() || 'Parent',
         enrolledAt: new Date().toISOString()
       };
+
+      // Auto-assign fees and generate initial invoice for admitted student
+      const autoInvoice = (sData as any).autoGenerateInvoice !== false;
+      let feeStruct = (sData as any).feeStructureId ? this.getFeeStructureById(tenantId, (sData as any).feeStructureId) : undefined;
+      if (!feeStruct) {
+        feeStruct = this.findMatchingFeeStructure(tenantId, {
+          gradeId: student.gradeId,
+          gradeName: student.gradeName,
+          classId: student.classId,
+          className: student.className,
+          programId: student.programId,
+          programName: student.programName,
+          academicYear: student.academicYear,
+          academicTerm: student.academicTerm
+        });
+      }
+
+      if (autoInvoice && (feeStruct || student.feeBalance > 0)) {
+        let items: Array<{ description: string; name?: string; amount: number; category?: string }> = [];
+        let totalAmount = 0;
+
+        if (feeStruct) {
+          if (Array.isArray(feeStruct.items) && feeStruct.items.length > 0) {
+            items = feeStruct.items
+              .filter(i => (Number(i.amount) || 0) > 0)
+              .map(i => ({
+                description: i.feeType || i.name || i.description || 'School Fee',
+                name: i.feeType || i.name || i.description || 'School Fee',
+                amount: Number(i.amount) || 0,
+                category: i.category || 'Tuition'
+              }));
+          }
+          if (items.length === 0) {
+            if (feeStruct.tuitionFee) items.push({ description: 'Tuition Fee', amount: Number(feeStruct.tuitionFee), category: 'Tuition' });
+            if (feeStruct.examFee) items.push({ description: 'Examination Fee', amount: Number(feeStruct.examFee), category: 'Exam' });
+            if (feeStruct.activityFee) items.push({ description: 'Activity & Sports Fee', amount: Number(feeStruct.activityFee), category: 'Activity' });
+            if (feeStruct.libraryFee) items.push({ description: 'Library Fee', amount: Number(feeStruct.libraryFee), category: 'Library' });
+            if (feeStruct.otherFees) items.push({ description: 'Other Fees', amount: Number(feeStruct.otherFees), category: 'Other' });
+          }
+          totalAmount = items.reduce((s, it) => s + it.amount, 0) || Number(feeStruct.totalFee) || 0;
+        }
+
+        if (totalAmount === 0 && student.feeBalance > 0) {
+          totalAmount = student.feeBalance;
+          items = [{ description: 'Admission Opening Fee Balance', amount: totalAmount, category: 'Tuition' }];
+        }
+
+        if (totalAmount > 0) {
+          const randNum = Math.floor(1000 + Math.random() * 9000);
+          const year = new Date().getFullYear();
+          const invoiceNo = `INV-${year}-ADM-${randNum}`;
+
+          const inv: StudentInvoice = {
+            id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+            tenantId,
+            invoiceNo,
+            studentId: student.id,
+            studentName: student.fullName,
+            admissionNo: student.admissionNo,
+            gradeId: student.gradeId || '',
+            gradeName: student.gradeName || '',
+            streamId: student.streamId || '',
+            streamName: student.streamName || '',
+            programId: student.programId || '',
+            programName: student.programName || '',
+            classId: student.classId || '',
+            className: student.className || '',
+            academicTerm: student.academicTerm || 'Term 1',
+            term: student.academicTerm || 'Term 1',
+            academicYear: student.academicYear || `${year}/${year + 1}`,
+            feeStructureId: feeStruct?.id || '',
+            feeStructureName: feeStruct?.name || `${student.gradeName || student.className || 'Class'} Fee Structure`,
+            items,
+            subtotal: totalAmount,
+            discountAmount: 0,
+            totalAmount,
+            amountPaid: 0,
+            balance: totalAmount,
+            issueDate: new Date().toISOString().split('T')[0],
+            dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+            status: 'UNPAID',
+            notes: `Auto-generated admission invoice for ${student.gradeName || student.className || 'admitted class'}.`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+
+          student.feeBalance = totalAmount;
+          this.studentInvoices.unshift(inv);
+          saveDocToFirestore('studentInvoices', inv.id, inv).catch(() => {});
+        }
+      }
+
       this.students.unshift(student);
       added.push(student);
       saveDocToFirestore('students', student.id, student).catch(() => {});
@@ -5048,6 +5251,95 @@ class DatabaseStore {
 
   public getFeeStructureById(tenantId: string, id: string): FeeStructure | undefined {
     return this.feeStructures.find(f => f.tenantId === tenantId && f.id === id);
+  }
+
+  public findMatchingFeeStructure(
+    tenantId: string,
+    criteria: {
+      gradeId?: string;
+      gradeName?: string;
+      classId?: string;
+      className?: string;
+      programId?: string;
+      programName?: string;
+      academicYear?: string;
+      academicTerm?: string;
+      term?: string;
+      billingFrequency?: string;
+    }
+  ): FeeStructure | undefined {
+    const list = this.feeStructures.filter(f => f.tenantId === tenantId && f.status !== 'INACTIVE');
+    if (list.length === 0) return undefined;
+
+    const year = criteria.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+    const term = criteria.academicTerm || criteria.term || 'Term 1';
+
+    // 1. Specific match for Class + Year/Term
+    if (criteria.classId || criteria.className) {
+      const match = list.find(f =>
+        (f.targetType === 'CLASS' || f.classId) &&
+        ((criteria.classId && f.classId === criteria.classId) || (criteria.className && f.className?.toLowerCase() === criteria.className.toLowerCase())) &&
+        (!f.academicYear || f.academicYear === year) &&
+        (!f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (match) return match;
+    }
+
+    // 2. Specific match for Grade + Year/Term
+    if (criteria.gradeId || criteria.gradeName) {
+      const match = list.find(f =>
+        (f.targetType === 'GRADE' || f.gradeId) &&
+        ((criteria.gradeId && f.gradeId === criteria.gradeId) || (criteria.gradeName && f.gradeName?.toLowerCase() === criteria.gradeName.toLowerCase())) &&
+        (!f.academicYear || f.academicYear === year) &&
+        (!f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (match) return match;
+    }
+
+    // 3. Specific match for Program + Year/Term
+    if (criteria.programId || criteria.programName) {
+      const match = list.find(f =>
+        (f.targetType === 'PROGRAM' || f.programId) &&
+        ((criteria.programId && f.programId === criteria.programId) || (criteria.programName && f.programName?.toLowerCase() === criteria.programName.toLowerCase())) &&
+        (!f.academicYear || f.academicYear === year) &&
+        (!f.academicTerm || f.academicTerm === term || f.term === term)
+      );
+      if (match) return match;
+    }
+
+    // 4. Match Class across any Year/Term
+    if (criteria.classId || criteria.className) {
+      const match = list.find(f =>
+        (criteria.classId && f.classId === criteria.classId) ||
+        (criteria.className && f.className?.toLowerCase() === criteria.className.toLowerCase())
+      );
+      if (match) return match;
+    }
+
+    // 5. Match Grade across any Year/Term
+    if (criteria.gradeId || criteria.gradeName) {
+      const match = list.find(f =>
+        (criteria.gradeId && f.gradeId === criteria.gradeId) ||
+        (criteria.gradeName && f.gradeName?.toLowerCase() === criteria.gradeName.toLowerCase())
+      );
+      if (match) return match;
+    }
+
+    // 6. Match Program across any Year/Term
+    if (criteria.programId || criteria.programName) {
+      const match = list.find(f =>
+        (criteria.programId && f.programId === criteria.programId) ||
+        (criteria.programName && f.programName?.toLowerCase() === criteria.programName.toLowerCase())
+      );
+      if (match) return match;
+    }
+
+    // 7. General all-institution fee structure
+    const generalMatch = list.find(f => f.targetType === 'ALL' || (!f.gradeId && !f.classId && !f.programId));
+    if (generalMatch) return generalMatch;
+
+    // 8. Fallback to first available active fee structure
+    return list[0];
   }
 
   public addFeeStructure(tenantId: string, data: Partial<FeeStructure>, user: User): FeeStructure {
@@ -13265,6 +13557,68 @@ class DatabaseStore {
         enrolledAt: new Date().toISOString(),
         avatarUrl: app.photoUrl
       };
+
+      // Auto-assign fees and generate initial invoice for applicant admission
+      const feeStruct = this.findMatchingFeeStructure(tenantId, {
+        programId: existingStudent.programId,
+        programName: existingStudent.programName,
+        academicYear: existingStudent.academicYear,
+        academicTerm: existingStudent.academicTerm
+      });
+
+      if (feeStruct) {
+        let items: Array<{ description: string; name?: string; amount: number; category?: string }> = [];
+        if (Array.isArray(feeStruct.items) && feeStruct.items.length > 0) {
+          items = feeStruct.items.filter(i => (Number(i.amount) || 0) > 0).map(i => ({
+            description: i.feeType || i.name || i.description || 'Tuition Fee',
+            amount: Number(i.amount) || 0,
+            category: i.category || 'Tuition'
+          }));
+        }
+        if (items.length === 0) {
+          if (feeStruct.tuitionFee) items.push({ description: 'Tuition Fee', amount: Number(feeStruct.tuitionFee), category: 'Tuition' });
+          if (feeStruct.examFee) items.push({ description: 'Examination Fee', amount: Number(feeStruct.examFee), category: 'Exam' });
+          if (feeStruct.libraryFee) items.push({ description: 'Library Fee', amount: Number(feeStruct.libraryFee), category: 'Library' });
+          if (feeStruct.activityFee) items.push({ description: 'Activity Fee', amount: Number(feeStruct.activityFee), category: 'Activity' });
+        }
+        const totalAmount = items.reduce((s, it) => s + it.amount, 0) || Number(feeStruct.totalFee) || 0;
+        if (totalAmount > 0) {
+          const randNum = Math.floor(1000 + Math.random() * 9000);
+          const year = new Date().getFullYear();
+          const invoiceNo = `INV-${year}-ADM-${randNum}`;
+          const inv: StudentInvoice = {
+            id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+            tenantId,
+            invoiceNo,
+            studentId: existingStudent.id,
+            studentName: existingStudent.fullName,
+            admissionNo: existingStudent.admissionNo,
+            programId: existingStudent.programId,
+            programName: existingStudent.programName,
+            academicTerm: 'Term 1',
+            term: 'Term 1',
+            academicYear: existingStudent.academicYear || `${year}/${year + 1}`,
+            feeStructureId: feeStruct.id,
+            feeStructureName: feeStruct.name || `${existingStudent.programName} Fee Structure`,
+            items,
+            subtotal: totalAmount,
+            discountAmount: 0,
+            totalAmount,
+            amountPaid: 0,
+            balance: totalAmount,
+            issueDate: new Date().toISOString().split('T')[0],
+            dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+            status: 'UNPAID',
+            notes: `Auto-generated admission invoice for admitted applicant in ${existingStudent.programName}.`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          existingStudent.feeBalance = totalAmount;
+          this.studentInvoices.unshift(inv);
+          await this.persistDoc('studentInvoices', inv.id, inv);
+        }
+      }
+
       this.students.push(existingStudent);
       await this.persistDoc('students', existingStudent.id, existingStudent);
     } else {
@@ -13273,6 +13627,52 @@ class DatabaseStore {
       existingStudent.programName = prog?.name || app.programmeName;
       existingStudent.campusId = centreId;
       existingStudent.campusName = centre?.name || app.centreName;
+
+      // Auto-assign fees if balance was 0
+      if ((existingStudent.feeBalance || 0) === 0) {
+        const feeStruct = this.findMatchingFeeStructure(tenantId, {
+          programId: existingStudent.programId,
+          programName: existingStudent.programName,
+          academicYear: existingStudent.academicYear,
+          academicTerm: existingStudent.academicTerm
+        });
+        if (feeStruct && Number(feeStruct.totalFee) > 0) {
+          const randNum = Math.floor(1000 + Math.random() * 9000);
+          const year = new Date().getFullYear();
+          const totalAmount = Number(feeStruct.totalFee);
+          const inv: StudentInvoice = {
+            id: `inv_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+            tenantId,
+            invoiceNo: `INV-${year}-ADM-${randNum}`,
+            studentId: existingStudent.id,
+            studentName: existingStudent.fullName,
+            admissionNo: existingStudent.admissionNo,
+            programId: existingStudent.programId,
+            programName: existingStudent.programName,
+            academicTerm: 'Term 1',
+            term: 'Term 1',
+            academicYear: existingStudent.academicYear || `${year}/${year + 1}`,
+            feeStructureId: feeStruct.id,
+            feeStructureName: feeStruct.name || `${existingStudent.programName} Fee Structure`,
+            items: feeStruct.items && feeStruct.items.length > 0 ? feeStruct.items.map(i => ({ description: i.name || i.feeType || 'Fee', amount: Number(i.amount) || 0 })) : [{ description: 'Tuition Fee', amount: totalAmount }],
+            subtotal: totalAmount,
+            discountAmount: 0,
+            totalAmount,
+            amountPaid: 0,
+            balance: totalAmount,
+            issueDate: new Date().toISOString().split('T')[0],
+            dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+            status: 'UNPAID',
+            notes: `Auto-generated admission invoice for admitted applicant in ${existingStudent.programName}.`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          existingStudent.feeBalance = totalAmount;
+          this.studentInvoices.unshift(inv);
+          await this.persistDoc('studentInvoices', inv.id, inv);
+        }
+      }
+
       await this.persistDoc('students', existingStudent.id, existingStudent);
     }
 

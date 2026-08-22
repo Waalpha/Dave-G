@@ -2661,6 +2661,17 @@ async function startServer() {
     }
   });
 
+  app.post('/api/app/education/fee-structures/match', requireAuth, requireModule('education'), (req, res) => {
+    const user = (req as any).user as User;
+    const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
+    try {
+      const match = dbStore.findMatchingFeeStructure(tenantId, req.body);
+      return res.json({ feeStructure: match || null });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
   app.delete('/api/app/education/fee-structures/:id', requireAuth, requireModule('education'), (req, res) => {
     const user = (req as any).user as User;
     const tenantId = (req as any).effectiveTenantId || getEffectiveTenantId(req, user);
